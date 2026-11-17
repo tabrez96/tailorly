@@ -216,3 +216,169 @@ body {
   box-shadow: none;
   cursor: not-allowed;
 }
+
+/* Icon */
+.icon {
+  display: block;
+  flex: none;
+  width: 24px;
+  height: 24px;
+}
+
+/* Large-title header */
+.header {
+  padding: var(--s2) 0 var(--s4);
+}
+.header__back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: var(--s3);
+  border: 1px solid var(--edge);
+  border-radius: var(--r-pill);
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: var(--shadow-card);
+}
+.header__over {
+  margin-bottom: var(--s1);
+}
+.header__row {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+.header__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.header__action {
+  flex: none;
+  white-space: nowrap;
+}
+
+/* Bottom nav */
+.nav {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  z-index: 20;
+  display: flex;
+  height: 68px;
+  padding: 6px;
+  background: var(--card);
+  border: 1px solid var(--edge);
+  border-radius: var(--r-pill);
+  box-shadow: var(--shadow-float);
+}
+.nav__item {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border-radius: var(--r-pill);
+  color: var(--muted);
+  text-decoration: none;
+  font: 700 11px/1.1 var(--font);
+}
+.nav__label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nav__item[aria-current="page"] {
+  background: var(--pri-l);
+  color: var(--pri-d);
+}
+
+/* Bottom action bar */
+.action-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  gap: var(--s3);
+  padding: var(--s3) var(--s4) calc(var(--s3) + env(safe-area-inset-bottom));
+  background: var(--card);
+  border-top: 1px solid var(--edge);
+  border-radius: var(--r-card) var(--r-card) 0 0;
+  box-shadow: var(--shadow-float);
+}
+.action-bar > .btn {
+  flex: 1;
+}
+
+/* Sheet: <dialog class="sheet" aria-labelledby="ID"> <span class="sheet__handle" aria-hidden="true"></span>
+   <h2 class="t-sheet sheet__title" id="ID">…</h2> content… </dialog> */
+.sheet {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 30;
+  width: 100%;
+  max-width: 100%;
+  max-height: 90dvh;
+  margin: 0;
+  overflow: auto;
+  padding: var(--s2) var(--s5) calc(var(--s5) + env(safe-area-inset-bottom));
+  border: 0;
+  border-radius: var(--r-sheet) var(--r-sheet) 0 0;
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: var(--shadow-float);
+}
+.sheet::backdrop {
+  background: var(--scrim);
+}
+.sheet__handle {
+  display: block;
+  width: 40px;
+  height: 4px;
+  margin: 0 auto var(--s4);
+  border-radius: var(--r-pill);
+  background: var(--line);
+}
+.sheet__title {
+  margin: 0 0 var(--s4);
+}
+
+/* Styleguide: a transformed frame makes fixed children position inside it. */
+.sg-frame {
+  position: relative;
+  transform: translateZ(0);
+  overflow: hidden;
+  margin: var(--s3) 0;
+  border: 1px dashed var(--field);
+  border-radius: var(--r-card);
+  background: var(--bg);
+}
+.sg-frame--nav {
+  height: 104px;
+}
+.sg-frame--bar {
+  height: 96px;
+}
+.sg-frame--sheet {
+  height: 220px;
+}
+.sg-icons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--s3);
+}
+.sg-icons figure {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s1);
+  margin: 0;
+}
