@@ -137,5 +137,24 @@
         <div data-sg="fields">{% field controls.due %}{% field controls.assign %}{% field controls.advance %}</div>
         <h2 class="t-section">Field errors</h2>
         <div data-sg="errors">{% error_summary errors_form "create this order" %}{% field errors_form.customer %}{% field errors_form.estimate %}</div>
+        <h2 class="t-section">Measurement tiles</h2>
+        <div class="card" data-sg="tiles">{% include "components/measure_tiles.html" with tiles=measurements %}</div>
+        <h2 class="t-section">Photo thumbnails</h2>
+        <div class="sg-thumbs" data-sg="thumbs">
+            <span data-sg="thumb-sm">{% thumb "Blouse" photo_blouse 3 "sm" %}</span>
+            <span data-sg="thumb-md">{% thumb "Blouse" photo_blouse 1 "md" %}</span>
+            <span data-sg="thumb-sm-empty">{% thumb "Lehenga blouse" None 0 "sm" %}</span>
+            <span data-sg="thumb-md-empty">{% thumb "Lehenga blouse" None 0 "md" %}</span>
+        </div>
+        <div class="sg-stack">
+            <div data-sg="thumb-lg">{% thumb "Blouse" photo_blouse 3 "lg" %}</div>
+            <div data-sg="thumb-lg-empty">{% thumb "Lehenga blouse" None 0 "lg" %}</div>
+        </div>
+        <h2 class="t-section">Queue row</h2>
+        <ol class="list queue" data-sg="queue">
+            {% for row in queue %}
+                {% include "components/queue_row.html" with row=row total=queue_total %}
+            {% endfor %}
+        </ol>
     </main>
 {% endblock %}

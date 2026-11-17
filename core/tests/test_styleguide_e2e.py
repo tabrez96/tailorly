@@ -177,6 +177,13 @@ def test_dark_changes_every_component(open_page):
             "[data-sg=fields] .field__input",
             "[data-sg=errors] .field__error",
             "[data-sg=errors] .error-summary",
+            "[data-sg=tiles] .tile",
+            "[data-sg=tiles] .tile__value",
+            "[data-sg=thumb-sm-empty] .thumb",
+            "[data-sg=thumb-lg] .thumb__badge",
+            "[data-sg=queue] .qrow--picked",
+            "[data-sg=queue] .qrow:not(.qrow--picked) .qrow__rank",
+            "[data-sg=queue] .qrow__handle",
         ]
     )
     for selector in selectors:
@@ -302,6 +309,52 @@ def test_controls_keyboard_and_focus_ring(open_page):
     assert (
         page.get_by_role("link", name="Ready").get_attribute("aria-current") == "true"
     )
+
+
+@pytest.mark.parametrize("scheme", SCHEMES)
+def test_tiles_thumbs_queue_sizes(open_page, scheme):
+    page = open_page(scheme)
+    tiles = page.eval_on_selector_all(
+        "[data-sg=tiles] .tile",
+        """els => els.map(el => {
+            const r = el.getBoundingClientRect();
+            return [r.x, r.y, getComputedStyle(el).borderTopLeftRadius];
+        })""",
+    )
+    assert len(tiles) == 6
+    assert tiles[0][1] == tiles[1][1] == tiles[2][1]
+    assert tiles[3][1] > tiles[0][1] and tiles[3][0] == tiles[0][0]
+    assert all(t[2] == "14px" for t in tiles)
+
+    assert _boxes(page, "[data-sg=thumb-sm] .thumb") == [(52, 52, "14px")]
+    assert _boxes(page, "[data-sg=thumb-md] .thumb") == [(76, 76, "16px")]
+    assert _boxes(page, "[data-sg=thumb-sm-empty] .thumb") == [(52, 52, "14px")]
+    assert _boxes(page, "[data-sg=thumb-md-empty] .thumb") == [(76, 76, "16px")]
+    container = page.locator("[data-sg=thumb-lg]").bounding_box()["width"]
+    for name in ["thumb-lg", "thumb-lg-empty"]:
+        ((width, height, radius),) = _boxes(page, f"[data-sg={name}] .thumb")
+        assert height == 170 and radius == "20px"
+        assert abs(width - container) <= 0.5
+    badge = page.locator("[data-sg=thumb-lg] .thumb__badge")
+    assert badge.is_visible() and badge.inner_text().strip() == "1/3"
+    assert page.locator("[data-sg=thumb-sm-empty] svg[data-icon=camera]").is_visible()
+    assert (
+        page.locator("[data-sg=thumb-sm] img").get_attribute("alt")
+        == "Blouse, photo 1 of 3"
+    )
+
+    rows = _boxes(page, "[data-sg=queue] .qrow")
+    assert rows and all(h >= 60 for _, h, _ in rows)
+    handles = _boxes(page, "[data-sg=queue] .qrow__handle")
+    assert handles == [(44, 44, "999px")] * len(rows)
+    assert all(w == h == 52 for w, h, _ in _boxes(page, ".qrow .thumb"))
+
+    picked = _styles(page, ".qrow--picked")
+    current = _styles(page, "[data-sg=nav-owner] .nav__item[aria-current=page]")
+    primary = _styles(page, "[data-sg=btn-primary]")
+    assert picked[0] == current[0]
+    for part in ("inset", "2px", primary[0]):
+        assert part in picked[4]
 
 
 @pytest.mark.parametrize("scheme", SCHEMES)

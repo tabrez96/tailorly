@@ -1,0 +1,25 @@
+{% load ui %}
+<li class="list__row qrow{% if row.picked %} qrow--picked{% endif %}">
+    <span class="qrow__rank">{{ row.rank }}</span>
+    {% thumb row.garment row.photo row.photo_count "sm" %}
+    <div class="list__main">
+        <p class="qrow__title">
+            <strong>{{ row.garment }}</strong> <span class="muted">{{ row.order }}</span>
+        </p>
+        <p class="t-small muted qrow__meta">
+            <span class="{% if row.due_soon %}qrow__due--soon{% endif %}">{{ row.due }}</span> · {{ row.time_needed }}
+        </p>
+        <p class="qrow__chips">
+            {% include "components/chip.html" with tone=row.tone label=row.status %}
+            {% if row.moved %}
+                {% include "components/chip.html" with tone="grey" label="Moved by you" %}
+            {% endif %}
+        </p>
+    </div>
+    <button class="qrow__handle"
+            type="button"
+            aria-label="Move {{ row.garment }}, {{ row.rank }} of {{ total }}"
+            aria-pressed="{% if row.picked %}true{% else %}false{% endif %}">
+        {% include "components/icon.html" with name="drag" %}
+    </button>
+</li>

@@ -1,0 +1,7 @@
+{% if src %}
+    <span class="thumb thumb--{{ size }}"><img class="thumb__img" src="{{ src }}" alt="{{ alt }}" loading="lazy">{% if badge %}<span class="thumb__badge" aria-hidden="true">{{ badge }}</span>{% endif %}</span>
+{% else %}
+    <span class="thumb thumb--{{ size }} thumb--empty"
+          role="img"
+          aria-label="{{ alt }}">{% include "components/icon.html" with name="camera" %}</span>
+{% endif %}
