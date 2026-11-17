@@ -7,14 +7,21 @@ class NavItem:
     label: str
     icon: str
     href: str
+    hold: str = ""  # where a 500 ms press on the tab goes
 
 
 OWNER_NAV = (
     NavItem("today", "Today", "house", "/"),
-    NavItem("orders", "Orders", "list", "/orders/"),
-    NavItem("customers", "Customers", "people", "/customers/"),
-    NavItem("products", "Products", "hanger", "/products/"),
-    NavItem("production", "Production", "spool", "/production/"),
+    NavItem("orders", "Orders", "list", "/orders/", "/orders/new/"),
+    NavItem("customers", "Customers", "people", "/customers/", "/customers/?add=1"),
+    NavItem("products", "Products", "hanger", "/products/", "/products/?add=1"),
+    NavItem(
+        "production",
+        "Production",
+        "spool",
+        "/production/",
+        "/production/plan/?assign=next",
+    ),
 )
 EMPLOYEE_NAV = (
     NavItem("my_work", "My work", "stopwatch", "/my-work/"),

@@ -131,6 +131,10 @@ set -a; . ./.env; set +a
 uv run python manage.py runserver
 ```
 
+### Pages and sheets
+
+Every page view returns `render_page(request, template, {"title": ..., "tab": ...})` from `core/pages.py`: htmx tab taps get the fragment, everything else gets the full shell. Sheets extend `components/sheet_content.html` and answer `sheet_saved(response, "toast text")` on success.
+
 ### Vendor
 
 ```

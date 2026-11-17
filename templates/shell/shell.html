@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load ui static %}
+{% block title %}{{ doc_title }}{% endblock %}
+{% block body_attrs %}hx-headers:inherited="{{ hx_headers }}" data-tab="{{ tab|default:'' }}"{% endblock %}
+{% block content %}
+    <main id="page" class="shell__page">
+        {% include "shell/page.html" %}
+    </main>
+    {% bottom_nav role tab %}
+    <dialog id="sheet"
+            class="sheet"
+            aria-labelledby="sheet-title"
+            x-data="sheet"
+            x-trap.noscroll="open"
+            @sheet:open.window="show($event.detail)"
+            @sheet:close.window="close()"
+            @cancel.prevent="close()"
+            @keydown.tab="trapTab($event)"
+            @pointerdown="dragStart($event)"
+            @pointermove="dragMove($event)"
+            @pointerup="dragEnd()"></dialog>
+    <div class="toast-region"
+         x-data="toast"
+         @toast.window="show($event.detail)"
+         role="status"
+         aria-live="polite">
+        <p class="toast" x-show="message" x-text="message"></p>
+    </div>
+    <p id="announce" class="sr-only" aria-live="polite"></p>
+{% endblock %}
+{% block head_scripts %}
+    <script defer src="{% static 'vendor/htmx-4.0.1.min.js' %}"></script>
+    <script defer src="{% static 'js/app.js' %}"></script>
+    <script defer src="{% static 'vendor/alpine-focus-3.15.12.min.js' %}"></script>
+    <script defer src="{% static 'vendor/alpine-sort-3.15.12.min.js' %}"></script>
+    <script defer src="{% static 'vendor/alpine-3.15.12.min.js' %}"></script>
+{% endblock %}

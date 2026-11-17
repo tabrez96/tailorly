@@ -1,12 +1,17 @@
 <header class="header">
     {% if back_url %}
-        <a class="header__back" href="{{ back_url }}" aria-label="Back">
-            {% include "components/icon.html" with name="chevron-back" %}
-        </a>
+        <a class="header__back"
+           href="{{ back_url }}"
+           hx-get="{{ back_url }}"
+           hx-target="#page"
+           hx-sync="#page:replace"
+           hx-push-url="true"
+           data-back
+           aria-label="Back">{% include "components/icon.html" with name="chevron-back" %}</a>
     {% endif %}
     {% if overline %}<p class="t-over header__over">{{ overline }}</p>{% endif %}
     <div class="header__row">
-        <h1 class="t-title header__title">{{ title }}</h1>
+        <h1 class="t-title header__title" tabindex="-1">{{ title }}</h1>
         {% if action_label %}
             {% if action_url %}
                 <a class="btn btn--tonal btn--sm header__action" href="{{ action_url }}">{{ action_label }}</a>

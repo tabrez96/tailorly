@@ -1,0 +1,11 @@
+{% extends "components/sheet_content.html" %}
+{% load ui %}
+{% block sheet_title %}Sample{% endblock %}
+{% block sheet_body %}
+    <form novalidate hx-post="/styleguide/sheet/" hx-target="#sheet">
+        {% error_summary form "save" %}
+        {% field form.name %}
+        {% field form.note %}
+        <button type="submit" class="btn btn--primary">Save</button>
+    </form>
+{% endblock %}

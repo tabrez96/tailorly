@@ -1,9 +1,27 @@
-<nav class="nav" aria-label="Main">
+<nav class="nav" aria-label="Main" x-data>
     {% for entry in items %}
         <a class="nav__item"
-           href="{{ entry.item.href }}"{% if entry.current %} aria-current="page"{% endif %}>
+           href="{{ entry.item.href }}"
+           hx-get="{{ entry.item.href }}"
+           hx-target="#page"
+           hx-sync="#page:replace"
+           hx-push-url="true"
+           {% if entry.current %}aria-current="page"{% endif %}
+           x-bind:aria-current="$store.shell.tab === '{{ entry.item.key }}' ? 'page' : null"
+           {% if entry.item.hold %} x-data="hold('{{ entry.item.key }}')" @pointerdown="start()" @pointerup="stop()" @pointerleave="stop()" @pointercancel="stop()" @contextmenu.prevent{% endif %}>
             {% include "components/icon.html" with name=entry.item.icon %}
             <span class="nav__label">{{ entry.item.label }}</span>
         </a>
+    {% endfor %}
+    {% for entry in items %}
+        {% if entry.item.hold %}
+            <a hidden
+               tabindex="-1"
+               data-hold-link="{{ entry.item.key }}"
+               hx-get="{{ entry.item.hold }}"
+               hx-target="#page"
+               hx-sync="#page:replace"
+               hx-push-url="true"></a>
+        {% endif %}
     {% endfor %}
 </nav>
