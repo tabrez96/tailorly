@@ -1,0 +1,6 @@
+<div class="field{% if error %} field--error{% endif %}">
+    <label class="field__label" for="{{ f.id_for_label }}">{{ f.label }}</label>
+    {{ input }}
+    {% if error %}<p class="field__error" id="{{ f.auto_id }}_error">{{ f.errors|join:" " }}</p>{% endif %}
+    {% if f.help_text %}<p class="field__hint t-small muted" id="{{ f.auto_id }}_hint">{{ f.help_text }}</p>{% endif %}
+</div>

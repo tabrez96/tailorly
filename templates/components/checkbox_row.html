@@ -1,0 +1,8 @@
+<div class="check-row{% if disabled %} check-row--disabled{% endif %}">
+    {{ input }}
+    <div class="row-text">
+        <label class="row-text__label" for="{{ f.id_for_label }}">{{ f.label }}</label>
+        {% if f.help_text %}<span class="t-small muted" id="{{ f.auto_id }}_hint">{{ f.help_text }}</span>{% endif %}
+        {% if error %}<p class="field__error" id="{{ f.auto_id }}_error">{{ f.errors|join:" " }}</p>{% endif %}
+    </div>
+</div>

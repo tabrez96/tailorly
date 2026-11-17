@@ -1,0 +1,10 @@
+{% if text %}
+    <div class="error-summary" role="alert" tabindex="-1">
+        <p>{{ text }}</p>
+        {% if non_field %}
+            <ul class="error-summary__list">
+                {% for e in non_field %}<li>{{ e }}</li>{% endfor %}
+            </ul>
+        {% endif %}
+    </div>
+{% endif %}

@@ -1,0 +1,17 @@
+<fieldset class="radio-rows">
+    <legend class="field__label">{{ f.label }}</legend>
+    {% for o in options %}
+        <div class="radio-row">
+            <input class="radio"
+                   type="radio"
+                   id="{{ o.id }}"
+                   name="{{ o.name }}"
+                   value="{{ o.value }}"{% if o.checked %} checked{% endif %}{% if o.required %} required{% endif %}{% if error %} aria-invalid="true"{% endif %}{% if o.describedby %} aria-describedby="{{ o.describedby }}"{% endif %}>
+            <div class="row-text">
+                <label class="row-text__label" for="{{ o.id }}">{{ o.label }}</label>
+                {% if o.note %}<span class="t-small muted" id="{{ o.id }}_note">{{ o.note }}</span>{% endif %}
+            </div>
+        </div>
+    {% endfor %}
+    {% if error %}<p class="field__error" id="{{ f.auto_id }}_error">{{ f.errors|join:" " }}</p>{% endif %}
+</fieldset>

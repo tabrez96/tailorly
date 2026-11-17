@@ -1,0 +1,6 @@
+<nav class="fchips" aria-label="{{ label }}">
+    {% for c in chips %}
+        <a class="fchip"
+           href="{{ c.url }}"{% if c.selected %} aria-current="true"{% endif %}>{{ c.label }}{% if c.count is not None %} <span class="tabular">({{ c.count }})</span>{% endif %}</a>
+    {% endfor %}
+</nav>

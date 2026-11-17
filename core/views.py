@@ -3,6 +3,8 @@ from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.templatetags.static import static
 
+from core import styleguide as sg
+
 THEME_COLOUR = "#8A2E62"  # --pri, light; manifests can't read CSS tokens
 BACKGROUND_COLOUR = "#F6F2ED"  # --bg, light
 
@@ -29,4 +31,5 @@ def styleguide(request: HttpRequest) -> HttpResponse:
     if not settings.DEBUG:
         raise Http404
     theme = "dark" if request.GET.get("theme") == "dark" else None
-    return render(request, "styleguide.html", {"theme": theme})
+    context = {"theme": theme, **sg.context(request.GET.get("status"))}
+    return render(request, "styleguide.html", context)
