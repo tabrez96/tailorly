@@ -1,0 +1,9 @@
+<nav class="nav" aria-label="Main">
+    {% for entry in items %}
+        <a class="nav__item"
+           href="{{ entry.item.href }}"{% if entry.current %} aria-current="page"{% endif %}>
+            {% include "components/icon.html" with name=entry.item.icon %}
+            <span class="nav__label">{{ entry.item.label }}</span>
+        </a>
+    {% endfor %}
+</nav>

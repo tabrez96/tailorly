@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load ui %}
 {% block title %}Styleguide{% endblock %}
 {% block content %}
     <main class="page">
@@ -74,5 +75,52 @@
                 {% include "components/chip.html" with tone="warn" label="Not started" %}
             </li>
         </ul>
+        <h2 class="t-section">Icons</h2>
+        <div class="sg-icons" data-sg="icons">
+            <figure>{% include "components/icon.html" with name="house" %}<figcaption class="t-small">house</figcaption></figure>
+            <figure>{% include "components/icon.html" with name="list" %}<figcaption class="t-small">list</figcaption></figure>
+            <figure>{% include "components/icon.html" with name="people" %}<figcaption class="t-small">people</figcaption></figure>
+            <figure>{% include "components/icon.html" with name="hanger" %}<figcaption class="t-small">hanger</figcaption></figure>
+            <figure>{% include "components/icon.html" with name="spool" %}<figcaption class="t-small">spool</figcaption></figure>
+            <figure>{% include "components/icon.html" with name="badge" %}<figcaption class="t-small">badge</figcaption></figure>
+            <figure>{% include "components/icon.html" with name="bars" %}<figcaption class="t-small">bars</figcaption></figure>
+            <figure>{% include "components/icon.html" with name="stopwatch" %}<figcaption class="t-small">stopwatch</figcaption></figure>
+            <figure>{% include "components/icon.html" with name="wallet" %}<figcaption class="t-small">wallet</figcaption></figure>
+            <figure>{% include "components/icon.html" with name="chevron-back" %}<figcaption class="t-small">chevron-back</figcaption></figure>
+            <figure>{% include "components/icon.html" with name="chevron-right" %}<figcaption class="t-small">chevron-right</figcaption></figure>
+            <figure>{% include "components/icon.html" with name="plus" %}<figcaption class="t-small">plus</figcaption></figure>
+            <figure>{% include "components/icon.html" with name="camera" %}<figcaption class="t-small">camera</figcaption></figure>
+            <figure>{% include "components/icon.html" with name="drag" %}<figcaption class="t-small">drag</figcaption></figure>
+        </div>
+        <h2 class="t-section">Header</h2>
+        <div data-sg="header-sub">
+            {% include "components/header.html" with back_url="#" overline="Thu 12 Nov" title="ORD-1042" action_label="Edit" %}
+        </div>
+        <div data-sg="header-long">
+            {% include "components/header.html" with title="Lehenga blouse with matching dupatta" action_label="+ New order" action_url="#" %}
+        </div>
+        <div data-sg="header-short">
+            {% include "components/header.html" with title="Orders" action_label="+ New order" action_url="#" %}
+        </div>
+        <h2 class="t-section">Bottom navigation</h2>
+        <div class="sg-frame sg-frame--nav" data-sg="nav-owner">{% bottom_nav "owner" "orders" %}</div>
+        <div class="sg-frame sg-frame--nav" data-sg="nav-employee">{% bottom_nav "employee" "my_work" %}</div>
+        <h2 class="t-section">Bottom action bar</h2>
+        <div class="sg-frame sg-frame--bar">
+            <div class="action-bar" data-sg="action-bar">
+                <button class="btn btn--primary">Mark ready</button>
+            </div>
+        </div>
+        <h2 class="t-section">Sheet</h2>
+        <div class="sg-frame sg-frame--sheet">
+            <dialog class="sheet"
+                    open
+                    aria-labelledby="sg-sheet-title"
+                    data-sg="sheet"><span class="sheet__handle"
+                                          aria-hidden="true"></span>
+                <h2 class="t-sheet sheet__title" id="sg-sheet-title">Record payment</h2>
+                <p class="muted">ORD-1042 · balance ₹1,200</p>
+            </dialog>
+        </div>
     </main>
 {% endblock %}

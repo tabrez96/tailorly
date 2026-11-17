@@ -68,6 +68,76 @@ def test_sizes(open_page, scheme):
     rows = page.locator("[data-sg=list] .list__row")
     for i in range(rows.count()):
         assert rows.nth(i).bounding_box()["height"] >= 60
+    back = page.locator("[data-sg=header-sub] .header__back")
+    assert back.bounding_box()["width"] == 44
+    assert back.bounding_box()["height"] == 44
+    assert _radius(page, "[data-sg=header-sub] .header__back") == "999px"
+    actions = page.locator(".header__action")
+    for i in range(actions.count()):
+        assert actions.nth(i).bounding_box()["height"] == 44
+        assert (
+            actions.nth(i).evaluate("el => getComputedStyle(el).borderTopLeftRadius")
+            == "999px"
+        )
+    nav = page.locator("[data-sg=nav-owner] .nav").bounding_box()
+    frame = page.locator("[data-sg=nav-owner]").bounding_box()
+    assert nav["height"] == 68
+    assert _radius(page, "[data-sg=nav-owner] .nav") == "999px"
+    # The frame has a 1px dashed border; fixed children sit inside its padding box.
+    assert abs(nav["x"] - frame["x"] - 13) <= 0.5
+    assert abs(frame["x"] + frame["width"] - nav["x"] - nav["width"] - 13) <= 0.5
+    assert abs(frame["y"] + frame["height"] - nav["y"] - nav["height"] - 13) <= 0.5
+    items = page.locator("[data-sg=nav-owner] .nav__item")
+    widths = [items.nth(i).bounding_box()["width"] for i in range(items.count())]
+    assert len(widths) == 5 and max(widths) - min(widths) < 0.5
+    assert _radius(page, "[data-sg=nav-owner] .nav__item[aria-current=page]") == "999px"
+    corners = page.eval_on_selector(
+        "[data-sg=sheet]",
+        """el => ["TopLeft", "TopRight", "BottomLeft"].map(
+            c => getComputedStyle(el)["border" + c + "Radius"])""",
+    )
+    assert corners == ["28px", "28px", "0px"]
+    assert page.locator(".sheet__handle").is_visible()
+    bar = page.eval_on_selector(
+        "[data-sg=action-bar]",
+        """el => ["TopLeft", "BottomLeft"].map(
+            c => getComputedStyle(el)["border" + c + "Radius"])""",
+    )
+    assert bar == ["20px", "0px"]
+
+
+@pytest.mark.parametrize("scheme", SCHEMES)
+def test_header_action_stays_on_title_row(open_page, scheme):
+    page = open_page(scheme)
+    title = page.locator("[data-sg=header-long] .header__title").bounding_box()
+    action = page.locator("[data-sg=header-long] .header__action").bounding_box()
+    row = page.locator("[data-sg=header-long] .header__row").bounding_box()
+    short = page.locator("[data-sg=header-short] .header__action").bounding_box()
+    assert title["height"] > 40
+    assert action["x"] >= title["x"] + title["width"]
+    assert action["y"] >= row["y"] - 0.5
+    assert action["y"] + action["height"] <= row["y"] + row["height"] + 0.5
+    assert abs(action["width"] - short["width"]) <= 0.5
+
+
+def test_nav_labels_and_current(open_page):
+    page = open_page("light")
+    for name, labels, icons, current in [
+        (
+            "nav-owner",
+            ["Today", "Orders", "Customers", "Products", "Production"],
+            ["house", "list", "people", "hanger", "spool"],
+            "Orders",
+        ),
+        ("nav-employee", ["My work", "My pay"], ["stopwatch", "wallet"], "My work"),
+    ]:
+        items = page.locator(f"[data-sg={name}] .nav__item")
+        assert [t.strip() for t in items.all_inner_texts()] == labels
+        for i, icon in enumerate(icons):
+            assert items.nth(i).locator("svg.icon").get_attribute("data-icon") == icon
+        marked = page.locator(f"[data-sg={name}] [aria-current=page]")
+        assert marked.count() == 1
+        assert marked.inner_text().strip() == current
 
 
 def test_dark_changes_every_component(open_page):
@@ -81,6 +151,18 @@ def test_dark_changes_every_component(open_page):
         ]
         + [f"[data-sg={n}] .chip" for n in CHIPS]
         + [f"[data-sg={n}]" for n in ["card", "hero", "list"]]
+        + [
+            "[data-sg=header-sub] .header__back",
+            "[data-sg=header-sub] .header__title",
+            "[data-sg=header-sub] .header__action",
+            "[data-sg=nav-owner] .nav",
+            "[data-sg=nav-owner] .nav__item[aria-current=page]",
+            "[data-sg=nav-owner] .nav__item:not([aria-current])",
+            "[data-sg=action-bar]",
+            "[data-sg=sheet]",
+            "[data-sg=sheet] .sheet__handle",
+            "[data-sg=icons] svg",
+        ]
     )
     for selector in selectors:
         assert _styles(light, selector) != _styles(dark, selector), selector
