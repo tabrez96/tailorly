@@ -137,7 +137,7 @@ uv run python manage.py runserver
 npm run vendor
 ```
 
-Copies the pinned htmx and Alpine builds into `static/vendor/`, with their versions in the file names. The output is committed, so Node isn't needed to run the app.
+Copies the pinned htmx and Alpine builds into `static/vendor/`, with their versions in the file names, and the Plus Jakarta Sans font files and licence into `static/vendor/fonts/`. The output is committed, so Node isn't needed to run the app.
 
 ### Format
 
@@ -158,6 +158,21 @@ uv run ruff format --check . && uv run ruff check . && uv run djlint --check tem
 ```
 uv run pytest
 uv run pytest --cov --cov-report=term-missing
+```
+
+End-to-end tests use Playwright. Install the browser once, then run them; screenshots go to `artifacts/screens/`:
+
+```
+uv run playwright install chromium
+uv run pytest -m e2e
+```
+
+### Styleguide and icons
+
+`/styleguide/` shows every shared component and works only with `DEBUG=1` (add `?theme=dark` to preview dark). After changing `static/brand/mark.svg`, re-render the PNG icons:
+
+```
+uv run python scripts/render_icons.py
 ```
 
 Amounts are in rupees (INR) with no tax.
