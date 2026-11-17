@@ -1,4 +1,5 @@
 <!-- about -->
+
 # Tailorly
 
 **Orders, measurements, invoices and staff pay for a tailoring shop**
@@ -106,7 +107,60 @@ Add one garment to a new order, or change it, with its product, price, options, 
 
 ## Development
 
-TODO: build and test instructions, added with the first code.
+### Requirements
+
+- [uv](https://docs.astral.sh/uv/) (installs Python 3.14)
+- PostgreSQL 18
+- Node 24 (only for formatting and re-vendoring; not needed to run the app)
+
+### Setup
+
+```
+uv sync
+npm ci
+cp .env.example .env   # then edit it
+createdb tailorly
+set -a; . ./.env; set +a
+uv run python manage.py migrate
+```
+
+### Run
+
+```
+set -a; . ./.env; set +a
+uv run python manage.py runserver
+```
+
+### Vendor
+
+```
+npm run vendor
+```
+
+Copies the pinned htmx and Alpine builds into `static/vendor/`, with their versions in the file names. The output is committed, so Node isn't needed to run the app.
+
+### Format
+
+Write:
+
+```
+uv run ruff format . && uv run ruff check --fix . && uv run djlint --reformat templates && npx prettier --write .
+```
+
+Check (CI runs this on every pull request):
+
+```
+uv run ruff format --check . && uv run ruff check . && uv run djlint --check templates && npx prettier --check .
+```
+
+### Test
+
+```
+uv run pytest
+uv run pytest --cov --cov-report=term-missing
+```
+
+Amounts are in rupees (INR) with no tax.
 
 ---
 

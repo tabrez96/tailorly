@@ -1,0 +1,40 @@
+[project]
+name = "tailorly"
+version = "0.1.0"
+description = "Orders, measurements, invoices and staff pay for a tailoring shop"
+requires-python = ">=3.14"
+dependencies = [
+    "dj-database-url>=3",
+    "django>=6.1,<6.2",
+    "psycopg[binary]>=3.2",
+    "whitenoise>=6.9",
+]
+
+[dependency-groups]
+dev = [
+    "djlint>=1.51.0",
+    "pytest>=9.2.0",
+    "pytest-cov>=7.1.0",
+    "pytest-django>=4.14.0",
+    "ruff>=0.17.5",
+]
+
+[tool.ruff]
+target-version = "py314"
+extend-exclude = ["design", "static/vendor", "node_modules"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "DJ"]
+
+[tool.djlint]
+profile = "django"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+python_files = ["test_*.py"]
+addopts = "--strict-markers"
+markers = ["e2e: end-to-end browser tests (Playwright)"]
+
+[tool.coverage.run]
+source = ["."]
+omit = ["*/migrations/*", "*/tests/*", "manage.py", "config/wsgi.py", "config/asgi.py", ".venv/*"]

@@ -1,0 +1,12 @@
+design/
+static/vendor/
+templates/
+**/templates/
+.dmi/
+CLAUDE.md
+uv.lock
+package-lock.json
+staticfiles/
+media/
+htmlcov/
+.venv/

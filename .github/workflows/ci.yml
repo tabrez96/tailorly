@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [develop]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: tailorly
+          POSTGRES_PASSWORD: tailorly
+          POSTGRES_DB: tailorly
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      SECRET_KEY: ci-only-not-a-secret
+      DATABASE_URL: postgres://tailorly:tailorly@localhost:5432/tailorly
+      ALLOWED_HOSTS: localhost
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: uv sync --locked
+      - run: npm ci
+      - name: Format check
+        run: uv run ruff format --check . && uv run ruff check . && uv run djlint --check templates && npx prettier --check .
+      - name: Vendored files match package.json
+        run: npm run vendor && test -z "$(git status --porcelain --untracked-files=all -- static/vendor)"
+      - run: uv run python manage.py check
+      - run: uv run python manage.py migrate --noinput
+      - run: uv run pytest --cov --cov-report=term-missing

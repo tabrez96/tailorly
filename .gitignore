@@ -1,2 +1,13 @@
 .dmi/
 design/**/*.html
+.venv/
+__pycache__/
+*.pyc
+node_modules/
+.env
+staticfiles/
+media/
+.coverage
+htmlcov/
+.pytest_cache/
+.ruff_cache/

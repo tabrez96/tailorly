@@ -8,24 +8,24 @@ Status: **draft** (UX not approved yet), **approved**, **building** (a ticket fo
 
 | ID | Screen | Status | Purpose | Tickets | Updated |
 | --- | --- | --- | --- | --- | --- |
-| S01 | [Sign in](screens/S01-sign-in/screen.html) (+2 states) · [spec](screens/S01-sign-in/spec.md) | approved | Sign in as the owner or the employee | none yet | 2026-11-12 |
-| S02 | [Today](screens/S02-today/screen.html) (+3 states) · [spec](screens/S02-today/spec.md) | approved |  | none yet | 2026-11-16 |
-| S03 | [Orders](screens/S03-orders/screen.html) (+2 states) · [spec](screens/S03-orders/spec.md) | approved | Find any order and see its status and balance | none yet | 2026-11-16 |
-| S04 | [Order Detail](screens/S04-order-detail/screen.html) (+10 states) · [spec](screens/S04-order-detail/spec.md) | approved |  | none yet | 2026-11-16 |
-| S05 | [New order](screens/S05-new-order/screen.html) (+3 states) · [spec](screens/S05-new-order/spec.md) | approved | Create a custom or ready-made order for a customer | none yet | 2026-11-16 |
-| S06 | [Customers](screens/S06-customers/screen.html) (+2 states) · [spec](screens/S06-customers/spec.md) | approved | Find a customer and see who owes money | none yet | 2026-11-16 |
-| S07 | [Customer detail](screens/S07-customer-detail/screen.html) (+2 states) · [spec](screens/S07-customer-detail/spec.md) | approved | A customer's details, measurements and orders | none yet | 2026-11-16 |
-| S08 | [My Work](screens/S08-my-work/screen.html) (+4 states) · [spec](screens/S08-my-work/spec.md) | approved |  | none yet | 2026-11-16 |
-| S09 | [My Pay](screens/S09-my-pay/screen.html) (+1 states) · [spec](screens/S09-my-pay/spec.md) | approved |  | none yet | 2026-11-12 |
-| S10 | [Staff](screens/S10-staff/screen.html) (+3 states) · [spec](screens/S10-staff/spec.md) | approved |  | none yet | 2026-11-16 |
-| S11 | [Reports](screens/S11-reports/screen.html) (+4 states) · [spec](screens/S11-reports/spec.md) | approved |  | none yet | 2026-11-16 |
-| S12 | [Production](screens/S12-production/screen.html) (+6 states) · [spec](screens/S12-production/spec.md) | approved |  | none yet | 2026-11-16 |
-| S13 | [Payments](screens/S13-payments/screen.html) (+1 states) · [spec](screens/S13-payments/spec.md) | approved |  | none yet | 2026-11-16 |
-| S14 | [Staff Report](screens/S14-staff-report/screen.html) (+1 states) · [spec](screens/S14-staff-report/spec.md) | approved |  | none yet | 2026-11-16 |
-| S15 | [Products](screens/S15-products/screen.html) (+5 states) · [spec](screens/S15-products/spec.md) | approved |  | none yet | 2026-11-16 |
-| S16 | [Work Plan](screens/S16-work-plan/screen.html) (+4 states) · [spec](screens/S16-work-plan/spec.md) | approved |  | none yet | 2026-11-16 |
-| S17 | [Production Record](screens/S17-production-record/screen.html) (+2 states) · [spec](screens/S17-production-record/spec.md) | approved |  | none yet | 2026-11-16 |
-| S18 | [Settings](screens/S18-settings/screen.html) (+1 states) · [spec](screens/S18-settings/spec.md) | approved |  | none yet | 2026-11-16 |
-| S19 | [Item Detail](screens/S19-item-detail/screen.html) (+2 states) · [spec](screens/S19-item-detail/spec.md) | approved |  | none yet | 2026-11-16 |
-| S20 | [Add item](screens/S20-add-item/screen.html) (+4 states) · [spec](screens/S20-add-item/spec.md) | approved | Add one garment to a new order, or change it, with its product, price, options, measurements, materials, notes and photos | none yet | 2026-11-16 |
-| S21 | [Ai Assistants](screens/S21-ai-assistants/screen.html) (+3 states) · [spec](screens/S21-ai-assistants/spec.md) | approved |  | none yet | 2026-11-16 |
+| S01 | [Sign in](screens/S01-sign-in/screen.html) (+2 states) · [spec](screens/S01-sign-in/spec.md) | building | Sign in as the owner or the employee | T-160 | 2026-11-17 |
+| S02 | [Today](screens/S02-today/screen.html) (+3 states) · [spec](screens/S02-today/spec.md) | building |  | T-179 | 2026-11-17 |
+| S03 | [Orders](screens/S03-orders/screen.html) (+2 states) · [spec](screens/S03-orders/spec.md) | building | Find any order and see its status and balance | T-166, T-173 | 2026-11-17 |
+| S04 | [Order Detail](screens/S04-order-detail/screen.html) (+10 states) · [spec](screens/S04-order-detail/spec.md) | building |  | T-165, T-166, T-167, T-168, T-169, T-172, T-173, T-175, T-176, T-177, T-178 | 2026-11-17 |
+| S05 | [New order](screens/S05-new-order/screen.html) (+3 states) · [spec](screens/S05-new-order/spec.md) | building | Create a custom or ready-made order for a customer | T-162, T-164, T-165, T-172 | 2026-11-17 |
+| S06 | [Customers](screens/S06-customers/screen.html) (+2 states) · [spec](screens/S06-customers/spec.md) | building | Find a customer and see who owes money | T-162 | 2026-11-17 |
+| S07 | [Customer detail](screens/S07-customer-detail/screen.html) (+2 states) · [spec](screens/S07-customer-detail/spec.md) | building | A customer's details, measurements and orders | T-162, T-165, T-166, T-169, T-177 | 2026-11-17 |
+| S08 | [My Work](screens/S08-my-work/screen.html) (+4 states) · [spec](screens/S08-my-work/spec.md) | building |  | T-170, T-171, T-172, T-176 | 2026-11-17 |
+| S09 | [My Pay](screens/S09-my-pay/screen.html) (+1 states) · [spec](screens/S09-my-pay/spec.md) | building |  | T-174 | 2026-11-17 |
+| S10 | [Staff](screens/S10-staff/screen.html) (+3 states) · [spec](screens/S10-staff/spec.md) | building |  | T-170, T-174, T-178, T-179 | 2026-11-17 |
+| S11 | [Reports](screens/S11-reports/screen.html) (+4 states) · [spec](screens/S11-reports/spec.md) | building |  | T-175, T-177, T-179 | 2026-11-17 |
+| S12 | [Production](screens/S12-production/screen.html) (+6 states) · [spec](screens/S12-production/spec.md) | building |  | T-173, T-176, T-177 | 2026-11-17 |
+| S13 | [Payments](screens/S13-payments/screen.html) (+1 states) · [spec](screens/S13-payments/spec.md) | building |  | T-177, T-178 | 2026-11-17 |
+| S14 | [Staff Report](screens/S14-staff-report/screen.html) (+1 states) · [spec](screens/S14-staff-report/spec.md) | building |  | T-177, T-178, T-179 | 2026-11-17 |
+| S15 | [Products](screens/S15-products/screen.html) (+5 states) · [spec](screens/S15-products/spec.md) | building |  | T-161, T-164 | 2026-11-17 |
+| S16 | [Work Plan](screens/S16-work-plan/screen.html) (+4 states) · [spec](screens/S16-work-plan/spec.md) | building |  | T-172 | 2026-11-17 |
+| S17 | [Production Record](screens/S17-production-record/screen.html) (+2 states) · [spec](screens/S17-production-record/spec.md) | building |  | T-173, T-175, T-176 | 2026-11-17 |
+| S18 | [Settings](screens/S18-settings/screen.html) (+1 states) · [spec](screens/S18-settings/spec.md) | building |  | T-179, T-180, T-181 | 2026-11-17 |
+| S19 | [Item Detail](screens/S19-item-detail/screen.html) (+2 states) · [spec](screens/S19-item-detail/spec.md) | building |  | T-167, T-168, T-175 | 2026-11-17 |
+| S20 | [Add item](screens/S20-add-item/screen.html) (+4 states) · [spec](screens/S20-add-item/spec.md) | building | Add one garment to a new order, or change it, with its product, price, options, measurements, materials, notes and photos | T-164, T-165, T-168 | 2026-11-17 |
+| S21 | [Ai Assistants](screens/S21-ai-assistants/screen.html) (+3 states) · [spec](screens/S21-ai-assistants/spec.md) | building |  | T-179, T-180, T-181 | 2026-11-17 |
