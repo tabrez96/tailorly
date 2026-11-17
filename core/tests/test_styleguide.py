@@ -60,3 +60,22 @@ def test_chip_partial():
     assert '<span class="chip__dot" aria-hidden="true"></span>' in html
     assert "Not started" in html
     assert "chip--grey" in render_to_string("components/chip.html", {"label": "Draft"})
+
+
+def test_styleguide_form_controls(client, settings):
+    settings.DEBUG = True
+    html = client.get("/styleguide/").content.decode()
+    for hook in (
+        "seg",
+        "seg-4",
+        "fchips",
+        "switches",
+        "checks",
+        "radios",
+        "fields",
+        "errors",
+    ):
+        assert f'data-sg="{hook}"' in html
+    assert 'role="alert"' in html and 'role="switch"' in html
+    ready = client.get("/styleguide/?status=ready").content.decode()
+    assert 'aria-current="true">Ready' in ready

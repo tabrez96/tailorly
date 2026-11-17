@@ -1,0 +1,16 @@
+<fieldset class="seg">
+    <legend class="field__label">{{ f.label }}</legend>
+    <div class="seg__track">
+        {% for o in options %}
+            <label class="seg__opt" for="{{ o.id }}">
+                <input class="seg__input"
+                       type="radio"
+                       id="{{ o.id }}"
+                       name="{{ o.name }}"
+                       value="{{ o.value }}"{% if o.checked %} checked{% endif %}{% if o.required %} required{% endif %}{% if error %} aria-invalid="true"{% endif %}{% if o.describedby %} aria-describedby="{{ o.describedby }}"{% endif %}>
+                {{ o.label }}
+            </label>
+        {% endfor %}
+    </div>
+    {% if error %}<p class="field__error" id="{{ f.auto_id }}_error">{{ f.errors|join:" " }}</p>{% endif %}
+</fieldset>

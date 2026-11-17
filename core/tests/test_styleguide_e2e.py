@@ -162,10 +162,146 @@ def test_dark_changes_every_component(open_page):
             "[data-sg=sheet]",
             "[data-sg=sheet] .sheet__handle",
             "[data-sg=icons] svg",
+            "[data-sg=seg] .seg__track",
+            "[data-sg=seg] .seg__opt:has(:checked)",
+            "[data-sg=seg] .seg__opt:not(:has(:checked))",
+            "[data-sg=fchips] .fchip[aria-current=true]",
+            "[data-sg=fchips] .fchip:not([aria-current])",
+            "[data-sg=switches] .switch:checked",
+            "[data-sg=switches] .switch:not(:checked)",
+            "[data-sg=checks] .check-row",
+            "[data-sg=checks] .check:checked",
+            "[data-sg=checks] .check-row--disabled",
+            "[data-sg=radios] .radio-row:has(:checked)",
+            "[data-sg=radios] .radio-row:not(:has(:checked))",
+            "[data-sg=fields] .field__input",
+            "[data-sg=errors] .field__error",
+            "[data-sg=errors] .error-summary",
         ]
     )
     for selector in selectors:
         assert _styles(light, selector) != _styles(dark, selector), selector
+
+
+def _boxes(page, selector):
+    boxes = page.eval_on_selector_all(
+        selector,
+        """els => els.map(el => {
+            const r = el.getBoundingClientRect();
+            return [r.width, r.height, getComputedStyle(el).borderTopLeftRadius];
+        })""",
+    )
+    return [tuple(b) for b in boxes]
+
+
+@pytest.mark.parametrize("scheme", SCHEMES)
+def test_form_control_sizes(open_page, scheme):
+    page = open_page(scheme)
+    for selector in ["[data-sg=seg] .seg__opt", "[data-sg=fchips] .fchip"]:
+        boxes = _boxes(page, selector)
+        assert boxes
+        assert all(h >= 44 and r == "999px" for _, h, r in boxes), selector
+    assert _radius(page, "[data-sg=seg] .seg__track") == "999px"
+    assert _boxes(page, "[data-sg=switches] .switch") == [(52, 32, "999px")] * 2
+    for selector in [
+        "[data-sg=switches] .switch-row",
+        "[data-sg=checks] .check-row",
+        "[data-sg=radios] .radio-row",
+    ]:
+        assert all(h >= 60 for _, h, _ in _boxes(page, selector)), selector
+    assert _boxes(page, "[data-sg=checks] .check") == [(24, 24, "8px")] * 2
+    for selector in [
+        "[data-sg=fields] .field__input",
+        "[data-sg=errors] .field__input",
+    ]:
+        boxes = _boxes(page, selector)
+        assert boxes
+        assert all(h >= 44 and r == "14px" for _, h, r in boxes), selector
+    checked = _styles(page, "[data-sg=radios] .radio-row:has(:checked)")
+    other = _styles(page, "[data-sg=radios] .radio-row:not(:has(:checked))")
+    assert checked[0] != other[0]
+    chip_bg = page.eval_on_selector(
+        ".fchip[aria-current=true]", "el => getComputedStyle(el).backgroundColor"
+    )
+    ink = page.eval_on_selector("body", "el => getComputedStyle(el).color")
+    assert chip_bg == ink
+
+
+def test_field_errors_linked(open_page):
+    page = open_page("light")
+    inputs = page.locator("[data-sg=errors] .field__input")
+    assert inputs.count() == 2
+    for i in range(inputs.count()):
+        ids = inputs.nth(i).get_attribute("aria-describedby").split()
+        targets = [page.locator(f"[id='{x}']") for x in ids]
+        assert all(t.count() == 1 for t in targets)
+        errors = [
+            t for t in targets if "field__error" in (t.get_attribute("class") or "")
+        ]
+        assert len(errors) == 1
+        assert errors[0].is_visible() and errors[0].inner_text().strip()
+    assert page.locator("[data-sg=errors] [role=alert]").is_visible()
+
+
+def _ring(page, selector):
+    return page.eval_on_selector(
+        selector,
+        """el => {
+            const s = getComputedStyle(el);
+            return [s.outlineStyle, s.outlineWidth, s.outlineColor];
+        }""",
+    )
+
+
+def test_controls_keyboard_and_focus_ring(open_page):
+    page = open_page("light")
+    page.keyboard.press("Tab")
+    saffron = ["solid", "3px", "rgb(242, 184, 75)"]
+    targets = [
+        ("[data-sg=seg] .seg__input", "[data-sg=seg] .seg__opt:has(.seg__input:focus)"),
+        ("[data-sg=fchips] .fchip", "[data-sg=fchips] .fchip:focus"),
+        ("[data-sg=switches] .switch", "[data-sg=switches] .switch:focus"),
+        ("[data-sg=checks] .check", "[data-sg=checks] .check:focus"),
+        ("[data-sg=radios] .radio", "[data-sg=radios] .radio:focus"),
+        ("[data-sg=fields] .field__input", "[data-sg=fields] .field__input:focus"),
+    ]
+    for focus, ring in targets:
+        page.locator(focus).first.focus()
+        assert _ring(page, ring) == saffron, focus
+
+    page.locator("#id_staff_pay").focus()
+    page.keyboard.press("Space")
+    assert page.locator("#id_staff_pay").is_checked()
+
+    page.locator("#id_who_pays_0").focus()
+    page.keyboard.press("ArrowRight")
+    assert page.locator("#id_who_pays_1").is_checked()
+    seg = page.locator(".seg__opt:has(#id_who_pays_1)")
+    assert seg.evaluate("el => getComputedStyle(el).backgroundColor") != (
+        page.locator(".seg__opt:has(#id_who_pays_0)").evaluate(
+            "el => getComputedStyle(el).backgroundColor"
+        )
+    )
+
+    page.locator("#id_send_invoice").focus()
+    page.keyboard.press("Space")
+    assert not page.locator("#id_send_invoice").is_checked()
+
+    page.locator("#id_place_0").focus()
+    page.keyboard.press("ArrowDown")
+    assert page.locator("#id_place_1").is_checked()
+
+    page.locator("#id_due").focus()
+    page.keyboard.press("End")
+    page.keyboard.type("x")
+    assert page.input_value("#id_due").endswith("x")
+
+    page.get_by_role("link", name="Ready").focus()
+    page.keyboard.press("Enter")
+    page.wait_for_url("**?status=ready")
+    assert (
+        page.get_by_role("link", name="Ready").get_attribute("aria-current") == "true"
+    )
 
 
 @pytest.mark.parametrize("scheme", SCHEMES)

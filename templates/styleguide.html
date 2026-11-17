@@ -122,5 +122,20 @@
                 <p class="muted">ORD-1042 · balance ₹1,200</p>
             </dialog>
         </div>
+        <h2 class="t-section">Segmented control</h2>
+        <div data-sg="seg">{% segmented controls.who_pays %}</div>
+        <div data-sg="seg-4">{% segmented controls.method %}</div>
+        <h2 class="t-section">Filter chips</h2>
+        <div data-sg="fchips">{% filter_chips chips "Filter orders" %}</div>
+        <h2 class="t-section">Switch</h2>
+        <div class="card" data-sg="switches">{% switch controls.mcp %}{% switch controls.staff_pay %}</div>
+        <h2 class="t-section">Checkbox row</h2>
+        <div data-sg="checks">{% checkbox_row controls.send_invoice %}{% checkbox_row controls.send_invoice_off %}</div>
+        <h2 class="t-section">Radio rows</h2>
+        <div data-sg="radios">{% radio_rows controls.place place_notes %}</div>
+        <h2 class="t-section">Fields</h2>
+        <div data-sg="fields">{% field controls.due %}{% field controls.assign %}{% field controls.advance %}</div>
+        <h2 class="t-section">Field errors</h2>
+        <div data-sg="errors">{% error_summary errors_form "create this order" %}{% field errors_form.customer %}{% field errors_form.estimate %}</div>
     </main>
 {% endblock %}
