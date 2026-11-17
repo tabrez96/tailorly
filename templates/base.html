@@ -21,8 +21,9 @@
               crossorigin>
         <link rel="stylesheet" href="{% static 'css/tokens.css' %}">
         <link rel="stylesheet" href="{% static 'css/components.css' %}">
+        {% block head_scripts %}{% endblock %}
     </head>
-    <body>
+    <body {% block body_attrs %}{% endblock %}>
         {% block content %}{% endblock %}
     </body>
 </html>

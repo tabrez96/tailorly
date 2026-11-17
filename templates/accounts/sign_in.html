@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Sign in · Tailorly{% endblock %}
+{% block content %}
+    <main class="shell__page">
+        <h1 class="t-title">Sign in</h1>
+        <form method="post">
+            {% csrf_token %}
+            {% field form.username %}
+            {% field form.password %}
+            <button type="submit" class="btn btn--primary">Sign in</button>
+        </form>
+    </main>
+{% endblock %}
