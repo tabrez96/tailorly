@@ -79,3 +79,18 @@ def test_styleguide_form_controls(client, settings):
     assert 'role="alert"' in html and 'role="switch"' in html
     ready = client.get("/styleguide/?status=ready").content.decode()
     assert 'aria-current="true">Ready' in ready
+
+
+def test_styleguide_tiles_thumbs_queue(client, settings):
+    settings.DEBUG = True
+    html = client.get("/styleguide/").content.decode()
+    for needle in (
+        'data-sg="tiles"',
+        'data-sg="thumbs"',
+        'data-sg="thumb-lg"',
+        'data-sg="thumb-lg-empty"',
+        'data-sg="queue"',
+        "qrow--picked",
+        "Blouse, photo 1 of 3",
+    ):
+        assert needle in html

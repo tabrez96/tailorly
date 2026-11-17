@@ -1,6 +1,7 @@
 """Demo forms and sample data for the styleguide page only."""
 
 from django import forms
+from django.templatetags.static import static
 
 
 class ControlsForm(forms.Form):
@@ -80,6 +81,90 @@ FILTERS = [
     ("delivered", "Delivered", None),
     ("free", "Free", None),
 ]
+MEASUREMENTS = [
+    {"label": "Bust", "value": "34"},
+    {"label": "Waist", "value": "28"},
+    {"label": "Shoulder", "value": "14"},
+    {"label": "Sleeve length", "value": "11½"},
+    {"label": "Armhole", "value": "16"},
+    {"label": "Blouse length", "value": "15"},
+]
+
+
+def _row(rank, garment, order, due, time_needed, tone, status, photo, count, **flags):
+    return {
+        "rank": rank,
+        "garment": garment,
+        "order": order,
+        "due": due,
+        "due_soon": flags.get("due_soon", False),
+        "time_needed": time_needed,
+        "tone": tone,
+        "status": status,
+        "moved": flags.get("moved", False),
+        "photo": photo,
+        "photo_count": count,
+        "picked": flags.get("picked", False),
+    }
+
+
+QUEUE = [
+    _row(
+        1,
+        "Blouse",
+        "ORD-1042",
+        "Due tomorrow",
+        "about 1h left",
+        "pri",
+        "In progress",
+        "styleguide/blouse.svg",
+        3,
+        due_soon=True,
+    ),
+    _row(
+        2,
+        "Petticoat",
+        "ORD-1042",
+        "Due tomorrow",
+        "about 1h",
+        "warn",
+        "Not started",
+        None,
+        0,
+        due_soon=True,
+    ),
+    _row(
+        3,
+        "Kurta",
+        "ORD-1044",
+        "Due Mon 16 Nov",
+        "about 2h",
+        "warn",
+        "Not started",
+        "styleguide/kurta.svg",
+        1,
+        moved=True,
+        picked=True,
+    ),
+    _row(
+        4,
+        "Chudidar",
+        "ORD-1043",
+        "Due Mon 16 Nov",
+        "about 3h",
+        "warn",
+        "Not started",
+        "styleguide/kurta.svg",
+        2,
+    ),
+]
+
+
+def _queue() -> list[dict]:
+    return [
+        {**row, "photo": static(row["photo"]) if row["photo"] else None}
+        for row in QUEUE
+    ]
 
 
 def context(status: str | None) -> dict:
@@ -88,6 +173,10 @@ def context(status: str | None) -> dict:
         "controls": ControlsForm(initial=INITIAL),
         "errors_form": ErrorsForm(data={}, prefix="err"),
         "place_notes": PLACE_NOTES,
+        "measurements": MEASUREMENTS,
+        "queue": _queue(),
+        "queue_total": len(QUEUE),
+        "photo_blouse": static("styleguide/blouse.svg"),
         "chips": [
             {
                 "label": label,

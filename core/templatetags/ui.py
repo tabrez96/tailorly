@@ -2,6 +2,7 @@ from django import template
 
 from core.forms_ui import choice_options, describedby, error_summary_text
 from core.nav import nav_items
+from core.thumbs import thumb_context
 
 register = template.Library()
 
@@ -65,6 +66,11 @@ def checkbox_row(bound):
 @register.inclusion_tag("components/filter_chips.html")
 def filter_chips(chips, label):
     return {"chips": chips, "label": label}
+
+
+@register.inclusion_tag("components/thumb.html")
+def thumb(name, src=None, count=0, size="sm"):
+    return thumb_context(name, src, count, size)
 
 
 def _choice_context(bound, notes=None):

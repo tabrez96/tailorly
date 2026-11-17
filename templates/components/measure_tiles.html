@@ -1,0 +1,10 @@
+<dl class="tiles">
+    {% for t in tiles %}
+        <div class="tile">
+            <dt class="tile__label">{{ t.label }}</dt>
+            <dd class="tile__value">
+                {{ t.value }}
+            </dd>
+        </div>
+    {% endfor %}
+</dl>
