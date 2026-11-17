@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Styleguide{% endblock %}
+{% block content %}
+    <main class="page">
+        <p class="t-over">Design system</p>
+        <h1 class="t-title">Styleguide</h1>
+        <img src="{% static 'brand/mark.svg' %}"
+             width="48"
+             height="48"
+             alt="Tailorly">
+        <h2 class="t-section">Type</h2>
+        <p class="t-title">Title 30</p>
+        <p class="t-hero-num">2:40:15</p>
+        <p class="t-big">₹1,42,600</p>
+        <p class="t-sheet">Sheet title 22</p>
+        <p class="t-section">Section 17</p>
+        <p class="t-body">Body 15</p>
+        <p class="t-label">Label 13</p>
+        <p class="t-small">Small 13</p>
+        <p class="t-over">Overline 12</p>
+        <h2 class="t-section">Buttons</h2>
+        <p>
+            <button class="btn btn--primary" data-sg="btn-primary">Create order</button>
+            <button class="btn btn--tonal" data-sg="btn-tonal">+ Add</button>
+            <button class="btn btn--accent" data-sg="btn-accent">Pause</button>
+            <button class="btn btn--ghost" data-sg="btn-ghost">Cancel</button>
+            <button class="btn btn--primary" data-sg="btn-disabled" disabled>Save</button>
+            <button class="btn btn--tonal btn--sm" data-sg="btn-sm">Edit</button>
+        </p>
+        <button class="btn btn--block btn--primary" data-sg="btn-block">Start my day</button>
+        <h2 class="t-section">Status chips</h2>
+        <p>
+            <span data-sg="chip-ok">{% include "components/chip.html" with tone="ok" label="Ready" %}</span>
+            <span data-sg="chip-warn">{% include "components/chip.html" with tone="warn" label="Not started" %}</span>
+            <span data-sg="chip-bad">{% include "components/chip.html" with tone="bad" label="Late" %}</span>
+            <span data-sg="chip-pri">{% include "components/chip.html" with tone="pri" label="In progress" %}</span>
+            <span data-sg="chip-grey">{% include "components/chip.html" with tone="grey" label="Draft" %}</span>
+        </p>
+        <h2 class="t-section">Card</h2>
+        <div class="card" data-sg="card">
+            <p class="t-over">Thu 12 Nov</p>
+            <p class="t-section">To collect</p>
+            <p class="t-big">₹4,800</p>
+            <p class="muted">From 3 orders</p>
+        </div>
+        <h2 class="t-section">Hero card</h2>
+        <div class="hero" data-sg="hero">
+            <p class="muted">Ali's day</p>
+            <p class="t-hero-num">6h 12m</p>
+            <p class="muted">Started 9:02 am</p>
+        </div>
+        <h2 class="t-section">List</h2>
+        <ul class="list" data-sg="list">
+            <li class="list__row">
+                <div class="list__main">
+                    <strong>Priya Sharma</strong>
+                    <div class="t-small muted">Blouse, due Thu 12 Nov</div>
+                </div>
+                {% include "components/chip.html" with tone="ok" label="Ready" %}
+            </li>
+            <li class="list__row">
+                <div class="list__main">
+                    <strong>Ravi Kumar</strong>
+                    <div class="t-small muted">Blouse, due Thu 12 Nov</div>
+                </div>
+                {% include "components/chip.html" with tone="pri" label="In progress" %}
+            </li>
+            <li class="list__row">
+                <div class="list__main">
+                    <strong>Meena Iyer</strong>
+                    <div class="t-small muted">Blouse, due Thu 12 Nov</div>
+                </div>
+                {% include "components/chip.html" with tone="warn" label="Not started" %}
+            </li>
+        </ul>
+    </main>
+{% endblock %}

@@ -40,4 +40,5 @@ jobs:
         run: npm run vendor && test -z "$(git status --porcelain --untracked-files=all -- static/vendor)"
       - run: uv run python manage.py check
       - run: uv run python manage.py migrate --noinput
+      - run: uv run playwright install --with-deps chromium
       - run: uv run pytest --cov --cov-report=term-missing
