@@ -2,7 +2,13 @@ from datetime import UTC, date, datetime, time, timedelta
 
 import pytest
 
-from core.formats import format_clock, format_day, format_duration
+from core.formats import (
+    format_clock,
+    format_day,
+    format_duration,
+    format_month,
+    format_phone,
+)
 
 
 def test_day_examples():
@@ -33,3 +39,14 @@ def test_blank_and_invalid():
     assert format_duration(None) == ""
     with pytest.raises(ValueError):
         format_duration(-1)
+
+
+def test_format_phone():
+    assert format_phone("9845022110") == "98450 22110"
+    assert format_phone("") == ""
+    assert format_phone("123") == "123"
+
+
+def test_format_month():
+    assert format_month(datetime(2025, 3, 31, 20, 0, tzinfo=UTC)) == "Apr 2025"
+    assert format_month(None) == ""

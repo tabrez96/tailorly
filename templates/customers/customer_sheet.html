@@ -1,0 +1,21 @@
+{% extends "components/sheet_content.html" %}
+{% load ui %}
+{% block sheet_title %}
+    {% if customer %}Edit {{ customer.name }}{% else %}Add customer{% endif %}
+{% endblock %}
+{% block sheet_body %}
+    <form method="post" novalidate hx-post="{{ action }}" hx-target="#sheet">
+        {% csrf_token %}
+        {% error_summary form "save this customer" %}
+        {% field form.name %}
+        {% field form.phone %}
+        {% field form.notes %}
+        <div class="sheet__actions">
+            <button class="btn btn--tonal"
+                    type="button"
+                    x-data
+                    @click="$dispatch('sheet:close')">Cancel</button>
+            <button class="btn btn--primary" type="submit">Save</button>
+        </div>
+    </form>
+{% endblock %}

@@ -1287,3 +1287,51 @@ body[data-subpage="1"] .nav {
 .opt--drag {
   opacity: 0.5;
 }
+
+/* Customers */
+.customer-page {
+  padding-bottom: 96px;
+}
+.crow {
+  text-decoration: none;
+}
+.crow__initials {
+  font-weight: 700;
+}
+.empty__mark {
+  border-radius: var(--r-card);
+}
+.customer-card {
+  padding: var(--s4);
+  margin-bottom: var(--s4);
+}
+.customer-card__phone {
+  color: var(--pri-d);
+  font-weight: 700;
+  text-decoration: none;
+}
+.customer-card .t-small {
+  margin: var(--s1) 0 0;
+}
+.customer-card__notes {
+  margin: var(--s3) 0 0;
+}
+.stat-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s3);
+}
+.stat {
+  padding: var(--s4);
+}
+.stat .t-small {
+  margin: 0;
+}
+.stat__value {
+  margin: var(--s1) 0 0;
+  font-size: 1.75rem;
+  font-weight: 800;
+}
+.stat__value--due {
+  color: var(--warn);
+}
