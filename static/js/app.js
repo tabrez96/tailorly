@@ -20,7 +20,12 @@ function sheet() {
       this.$el.close();
       this.$el.style.transform = "";
       this.$el.innerHTML = "";
-      this.opener?.focus();
+      // A save can swap the opener out; focus its replacement.
+      const opener = this.opener;
+      (opener?.isConnected
+        ? opener
+        : document.getElementById(opener?.id)
+      )?.focus();
     },
     trapTab(e) {
       // Fallback wrap for when the focus trap has not handled the key.
@@ -131,6 +136,7 @@ function pageSwapped(elt) {
   const title = page?.dataset.title ?? "";
   window.scrollTo(0, 0);
   store().tab = page?.dataset.tab ?? "";
+  document.body.dataset.subpage = page?.dataset.subpage ?? "";
   document.title = `${title} · Tailorly`;
   document.querySelector("#page h1")?.focus();
   const announce = document.getElementById("announce");

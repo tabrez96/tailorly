@@ -1,0 +1,63 @@
+{% load ui formats staff_ui %}
+{% include "components/header.html" with title=title back_url=back_url action_label="+ Add" action_url="/settings/staff/add/" %}
+{% if not employees %}
+    <div class="empty">
+        <div class="icon-tile icon-tile--lg">{% include "components/icon.html" with name="wallet" %}</div>
+        <h2 class="t-sheet empty__title">No employees yet</h2>
+        <p class="muted empty__text">Add your employee to track their days and pay.</p>
+        <a class="btn btn--primary"
+           href="/settings/staff/add/"
+           hx-get="/settings/staff/add/"
+           hx-target="#page"
+           hx-sync="#page:replace"
+           hx-push-url="true">+ Add</a>
+    </div>
+{% else %}
+    {% if chips %}
+        {% filter_chips chips "Employee" %}
+    {% endif %}
+    <div class="card staff-card">
+        {% if employee.photo %}
+            <img class="avatar"
+                 src="{% url 'employee_photo' employee.pk %}"
+                 alt=""
+                 width="44"
+                 height="44">
+        {% else %}
+            <span class="avatar" aria-hidden="true">{{ employee.name|initials }}</span>
+        {% endif %}
+        <div class="list__main">
+            <p class="t-body"><strong>{{ employee.name }}</strong></p>
+            <p class="t-small muted">
+                {{ employee.daily_wage|inr }} a day · {{ hourly|inr }} an hour · overtime {{ employee.overtime_multiplier.normalize }}×
+            </p>
+        </div>
+        <a class="btn btn--tonal btn--sm"
+           href="{% url 'employee_edit' employee.pk %}"
+           hx-get="{% url 'employee_edit' employee.pk %}"
+           hx-target="#page"
+           hx-sync="#page:replace"
+           hx-push-url="true">Edit</a>
+    </div>
+    <div class="week-picker">
+        <a class="week-picker__btn"
+           href="{{ prev_url }}"
+           hx-get="{{ prev_url }}"
+           hx-target="#page"
+           hx-sync="#page:replace"
+           hx-push-url="true"
+           aria-label="Previous week">{% include "components/icon.html" with name="chevron-back" %}</a>
+        <p class="t-body">
+            <strong>{{ week_label }}</strong>
+        </p>
+        <a class="week-picker__btn"
+           href="{{ next_url }}"
+           hx-get="{{ next_url }}"
+           hx-target="#page"
+           hx-sync="#page:replace"
+           hx-push-url="true"
+           aria-label="Next week">{% include "components/icon.html" with name="chevron-right" %}</a>
+    </div>
+    {% include "staff/_days.html" %}
+    <p class="footnote muted t-small">Tap a day to fix its start or end time.</p>
+{% endif %}

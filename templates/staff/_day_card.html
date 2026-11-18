@@ -1,0 +1,30 @@
+{% load formats %}
+{% if day.state == "not_started" %}
+    <div class="card card--centered day-card">
+        <h2 class="t-sheet">{{ day.greeting }}</h2>
+        <p class="t-small muted">Start your day, then start your first item.</p>
+        <button class="btn btn--accent btn--block"
+                type="button"
+                hx-post="{% url 'start_my_day' %}"
+                hx-target="#page">Start my day · {{ day.now|clock }}</button>
+    </div>
+{% elif day.state == "started" %}
+    <div class="card day-card">
+        <div class="day-card__row">
+            <div>
+                <p class="t-body">
+                    <strong>Day started {{ day.start|clock }}</strong>
+                </p>
+                <p class="t-small muted">{{ day.so_far|duration }} so far</p>
+            </div>
+            <button class="btn btn--tonal"
+                    type="button"
+                    hx-post="{% url 'end_my_day' %}"
+                    hx-target="#page">End my day</button>
+        </div>
+    </div>
+{% else %}
+    <div class="card day-card">
+        <p class="t-body">Day ended at {{ day.end|clock }}. See you tomorrow.</p>
+    </div>
+{% endif %}

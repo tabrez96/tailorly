@@ -25,6 +25,7 @@ def render_page(
         "page_template": template,
         "role": role_for(request.user),
         "tab": context.get("tab"),
+        "subpage": context.get("subpage", False),
         "doc_title": f"{context['title']} · Tailorly",
     }
     if is_partial(request.headers):
@@ -54,6 +55,16 @@ def sheet_saved(response: HttpResponse, toast: str) -> HttpResponse:
     The swap is skipped so the form stays put and the event bubbles to the window.
     """
     response["HX-Reswap"] = "none"
+    response["HX-Trigger"] = json.dumps(
+        {"sheet:close": True, "toast": {"message": toast}}
+    )
+    return response
+
+
+def sheet_saved_swap(response: HttpResponse, toast: str, target: str) -> HttpResponse:
+    """Like sheet_saved, but swap the response into `target` on the page (outerHTML)."""
+    response["HX-Retarget"] = target
+    response["HX-Reswap"] = "outerHTML"
     response["HX-Trigger"] = json.dumps(
         {"sheet:close": True, "toast": {"message": toast}}
     )

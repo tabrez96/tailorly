@@ -1,0 +1,39 @@
+<ul class="list card" id="staff-days">
+    {% for row in rows %}
+        {% url 'day_sheet' employee.pk row.date.isoformat as sheet_url %}
+        <li class="list__row">
+            {% if row.can_edit and row.state != "missing" %}
+                <button class="day-row"
+                        id="day-{{ row.date.isoformat }}"
+                        type="button"
+                        hx-get="{{ sheet_url }}"
+                        hx-target="#sheet">
+                    <span class="day-row__label">{{ row.label }}</span>
+                    <span class="day-row__times muted">{{ row.times }}</span>
+                    {% if row.edited %}<span class="t-small muted">edited by owner</span>{% endif %}
+                </button>
+                {% if row.state == "open" and row.date == today %}
+                    <button class="btn btn--tonal btn--sm"
+                            type="button"
+                            hx-post="{% url 'day_end' employee.pk row.date.isoformat %}"
+                            hx-target="#staff-days"
+                            hx-swap="outerHTML">End day</button>
+                {% endif %}
+            {% else %}
+                <div class="day-row">
+                    <span class="day-row__label">{{ row.label }}</span>
+                    <span class="day-row__times muted">{{ row.times }}</span>
+                    {% if row.edited %}<span class="t-small muted">edited by owner</span>{% endif %}
+                </div>
+                {% if row.state == "missing" and row.can_edit %}
+                    <button class="btn btn--ghost btn--sm"
+                            id="day-{{ row.date.isoformat }}"
+                            type="button"
+                            hx-get="{{ sheet_url }}"
+                            hx-target="#sheet"
+                            aria-label="Add {{ row.label }}">Add</button>
+                {% endif %}
+            {% endif %}
+        </li>
+    {% endfor %}
+</ul>
