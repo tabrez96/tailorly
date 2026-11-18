@@ -14,7 +14,7 @@ Status: **draft** (UX not approved yet), **approved**, **building** (a ticket fo
 | S04 | [Order Detail](screens/S04-order-detail/screen.html) (+10 states) · [spec](screens/S04-order-detail/spec.md) | building |  | T-165, T-166, T-167, T-168, T-169, T-172, T-173, T-175, T-176, T-177, T-178 | 2026-11-17 |
 | S05 | [New order](screens/S05-new-order/screen.html) (+3 states) · [spec](screens/S05-new-order/spec.md) | building | Create a custom or ready-made order for a customer | T-162, T-164, T-165, T-172 | 2026-11-17 |
 | S06 | [Customers](screens/S06-customers/screen.html) (+2 states) · [spec](screens/S06-customers/spec.md) | building | Find a customer and see who owes money | T-162 | 2026-11-17 |
-| S07 | [Customer detail](screens/S07-customer-detail/screen.html) (+2 states) · [spec](screens/S07-customer-detail/spec.md) | building | A customer's details, measurements and orders | T-162, T-165, T-166, T-169, T-177 | 2026-11-17 |
+| S07 | [Customer detail](screens/S07-customer-detail/screen.html) (+2 states) · [spec](screens/S07-customer-detail/spec.md) | building | A customer's details, measurements and orders | T-162, T-165, T-166, T-169, T-177, T-188 | 2026-11-17 |
 | S08 | [My Work](screens/S08-my-work/screen.html) (+4 states) · [spec](screens/S08-my-work/spec.md) | building |  | T-170, T-171, T-172, T-176 | 2026-11-17 |
 | S09 | [My Pay](screens/S09-my-pay/screen.html) (+1 states) · [spec](screens/S09-my-pay/spec.md) | built |  | T-174 | 2026-11-17 |
 | S10 | [Staff](screens/S10-staff/screen.html) (+3 states) · [spec](screens/S10-staff/spec.md) | building |  | T-170, T-174, T-178, T-179 | 2026-11-17 |

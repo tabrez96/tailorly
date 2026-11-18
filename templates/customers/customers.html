@@ -1,0 +1,82 @@
+{% load ui formats staff_ui static %}
+<div id="customers">
+    {% if not has_any %}
+        {% include "components/header.html" with title=title %}
+        <div class="empty">
+            <img class="empty__mark"
+                 src="{% static 'brand/mark.svg' %}"
+                 width="72"
+                 height="72"
+                 alt="">
+            <h2 class="t-sheet empty__title">No customers yet</h2>
+            <p class="muted empty__text">Add a customer to keep their measurements and notes ready for every order.</p>
+            <button class="btn btn--primary"
+                    type="button"
+                    id="empty-add"
+                    hx-get="{{ add_url }}"
+                    hx-target="#sheet">+ Add customer</button>
+        </div>
+    {% else %}
+        {% include "components/header.html" with title=title action_label="+ Add" action_sheet=add_url action_id="customers-add" %}
+        <form id="customers-search"
+              class="search"
+              role="search"
+              action="{{ base_url }}"
+              method="get"
+              hx-get="{{ base_url }}"
+              hx-trigger="input delay:300ms, submit"
+              hx-target="#customers-results"
+              hx-select="#customers-results"
+              hx-swap="outerHTML"
+              hx-sync="#customers-results:replace"
+              hx-replace-url="true">
+            <label class="sr-only" for="customers-q">Search customers</label>
+            <input class="field__input"
+                   type="search"
+                   id="customers-q"
+                   name="q"
+                   value="{{ q }}"
+                   autocomplete="off"
+                   placeholder="Search name or phone">
+        </form>
+        <div id="customers-results" aria-live="polite">
+            {% if customers %}
+                <ul class="list">
+                    {% for c in customers %}
+                        <li class="list__row">
+                            <a class="prow-btn crow"
+                               id="customer-{{ c.pk }}"
+                               href="{% url 'customer' c.pk %}"
+                               hx-get="{% url 'customer' c.pk %}"
+                               hx-target="#page"
+                               hx-sync="#page:replace"
+                               hx-push-url="true">
+                                <span class="icon-tile crow__initials" aria-hidden="true">{{ c.name|initials }}</span>
+                                <div class="list__main">
+                                    <p class="prow__name">
+                                        <span class="t-body prow__title">{{ c.name }}</span>
+                                    </p>
+                                    {% if c.phone %}<p class="prow__sub muted t-small tabular">{{ c.phone|phone }}</p>{% endif %}
+                                </div>
+                                <div class="prow__end">
+                                    {# Balances and open orders arrive with orders. #}
+                                    <p class="t-small muted">Paid up</p>
+                                </div>
+                            </a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% elif q %}
+                <div class="empty">
+                    <h2 class="t-sheet empty__title">No customer matches "{{ q }}".</h2>
+                    <button class="btn btn--primary"
+                            type="button"
+                            id="search-add"
+                            hx-get="{{ add_named_url }}"
+                            hx-target="#sheet">+ Add "{{ q }}" as a customer</button>
+                </div>
+            {% endif %}
+        </div>
+    {% endif %}
+    {% if open_add %}<div hidden hx-get="{{ add_url }}" hx-trigger="load" hx-target="#sheet"></div>{% endif %}
+</div>

@@ -1,0 +1,30 @@
+{% load ui formats %}
+<div class="customer-page">
+    {% include "components/header.html" with title=title back_url=back_url action_label="Edit" action_sheet=edit_url action_id="customer-edit" %}
+    <section class="card customer-card">
+        {% if customer.phone %}
+            <a class="customer-card__phone" href="tel:+91{{ customer.phone }}">{{ customer.phone|phone }}</a>
+        {% endif %}
+        <p class="t-small muted">Customer since {{ customer.created_at|month }}</p>
+        {% if customer.notes %}<p class="customer-card__notes">{{ customer.notes|linebreaksbr }}</p>{% endif %}
+    </section>
+    <div class="stat-pair">
+        <section class="card stat">
+            <p class="t-small muted">Spent</p>
+            <p class="stat__value tabular">{{ spent|inr }}</p>
+        </section>
+        <section class="card stat">
+            <p class="t-small muted">To collect</p>
+            <p class="stat__value tabular{% if to_collect > 0 %} stat__value--due{% endif %}">{{ to_collect|inr }}</p>
+        </section>
+    </div>
+    <div class="action-bar">
+        <a class="btn btn--primary"
+           id="new-order"
+           href="{{ new_order_url }}"
+           hx-get="{{ new_order_url }}"
+           hx-target="#page"
+           hx-sync="#page:replace"
+           hx-push-url="true">+ New order for {{ first_name }}</a>
+    </div>
+</div>
