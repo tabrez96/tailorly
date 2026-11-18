@@ -1,0 +1,40 @@
+{% load ui %}
+{% include "components/header.html" with title=title back_url=back_url %}
+<form method="post"
+      novalidate
+      enctype="multipart/form-data"
+      hx-post="{{ action }}"
+      hx-target="#page">
+    {% csrf_token %}
+    {% error_summary form "save this employee" %}
+    {% field form.name %}
+    {% field form.phone %}
+    {% field form.daily_wage %}
+    {% field form.overtime_multiplier %}
+    {% field form.photo %}
+    {% if form.fields.password.required %}
+        {% field form.password %}
+    {% else %}
+        <div x-data="{ reset: {% if form.password.errors %}true{% else %}false{% endif %} }">
+            <p class="field__label" id="password-label">Password</p>
+            <button class="btn btn--tonal"
+                    type="button"
+                    x-show="!reset"
+                    @click="reset = true; $nextTick(() => $refs.pw.querySelector('input').focus())">
+                Reset password
+            </button>
+            <div x-show="reset"
+                 x-ref="pw"
+                 {% if not form.password.errors %}x-cloak{% endif %}>{% field form.password %}</div>
+        </div>
+    {% endif %}
+    <div class="action-bar">
+        <a class="btn btn--tonal"
+           href="/settings/staff/"
+           hx-get="/settings/staff/"
+           hx-target="#page"
+           hx-sync="#page:replace"
+           hx-push-url="true">Cancel</a>
+        <button class="btn btn--primary" type="submit">Save</button>
+    </div>
+</form>

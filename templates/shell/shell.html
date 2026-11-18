@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load ui static %}
 {% block title %}{{ doc_title }}{% endblock %}
-{% block body_attrs %}hx-headers:inherited="{{ hx_headers }}" data-tab="{{ tab|default:'' }}"{% endblock %}
+{% block body_attrs %}hx-headers:inherited="{{ hx_headers }}" data-tab="{{ tab|default:'' }}" data-subpage="{% if subpage %}1{% endif %}"{% endblock %}
 {% block content %}
     <main id="page" class="shell__page">
         {% include "shell/page.html" %}

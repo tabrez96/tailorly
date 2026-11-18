@@ -1,2 +1,5 @@
-{% include "components/header.html" with title=title back_url=back_url %}
+{% include "components/header.html" with title=title back_url=back_url overline=overline %}
+{% if day %}
+    {% include "staff/_day_card.html" %}
+{% endif %}
 <p class="muted">Your work appears here.</p>

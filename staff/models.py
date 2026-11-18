@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.db import models
-from django.db.models import Q
+from django.db.models import F, Q
 
 
 class Employee(models.Model):
@@ -31,3 +31,28 @@ class Employee(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class DayRecord(models.Model):
+    employee = models.ForeignKey(
+        Employee, on_delete=models.CASCADE, related_name="days"
+    )
+    date = models.DateField()  # local (Asia/Kolkata) date of the start
+    start = models.DateTimeField()
+    end = models.DateTimeField(null=True, blank=True)  # null while the day is going
+    edited_by_owner = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["date"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["employee", "date"], name="dayrecord_one_per_day"
+            ),
+            models.CheckConstraint(
+                condition=Q(end__isnull=True) | Q(end__gte=F("start")),
+                name="dayrecord_end_after_start",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.employee} {self.date}"

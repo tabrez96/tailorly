@@ -1,0 +1,15 @@
+{% extends "components/sheet_content.html" %}
+{% load ui formats %}
+{% block sheet_title %}{{ day|day }}{% endblock %}
+{% block sheet_body %}
+    <form method="post"
+          novalidate
+          hx-post="{% url 'day_sheet' employee.pk day.isoformat %}"
+          hx-target="#sheet">
+        {% csrf_token %}
+        {% error_summary form "save this day" %}
+        {% field form.start %}
+        {% field form.end %}
+        <button class="btn btn--primary btn--block" type="submit">Save</button>
+    </form>
+{% endblock %}

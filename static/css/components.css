@@ -969,3 +969,85 @@ a.seg__opt {
 .footnote {
   margin: var(--s3) var(--s1) 0;
 }
+
+/* Sub-pages (opened from Settings) have no bottom navigation */
+body[data-subpage="1"] .nav {
+  display: none;
+}
+
+/* Staff: employee card, week picker and day rows */
+.staff-card {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s4);
+  margin-bottom: var(--s4);
+}
+.avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--pri-l);
+  color: var(--pri-d);
+  font-weight: 700;
+  object-fit: cover;
+}
+.week-picker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--s3);
+}
+.week-picker__btn {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--card);
+  border: 1px solid var(--edge);
+  color: inherit;
+}
+.day-row {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+}
+.day-row__label {
+  min-width: 52px;
+  font-weight: 700;
+}
+.day-row__times {
+  flex: 1;
+}
+.card--centered {
+  text-align: center;
+}
+.card--centered > * + * {
+  margin-top: var(--s2);
+}
+.day-card {
+  padding: var(--s4);
+  margin-bottom: var(--s4);
+}
+.day-card__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+
+[x-cloak] {
+  display: none !important;
+}

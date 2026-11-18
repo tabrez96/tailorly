@@ -147,7 +147,7 @@ The owner resets a forgotten password on this machine with `uv run python manage
 
 ### Pages and sheets
 
-Every page view returns `render_page(request, template, {"title": ..., "tab": ...})` from `core/pages.py`: htmx tab taps get the fragment, everything else gets the full shell. Sheets extend `components/sheet_content.html` and answer `sheet_saved(response, "toast text")` on success.
+Every page view returns `render_page(request, template, {"title": ..., "tab": ...})` from `core/pages.py`: requests with the `HX-Request-Type: partial` header get the fragment, everything else gets the full shell. Sheets extend `components/sheet_content.html` and answer `sheet_saved(response, "toast text")` on success. A sheet that must refresh part of the page answers `sheet_saved_swap(response, "toast text", "#target")` instead. Pass `subpage=True` in the page context for a Settings sub-page: the bottom navigation is hidden.
 
 ### Vendor
 
