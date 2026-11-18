@@ -46,10 +46,11 @@ def test_expired_session_full_load(client, db):
     assert response["Location"] == "/sign-in/?next=/"
 
 
-def test_role_redirect_passes_through(client, db):
+def test_wrong_role_htmx_gets_hx_redirect_home(client, db):
     client.force_login(User.objects.create_user("e", password="x"))
     response = client.get("/", headers={"HX-Request": "true"})
-    assert response.status_code == 302 and "HX-Redirect" not in response
+    assert response.status_code == 403
+    assert response["HX-Redirect"] == "/my-work/"
 
 
 def test_expired_session_history_restore_redirects(client, db):
