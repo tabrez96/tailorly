@@ -1,0 +1,13 @@
+<div class="sheet__actions{% if product %} sheet__actions--remove{% endif %}">
+    {% if product %}
+        <button class="btn btn--ghost btn--danger"
+                type="button"
+                hx-post="{% url 'product_remove' product.pk %}"
+                hx-confirm="Remove {{ product.name }}? Past orders keep it.">Remove</button>
+    {% endif %}
+    <button class="btn btn--tonal"
+            type="button"
+            x-data
+            @click="$dispatch('sheet:close')">Cancel</button>
+    <button class="btn btn--primary" type="submit">Save</button>
+</div>

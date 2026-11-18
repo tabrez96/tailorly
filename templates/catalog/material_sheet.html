@@ -1,0 +1,32 @@
+{% extends "components/sheet_content.html" %}
+{% load ui %}
+{% block sheet_title %}
+    {% if product %}Edit {{ product.name }}{% else %}Add material{% endif %}
+{% endblock %}
+{% block sheet_body %}
+    {% if subtitle %}<p class="sheet__sub muted t-small">{{ subtitle }}</p>{% endif %}
+    <form method="post"
+          novalidate
+          hx-post="{{ action }}"
+          hx-target="#sheet"
+          x-data="{ unit: '{{ form.unit.value|default:'m' }}' }"
+          @change="if ($event.target.name === 'unit') unit = $event.target.value">
+        {% csrf_token %}
+        {% error_summary form "save this material" %}
+        {% field form.name %}
+        <div hx-get="{{ action }}"
+             hx-trigger="change"
+             hx-target="#sheet"
+             hx-include="closest form">{% segmented form.kind %}</div>
+        <p class="field__hint t-small muted">
+            Materials are used on items and reworks. They never show as a garment to sell.
+        </p>
+        {% segmented form.unit %}
+        <div class="field-pair field-pair--even">
+            {% field form.cost_price %}
+            {% field form.selling_price %}
+        </div>
+        {% switch form.billed_by_default %}
+        {% include "catalog/_sheet_actions.html" %}
+    </form>
+{% endblock %}

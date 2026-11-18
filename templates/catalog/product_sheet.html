@@ -1,0 +1,33 @@
+{% extends "components/sheet_content.html" %}
+{% load ui %}
+{% block sheet_title %}
+    {% if product %}Edit {{ product.name }}{% else %}Add product{% endif %}
+{% endblock %}
+{% block sheet_body %}
+    {% if subtitle %}<p class="sheet__sub muted t-small">{{ subtitle }}</p>{% endif %}
+    <form method="post"
+          novalidate
+          hx-post="{{ action }}"
+          hx-target="#sheet"
+          x-data="{ type: '{{ form.type.value|default:'custom' }}' }"
+          @change="if ($event.target.name === 'type') type = $event.target.value">
+        {% csrf_token %}
+        {% error_summary form "save this product" %}
+        <div class="field-pair">
+            {% field form.name %}
+            {% field form.usual_price %}
+        </div>
+        <div hx-get="{{ action }}"
+             hx-trigger="change"
+             hx-target="#sheet"
+             hx-include="closest form">{% segmented form.kind %}</div>
+        {% segmented form.type %}
+        <p class="field__hint t-small muted" x-show="type === 'custom'">
+            Custom items carry the customer's {% if form.name.value %}{{ form.name.value }}{% endif %} measurements.
+        </p>
+        <p class="field__hint t-small muted"
+           x-show="type === 'ready_made'"
+           x-cloak>Ready-made items are sold as they are, with no measurements.</p>
+        {% include "catalog/_sheet_actions.html" %}
+    </form>
+{% endblock %}

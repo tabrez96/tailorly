@@ -1,6 +1,8 @@
+import re
 from pathlib import Path
 
 import pytest
+from playwright.sync_api import expect
 
 from catalog.models import Product, ProductOption
 
@@ -68,3 +70,83 @@ def test_screenshots(live_server, signed_in, browser, demo_catalog):
     Product.objects.all().delete()
     page.goto(live_server.url + "/products/")
     page.screenshot(path=ARTIFACTS / "S15-products-empty.png")
+
+
+def test_add_product_from_header_refreshes_in_place(
+    live_server, signed_in, demo_catalog
+):
+    _, page = signed_in("owner")
+    page.goto(live_server.url + "/products/")
+    page.evaluate("window.__marker = 1")
+    page.click("#products-add")
+    page.fill("#id_name", "Sherwani")
+    page.fill("#id_usual_price", "5200")
+    page.locator("#sheet").get_by_text("Ready-made", exact=True).click()
+    page.get_by_role("button", name="Save").click()
+    page.get_by_text("Sherwani added").wait_for()
+    page.wait_for_function("!document.querySelector('#sheet').open")
+    page.get_by_text("Sherwani", exact=True).wait_for()
+    assert page.evaluate("window.__marker") == 1
+
+
+def test_hold_url_opens_empty_sheet(live_server, signed_in, demo_catalog):
+    _, page = signed_in("owner")
+    page.goto(live_server.url + "/products/?add=1")
+    page.wait_for_function("document.querySelector('#sheet').open")
+    assert page.get_by_text("Add product").is_visible()
+
+
+def test_validation_focuses_first_error(live_server, signed_in, demo_catalog):
+    _, page = signed_in("owner")
+    page.goto(live_server.url + "/products/")
+    page.click("#products-add")
+    page.get_by_role("button", name="Save").click()
+    page.get_by_text("Enter a name.").wait_for()
+    page.wait_for_function("document.activeElement.id === 'id_name'")
+    assert page.evaluate("document.querySelector('#sheet').open")
+
+
+def test_kind_switch_keeps_name(live_server, signed_in, demo_catalog):
+    _, page = signed_in("owner")
+    page.goto(live_server.url + "/products/")
+    page.click("#products-add")
+    page.fill("#id_name", "Lining silk")
+    page.get_by_text("Secondary: material").click()
+    page.get_by_role("heading", name="Add material").wait_for()
+    assert page.input_value("#id_name") == "Lining silk"
+    page.wait_for_function("document.activeElement.id === 'id_kind_1'")
+
+
+def test_header_add_follows_list_kind(live_server, signed_in, demo_catalog):
+    _, page = signed_in("owner")
+    page.goto(live_server.url + "/products/")
+    page.get_by_role("link", name="Materials").click()
+    page.wait_for_url("**/products/?kind=materials")
+    page.click("#products-add")
+    page.get_by_role("heading", name="Add material").wait_for()
+
+
+def test_remove_after_confirm(live_server, signed_in, demo_catalog):
+    _, page = signed_in("owner")
+    page.goto(live_server.url + "/products/")
+    page.once("dialog", lambda d: d.accept())
+    page.click(f"#row-{Product.objects.get(name='Blouse').pk}")
+    page.get_by_role("button", name="Remove").click()
+    page.get_by_text("Blouse removed").wait_for()
+    page.wait_for_function("!document.querySelector('#sheet').open")
+    expect(
+        page.locator(".prow__title", has_text=re.compile(r"^Blouse$"))
+    ).to_have_count(0)
+
+
+def test_sheet_screenshots(live_server, signed_in, demo_catalog):
+    ARTIFACTS.mkdir(parents=True, exist_ok=True)
+    _, page = signed_in("owner")
+    page.goto(live_server.url + "/products/")
+    page.click(f"#row-{Product.objects.get(name='Blouse').pk}")
+    page.wait_for_function("document.querySelector('#sheet').open")
+    page.screenshot(path=ARTIFACTS / "S15-products-edit-product.png")
+    page.goto(live_server.url + "/products/?kind=materials")
+    page.click(f"#row-{Product.objects.get(name='Lining, cotton cream').pk}")
+    page.wait_for_function("document.querySelector('#sheet').open")
+    page.screenshot(path=ARTIFACTS / "S15-products-edit-material.png")

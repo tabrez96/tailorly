@@ -1102,3 +1102,41 @@ body[data-subpage="1"] .nav {
   gap: var(--s3);
   margin-top: var(--s4);
 }
+
+/* Product and material sheets */
+.prow-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.prow-btn:focus-visible {
+  outline: 3px solid var(--acc);
+  outline-offset: 2px;
+}
+.field-pair {
+  display: grid;
+  grid-template-columns: 1fr 120px;
+  gap: var(--s3);
+}
+.field-pair--even {
+  grid-template-columns: 1fr 1fr;
+}
+.sheet__sub {
+  margin: 0 0 var(--s4);
+}
+.sheet__actions--remove {
+  grid-template-columns: 1fr auto auto;
+}
+.btn--danger {
+  color: var(--bad);
+  justify-self: start;
+}
