@@ -28,6 +28,288 @@
         <p class="field__hint t-small muted"
            x-show="type === 'ready_made'"
            x-cloak>Ready-made items are sold as they are, with no measurements.</p>
+        <div x-data="productEditor">
+            {{ form.editor_state|json_script:"product-editor-data" }}
+            <input type="hidden" name="measurements_json" :value="measurementsJson">
+            <input type="hidden" name="options_json" :value="optionsJson">
+            <div class="mrow" x-show="type === 'custom'">
+                <div class="mrow__main">
+                    <p class="mrow__title">
+                        Measurements · <span x-text="measurementCount"></span>
+                    </p>
+                    <p class="mrow__names t-small muted"
+                       x-text="measurementNames || 'No measurements yet. Add the ones you take for this garment.'"></p>
+                </div>
+                <button type="button"
+                        id="m-edit"
+                        class="btn btn--ghost btn--sm"
+                        :aria-expanded="editingMeasurements"
+                        @click="editingMeasurements = !editingMeasurements">Edit</button>
+                <div class="mrow__edit" x-show="editingMeasurements">
+                    <ol class="mlist">
+                        <template x-for="(m, i) in measurements" :key="i">
+                            <li class="mlist__row">
+                                <input class="field__input"
+                                       type="text"
+                                       maxlength="40"
+                                       :id="`m-${i}`"
+                                       :aria-label="`Measurement ${i + 1}`"
+                                       x-model="measurements[i]"
+                                       :aria-invalid="errors.measurements && i === 0 ? 'true' : null"
+                                       :aria-describedby="errors.measurements && i === 0 ? 'm-error' : null"
+                                       @input="errors.measurements = ''">
+                                <button type="button"
+                                        class="opt__reorder"
+                                        :id="`m-${i}-up`"
+                                        :aria-label="`Move ${m || 'measurement ' + (i + 1)} up`"
+                                        :disabled="i === 0"
+                                        @click="moveMeasurement(i, -1)">↑</button>
+                                <button type="button"
+                                        class="opt__reorder"
+                                        :id="`m-${i}-down`"
+                                        :aria-label="`Move ${m || 'measurement ' + (i + 1)} down`"
+                                        :disabled="i === measurements.length - 1"
+                                        @click="moveMeasurement(i, 1)">↓</button>
+                                <button type="button"
+                                        class="opt__reorder opt__reorder--bad"
+                                        :aria-label="`Remove ${m || 'measurement ' + (i + 1)}`"
+                                        @click="removeMeasurement(i)">×</button>
+                            </li>
+                        </template>
+                    </ol>
+                    <div class="mrow__actions">
+                        <button type="button"
+                                id="m-add"
+                                class="btn btn--ghost btn--sm"
+                                :aria-invalid="errors.measurements && !measurements.length ? 'true' : null"
+                                :aria-describedby="errors.measurements && !measurements.length ? 'm-error' : null"
+                                @click="addMeasurement()">+ Add field</button>
+                        <button type="button"
+                                class="btn btn--tonal btn--sm"
+                                @click="editingMeasurements = false; $nextTick(() => document.getElementById('m-edit').focus())">
+                            Done
+                        </button>
+                    </div>
+                </div>
+                <p class="field__error mrow__error"
+                   id="m-error"
+                   x-show="errors.measurements"
+                   x-text="errors.measurements"></p>
+            </div>
+            <div class="opts__head">
+                <h3 class="t-section">Options</h3>
+                <button type="button"
+                        id="opt-add"
+                        class="btn btn--ghost btn--sm"
+                        :aria-invalid="wholeOptionsError ? 'true' : null"
+                        :aria-describedby="wholeOptionsError ? 'opts-error' : null"
+                        @click="addOption()">+ Add option</button>
+            </div>
+            <p class="field__error"
+               id="opts-error"
+               x-show="errors.options"
+               x-text="errors.options"></p>
+            <p class="t-small muted"
+               x-show="!options.length">No options. Add one for choices like lining or sleeve style.</p>
+            <ul class="opts"
+                x-sort="sorted($item, $position)"
+                x-sort:config="{ handle: '[data-drag]' }">
+                <template x-for="o in options" :key="o.uid">
+                    <li class="opt" x-sort:item="o.uid">
+                        <div class="opt__head opt__head--folded" x-show="!o.open">
+                            <span class="opt__grip" data-drag aria-hidden="true">
+                                {% include "components/icon.html" with name="drag" %}
+                            </span>
+                            <div class="opt__text">
+                                <p class="opt__name" x-text="o.name || 'Untitled option'"></p>
+                                <p class="opt__summary t-small muted" x-text="summary(o)"></p>
+                            </div>
+                            <button type="button"
+                                    class="opt__reorder"
+                                    :id="`opt-${o.uid}-up-f`"
+                                    :aria-label="`Move ${o.name || 'option'} up`"
+                                    :disabled="options.indexOf(o) === 0"
+                                    @click="moveOption(o, -1, $el.id)">↑</button>
+                            <button type="button"
+                                    class="opt__reorder"
+                                    :id="`opt-${o.uid}-down-f`"
+                                    :aria-label="`Move ${o.name || 'option'} down`"
+                                    :disabled="options.indexOf(o) === options.length - 1"
+                                    @click="moveOption(o, 1, $el.id)">↓</button>
+                            <button type="button"
+                                    class="btn btn--ghost btn--sm"
+                                    :aria-label="`Edit ${o.name || 'option'}`"
+                                    @click="openOnly(o)">Edit</button>
+                        </div>
+                        <div class="opt__body" x-show="o.open">
+                            <div class="opt__head">
+                                <p class="opt__name" x-text="o.name || 'New option'"></p>
+                                <button type="button"
+                                        class="opt__reorder"
+                                        :id="`opt-${o.uid}-up-o`"
+                                        :aria-label="`Move ${o.name || 'option'} up`"
+                                        :disabled="options.indexOf(o) === 0"
+                                        @click="moveOption(o, -1, $el.id)">↑</button>
+                                <button type="button"
+                                        class="opt__reorder"
+                                        :id="`opt-${o.uid}-down-o`"
+                                        :aria-label="`Move ${o.name || 'option'} down`"
+                                        :disabled="options.indexOf(o) === options.length - 1"
+                                        @click="moveOption(o, 1, $el.id)">↓</button>
+                                <button type="button"
+                                        class="btn btn--ghost btn--sm opt__remove"
+                                        :aria-label="`Remove option ${o.name}`"
+                                        @click="removeOption(o)">Remove</button>
+                            </div>
+                            <div class="field">
+                                <label class="field__label" :for="`opt-${o.uid}-name`">Option name</label>
+                                <input class="field__input"
+                                       type="text"
+                                       maxlength="60"
+                                       :id="`opt-${o.uid}-name`"
+                                       x-model="o.name"
+                                       :aria-invalid="o.err.name ? 'true' : null"
+                                       :aria-describedby="o.err.name ? `opt-${o.uid}-name-error` : null"
+                                       @input="o.err.name = ''">
+                                <p class="field__error"
+                                   :id="`opt-${o.uid}-name-error`"
+                                   x-show="o.err.name"
+                                   x-text="o.err.name"></p>
+                            </div>
+                            <fieldset class="seg">
+                                <legend class="field__label">Answer</legend>
+                                <div class="seg__track">
+                                    <label class="seg__opt">
+                                        <input class="seg__input"
+                                               type="radio"
+                                               :name="`opt-${o.uid}-answer`"
+                                               value="yes_no"
+                                               :checked="o.answer === 'yes_no'"
+                                               @change="setAnswer(o, $event.target.value)">
+                                        Yes or no
+                                    </label>
+                                    <label class="seg__opt">
+                                        <input class="seg__input"
+                                               type="radio"
+                                               :name="`opt-${o.uid}-answer`"
+                                               value="choice"
+                                               :checked="o.answer === 'choice'"
+                                               @change="setAnswer(o, $event.target.value)">
+                                        Choice
+                                    </label>
+                                </div>
+                            </fieldset>
+                            <fieldset class="opt__choices" x-show="o.answer === 'choice'">
+                                <legend class="field__label">Choices</legend>
+                                <ol class="mlist">
+                                    <template x-for="(c, i) in o.choices" :key="i">
+                                        <li class="mlist__row">
+                                            <input class="field__input"
+                                                   type="text"
+                                                   maxlength="40"
+                                                   :id="`opt-${o.uid}-choice-${i}`"
+                                                   :aria-label="`Choice ${i + 1}`"
+                                                   x-model="o.choices[i]"
+                                                   :aria-invalid="o.err.choices && i === 0 ? 'true' : null"
+                                                   :aria-describedby="o.err.choices && i === 0 ? `opt-${o.uid}-choices-error` : null"
+                                                   @input="o.err.choices = ''">
+                                            <button type="button"
+                                                    class="opt__reorder"
+                                                    :id="`opt-${o.uid}-choice-${i}-up`"
+                                                    :aria-label="`Move ${c || 'choice ' + (i + 1)} up`"
+                                                    :disabled="i === 0"
+                                                    @click="moveChoice(o, i, -1)">↑</button>
+                                            <button type="button"
+                                                    class="opt__reorder"
+                                                    :id="`opt-${o.uid}-choice-${i}-down`"
+                                                    :aria-label="`Move ${c || 'choice ' + (i + 1)} down`"
+                                                    :disabled="i === o.choices.length - 1"
+                                                    @click="moveChoice(o, i, 1)">↓</button>
+                                            <button type="button"
+                                                    class="opt__reorder opt__reorder--bad"
+                                                    :aria-label="`Remove ${c || 'choice ' + (i + 1)}`"
+                                                    @click="removeChoice(o, i)">×</button>
+                                        </li>
+                                    </template>
+                                </ol>
+                                <button type="button"
+                                        class="btn btn--ghost btn--sm"
+                                        :id="`opt-${o.uid}-choice-add`"
+                                        :aria-invalid="o.err.choices && !o.choices.length ? 'true' : null"
+                                        :aria-describedby="o.err.choices && !o.choices.length ? `opt-${o.uid}-choices-error` : null"
+                                        @click="addChoice(o)">+ Add choice</button>
+                                <p class="field__error"
+                                   :id="`opt-${o.uid}-choices-error`"
+                                   x-show="o.err.choices"
+                                   x-text="o.err.choices"></p>
+                            </fieldset>
+                            <div class="field">
+                                <label class="field__label"
+                                       :for="`opt-${o.uid}-material`"
+                                       x-text="o.answer === 'choice' ? 'It uses' : 'If yes, it uses'"></label>
+                                <select class="field__input"
+                                        :id="`opt-${o.uid}-material`"
+                                        :aria-invalid="o.err.material ? 'true' : null"
+                                        :aria-describedby="o.err.material ? `opt-${o.uid}-material-error` : null"
+                                        @change="setMaterial(o, $event.target.value)">
+                                    <option value="" :selected="!o.material">No material</option>
+                                    <template x-for="m in materials" :key="m.id">
+                                        <option :value="m.id"
+                                                :selected="o.material === m.id"
+                                                x-text="`${m.name} (${m.unit})`"></option>
+                                    </template>
+                                </select>
+                                <p class="field__hint t-small muted">Its cost and selling price come from the material.</p>
+                                <p class="field__error"
+                                   :id="`opt-${o.uid}-material-error`"
+                                   x-show="o.err.material"
+                                   x-text="o.err.material"></p>
+                            </div>
+                            <div class="field">
+                                <p class="field__label">Asks for</p>
+                                <div class="tchips">
+                                    <button type="button"
+                                            class="tchip"
+                                            x-show="o.material"
+                                            :aria-pressed="o.asks_quantity ? 'true' : 'false'"
+                                            @click="o.asks_quantity = !o.asks_quantity"
+                                            x-text="`Quantity (${material(o)?.unit ?? ''})`"></button>
+                                    <button type="button"
+                                            class="tchip"
+                                            :aria-pressed="o.asks_notes ? 'true' : 'false'"
+                                            @click="o.asks_notes = !o.asks_notes">Notes</button>
+                                </div>
+                                <p class="field__hint t-small muted"
+                                   x-show="o.answer === 'yes_no'">Asked only when the answer is Yes.</p>
+                            </div>
+                            <fieldset class="seg">
+                                <legend class="field__label">Ask</legend>
+                                <div class="seg__track">
+                                    <label class="seg__opt">
+                                        <input class="seg__input"
+                                               type="radio"
+                                               :name="`opt-${o.uid}-ask`"
+                                               value="at_order"
+                                               :checked="o.asked_when === 'at_order'"
+                                               @change="o.asked_when = $event.target.value">
+                                        At order
+                                    </label>
+                                    <label class="seg__opt">
+                                        <input class="seg__input"
+                                               type="radio"
+                                               :name="`opt-${o.uid}-ask`"
+                                               value="when_done"
+                                               :checked="o.asked_when === 'when_done'"
+                                               @change="o.asked_when = $event.target.value">
+                                        When done
+                                    </label>
+                                </div>
+                            </fieldset>
+                        </div>
+                    </li>
+                </template>
+            </ul>
+        </div>
         {% include "catalog/_sheet_actions.html" %}
     </form>
 {% endblock %}

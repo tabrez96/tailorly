@@ -1,9 +1,20 @@
+from dataclasses import asdict
 from decimal import Decimal, InvalidOperation
 
 from django import forms
+from django.db import transaction
 from django.utils.html import format_html
 
-from catalog.models import Product
+from catalog.editor import (
+    OPTIONS_FIX,
+    EditorError,
+    OptionData,
+    load_list,
+    option_to_dict,
+    parse_measurements,
+    parse_options,
+)
+from catalog.models import Product, ProductOption
 from core.money import group_indian
 
 KIND_CHOICES = [
@@ -75,25 +86,93 @@ class _SheetForm(forms.ModelForm):
         return kind
 
 
+def _option_fields(option: OptionData) -> dict:
+    fields = asdict(option)
+    fields["material_id"] = fields.pop("material")
+    return fields
+
+
 class ProductForm(_SheetForm):
     kind_value = Product.PRIMARY
     usual_price = _amount_field("Price (₹)", "Enter a price.")
     type = forms.ChoiceField(
         label="Type", choices=Product.TYPES, widget=forms.RadioSelect
     )
+    measurements_json = forms.CharField(required=False, widget=forms.HiddenInput)
+    options_json = forms.CharField(required=False, widget=forms.HiddenInput)
 
     class Meta:
         model = Product
         fields = ["name", "type"]
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, materials=(), **kwargs):
         super().__init__(*args, **kwargs)
+        self.materials = list(materials)
+        self.option_errors: list[dict] = []
         self.initial = {"kind": Product.PRIMARY, "type": Product.CUSTOM} | self.initial
         if not self.is_bound and self.instance.pk:
             self.initial["usual_price"] = amount_input(self.instance.usual_price)
 
     def clean_usual_price(self):
         return _clean_amount(self.cleaned_data["usual_price"])
+
+    def _omitted(self, name: str) -> bool:
+        """True when the post left the field out or blank (keep the saved list)."""
+        return not self.data.get(name, "").strip()
+
+    def clean_measurements_json(self):
+        if self.data.get("type") == Product.READY_MADE:
+            return []
+        if self._omitted("measurements_json"):
+            return None
+        try:
+            return parse_measurements(self.cleaned_data["measurements_json"])
+        except EditorError as e:
+            raise forms.ValidationError(e.message) from None
+
+    def clean_options_json(self):
+        if self._omitted("options_json"):
+            return None
+        try:
+            options, errors = parse_options(
+                self.cleaned_data["options_json"], {m.pk for m in self.materials}
+            )
+        except EditorError as e:
+            raise forms.ValidationError(e.message) from None
+        if any(errors):
+            self.option_errors = errors
+            raise forms.ValidationError(OPTIONS_FIX)
+        return options
+
+    def editor_state(self) -> dict:
+        """What the measurement and option editors start from (for json_script)."""
+        if self.is_bound:
+            # Echo what was posted so nothing typed is lost.
+            measurements = self._posted_list("measurements_json")
+            options = self._posted_list("options_json")
+        elif self.instance.pk:
+            measurements = self.instance.measurement_fields
+            options = [option_to_dict(o) for o in self.instance.options.all()]
+        else:
+            measurements, options = [], []
+        return {
+            "measurements": measurements,
+            "options": options,
+            "materials": [
+                {"id": m.pk, "name": m.name, "unit": m.unit} for m in self.materials
+            ],
+            "errors": {
+                "measurements": " ".join(self.errors.get("measurements_json", [])),
+                "options": " ".join(self.errors.get("options_json", [])),
+                "option": self.option_errors,
+            },
+        }
+
+    def _posted_list(self, name: str) -> list:
+        try:
+            return load_list(self.data.get(name, ""))
+        except ValueError:
+            return []
 
     def clean(self):
         cleaned = super().clean()
@@ -110,9 +189,26 @@ class ProductForm(_SheetForm):
         product.kind = Product.PRIMARY
         product.unit = ""
         product.usual_price = self.cleaned_data["usual_price"]
-        if self.cleaned_data["type"] != Product.CUSTOM:
+        custom = self.cleaned_data["type"] == Product.CUSTOM
+        measurements = self.cleaned_data["measurements_json"]
+        if not custom:
             product.measurement_fields = []
-        return super().save(commit)
+        elif measurements is not None:
+            product.measurement_fields = measurements
+        options = self.cleaned_data["options_json"]
+        with transaction.atomic():
+            product = super().save(commit)
+            if commit and options is not None:
+                product.options.all().delete()
+                ProductOption.objects.bulk_create(
+                    ProductOption(
+                        product=product,
+                        position=i,
+                        **_option_fields(o),
+                    )
+                    for i, o in enumerate(options)
+                )
+        return product
 
 
 class MaterialForm(_SheetForm):

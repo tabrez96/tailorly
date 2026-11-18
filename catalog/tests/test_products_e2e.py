@@ -131,7 +131,7 @@ def test_remove_after_confirm(live_server, signed_in, demo_catalog):
     page.goto(live_server.url + "/products/")
     page.once("dialog", lambda d: d.accept())
     page.click(f"#row-{Product.objects.get(name='Blouse').pk}")
-    page.get_by_role("button", name="Remove").click()
+    page.get_by_role("button", name="Remove", exact=True).click()
     page.get_by_text("Blouse removed").wait_for()
     page.wait_for_function("!document.querySelector('#sheet').open")
     expect(
@@ -146,7 +146,105 @@ def test_sheet_screenshots(live_server, signed_in, demo_catalog):
     page.click(f"#row-{Product.objects.get(name='Blouse').pk}")
     page.wait_for_function("document.querySelector('#sheet').open")
     page.screenshot(path=ARTIFACTS / "S15-products-edit-product.png")
+    page.locator(".opts").scroll_into_view_if_needed()
+    page.screenshot(path=ARTIFACTS / "S15-products-edit-product-options.png")
     page.goto(live_server.url + "/products/?kind=materials")
     page.click(f"#row-{Product.objects.get(name='Lining, cotton cream').pk}")
     page.wait_for_function("document.querySelector('#sheet').open")
     page.screenshot(path=ARTIFACTS / "S15-products-edit-material.png")
+
+
+def open_blouse(page, live_server):
+    page.goto(live_server.url + "/products/")
+    page.click(f"#row-{Product.objects.get(name='Blouse').pk}")
+    page.wait_for_function("document.querySelector('#sheet').open")
+    page.locator(".opt").first.wait_for()
+
+
+def blouse_options():
+    blouse = Product.objects.get(name="Blouse")
+    return list(blouse.options.all())
+
+
+def test_options_add_reorder_and_save(live_server, signed_in, demo_catalog):
+    _, page = signed_in("owner")
+    open_blouse(page, live_server)
+    page.click("#opt-add")
+    page.wait_for_function("document.activeElement.id.endsWith('-name')")
+    page.keyboard.type("Fall")
+    page.locator(".opt__body:visible").get_by_text("Choice", exact=True).click()
+    body = page.locator(".opt__body:visible")
+    body.get_by_label("Choice 1", exact=True).fill("Plain")
+    body.get_by_label("Choice 2", exact=True).fill("Printed")
+    body.get_by_role("button", name="+ Add choice").click()
+    body.get_by_label("Choice 3", exact=True).wait_for()
+    body.get_by_role("button", name="Remove choice 3").click()
+    assert body.get_by_label("Choice 3", exact=True).count() == 0
+    body.get_by_role("button", name="Move Fall up").click()
+    page.get_by_role("button", name="Save").click()
+    page.get_by_text("Blouse saved").wait_for()
+    options = blouse_options()
+    assert [o.name for o in options] == ["Lining", "Sleeve style", "Fall", "Padding"]
+    assert options[2].choices == ["Plain", "Printed"]
+
+
+def test_option_material_and_ask_when_done(live_server, signed_in, demo_catalog):
+    _, page = signed_in("owner")
+    open_blouse(page, live_server)
+    page.get_by_role("button", name="Edit Padding").click()
+    body = page.locator(
+        ".opt__body", has=page.get_by_role("button", name="Remove option Padding")
+    )
+    body.wait_for()
+    body.locator("select").select_option(label="Lining, cotton cream (m)")
+    body.get_by_role("button", name="Quantity (m)").click()
+    body.get_by_text("When done", exact=True).click()
+    page.get_by_role("button", name="Save").click()
+    page.get_by_text("Blouse saved").wait_for()
+    padding = blouse_options()[2]
+    assert padding.material.name == "Lining, cotton cream"
+    assert padding.asks_quantity
+    assert padding.asked_when == "when_done"
+
+
+def test_choice_error_focuses_and_keeps_sheet(live_server, signed_in, demo_catalog):
+    _, page = signed_in("owner")
+    open_blouse(page, live_server)
+    page.get_by_role("button", name="Edit Sleeve style").click()
+    body = page.locator(".opt__body:visible")
+    for _ in range(3):
+        body.get_by_role(
+            "button", name=re.compile("^Remove (Elbow|Full|Sleeveless)")
+        ).first.click()
+    page.get_by_role("button", name="Save").click()
+    page.get_by_text("Add at least 2 choices.").wait_for()
+    page.wait_for_function("/^opt-\\d+-choice-0$/.test(document.activeElement.id)")
+    assert page.locator(".opt__body:visible").count() == 1
+    assert page.evaluate("document.querySelector('#sheet').open")
+
+
+def test_option_name_required_focuses_name(live_server, signed_in, demo_catalog):
+    _, page = signed_in("owner")
+    open_blouse(page, live_server)
+    page.click("#opt-add")
+    page.get_by_role("button", name="Save").click()
+    page.get_by_text("Enter an option name.").wait_for()
+    page.wait_for_function("/^opt-\\d+-name$/.test(document.activeElement.id)")
+    assert page.evaluate("document.querySelector('#sheet').open")
+
+
+def test_measurement_fields_edit(live_server, signed_in, demo_catalog):
+    _, page = signed_in("owner")
+    open_blouse(page, live_server)
+    page.click("#m-edit")
+    page.get_by_role("button", name="Remove Back neck").click()
+    page.click("#m-add")
+    page.wait_for_function("document.activeElement.id === 'm-8'")
+    page.keyboard.type("Hip")
+    page.get_by_role("button", name="Move Hip up").click()
+    page.get_by_role("button", name="Done").click()
+    assert "Measurements · 9" in page.locator(".mrow__title").inner_text()
+    page.get_by_role("button", name="Save").click()
+    page.get_by_text("Blouse saved").wait_for()
+    fields = Product.objects.get(name="Blouse").measurement_fields
+    assert fields[-2:] == ["Hip", "Front neck"]
