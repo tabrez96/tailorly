@@ -1,2 +1,55 @@
+{% load formats %}
 {% include "components/header.html" with title=title back_url=back_url %}
-<p class="muted">Your pay appears here.</p>
+<section class="hero my-pay-hero">
+    <p class="t-small muted">This week so far · {{ week_label }}</p>
+    {% if payout %}
+        <p class="t-hero-num">{{ payout.amount|inr }}</p>
+        <p class="total-row t-body">
+            <span>{{ payout.days }} days × {{ payout.daily_wage|inr }}</span><span>{{ payout.base_total|inr }}</span>
+        </p>
+        {% if payout.overtime_minutes %}
+            <p class="total-row t-body">
+                <span>Overtime {{ payout.overtime_minutes|duration }} × {{ hourly|inr }}{% if payout.overtime_multiplier != 1 %} × {{ payout.overtime_multiplier.normalize }}{% endif %}</span><span>{{ payout.overtime_total|inr }}</span>
+            </p>
+        {% endif %}
+        <p class="t-small muted">Paid {{ payout.paid_on|day }}, {{ payout.get_method_display }}.</p>
+    {% else %}
+        <p class="t-hero-num">{{ week.total|inr }}</p>
+        <p class="total-row t-body">
+            <span>{{ week.days_paid }} days × {{ week.daily_wage|inr }}</span><span>{{ week.base_total|inr }}</span>
+        </p>
+        {% if week.overtime_minutes %}
+            <p class="total-row t-body">
+                <span>Overtime {{ week.overtime_minutes|duration }} × {{ hourly|inr }}{% if week.multiplier != 1 %} × {{ week.multiplier.normalize }}{% endif %}</span><span>{{ week.overtime_total|inr }}</span>
+            </p>
+        {% endif %}
+        <p class="t-small muted">Pay day {{ pay_day|day }}. This is an estimate until the week is paid.</p>
+    {% endif %}
+</section>
+<section class="my-pay-days">
+    <h2 class="t-section">This week</h2>
+    <ul class="list card">
+        {% for d in days %}
+            <li class="list__row">
+                <div class="list__main">
+                    <p class="t-body">
+                        <strong>{{ d.pay.date|day }}</strong>
+                    </p>
+                    <p class="t-small muted">
+                        {% if d.pay.running %}
+                            Started {{ d.record.start|clock }} · working
+                        {% elif d.pay.paid %}
+                            {{ d.record.start|clock }} – {{ d.record.end|clock }} · {{ d.pay.worked_minutes|duration }}{% if d.pay.overtime_minutes %} · {{ d.pay.overtime_minutes|duration }} overtime{% endif %}
+                        {% elif d.record %}
+                            Started {{ d.record.start|clock }} · not ended, unpaid
+                        {% else %}
+                            Off, unpaid
+                        {% endif %}
+                    </p>
+                </div>
+                <span class="day-row__pay">{% if d.pay.paid %}{{ d.pay.total|inr }}{% else %}—{% endif %}</span>
+            </li>
+        {% endfor %}
+    </ul>
+</section>
+{% include "staff/_payouts.html" with heading="Payments received" %}

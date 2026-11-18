@@ -1,12 +1,13 @@
 from django import forms
 from django.contrib.auth.models import User
 from django.db import transaction
+from django.utils import timezone
 from PIL import Image
 
 from accounts.phones import is_valid_phone, normalize_phone
 from accounts.roles import EMPLOYEE, add_to_role
 from staff.attendance import first_name, overtime_hint, parse_decimal, wage_hint
-from staff.models import Employee
+from staff.models import Employee, Payout
 from staff.photos import resize_photo
 
 
@@ -149,3 +150,36 @@ class DayForm(forms.Form):
         if data.get("start") and data.get("end") and data["end"] < data["start"]:
             self.add_error("end", "End must be after start.")
         return data
+
+
+class PayoutForm(forms.Form):
+    amount = forms.CharField(
+        label="Amount paid (₹)",
+        help_text="Change it if you paid a different amount.",
+        widget=forms.TextInput(attrs={"inputmode": "decimal"}),
+    )
+    paid_on = forms.DateField(
+        label="Paid on",
+        input_formats=["%Y-%m-%d"],
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+    )
+    method = forms.ChoiceField(
+        label="Method", choices=Payout.METHODS, widget=forms.RadioSelect
+    )
+
+    def clean_amount(self):
+        value = parse_decimal(self.cleaned_data["amount"].replace(",", ""))
+        if (
+            value is None
+            or value < 0
+            or value.adjusted() >= 10
+            or value.as_tuple().exponent < -2
+        ):
+            raise forms.ValidationError("Enter an amount of 0 or more.")
+        return value
+
+    def clean_paid_on(self):
+        paid_on = self.cleaned_data["paid_on"]
+        if paid_on > timezone.localdate():
+            raise forms.ValidationError("Pick today or an earlier date.")
+        return paid_on

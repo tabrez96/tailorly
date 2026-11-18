@@ -1051,3 +1051,54 @@ body[data-subpage="1"] .nav {
 [x-cloak] {
   display: none !important;
 }
+
+/* Pay: day amounts, overtime tag, totals and the payout sheet */
+.day-row__pay {
+  min-width: 56px;
+  text-align: right;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.ot-tag {
+  font-weight: 700;
+  color: var(--warn);
+}
+.week-total,
+#payouts > .t-section,
+.my-pay-days,
+.my-pay-hero {
+  margin-top: var(--s4);
+}
+.my-pay-days > .t-section,
+.week-total > .t-section,
+#payouts > .t-section {
+  margin-bottom: var(--s2);
+  padding: 0 var(--s1);
+}
+.my-pay-hero > * + * {
+  margin-top: var(--s2);
+}
+.total-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s3);
+  margin: 0;
+  padding: var(--s1) 0;
+}
+.total-row--sum {
+  margin-top: var(--s2);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--line);
+}
+.total-paid {
+  margin: var(--s3) 0 0;
+}
+.week-total .btn {
+  margin-top: var(--s3);
+}
+.sheet__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s3);
+  margin-top: var(--s4);
+}

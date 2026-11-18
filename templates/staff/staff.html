@@ -60,4 +60,6 @@
     </div>
     {% include "staff/_days.html" %}
     <p class="footnote muted t-small">Tap a day to fix its start or end time.</p>
+    {% include "staff/_week_total.html" %}
+    {% include "staff/_payouts.html" with heading="Past payouts" %}
 {% endif %}

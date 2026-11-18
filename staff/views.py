@@ -1,12 +1,15 @@
 import json
 from datetime import date, timedelta
+from decimal import ROUND_HALF_UP, Decimal
 
+from django.db import IntegrityError, transaction
 from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from accounts.decorators import employee_required, owner_required
+from core.formats import format_day
 from core.pages import render_page, sheet_saved_swap
 from production.views import my_work
 from staff.attendance import (
@@ -20,29 +23,94 @@ from staff.attendance import (
     week_label,
     week_start,
 )
-from staff.forms import DayForm, EmployeeForm
-from staff.models import Employee
+from staff.forms import DayForm, EmployeeForm, PayoutForm
+from staff.models import Employee, Payout
+from staff.pay import pay_day, payout_summary, short_period, week_pay
 
 STAFF_URL = "/settings/staff/"
 STAFF_BACK = "/"  # S18 Settings once it exists
 
 
-@employee_required
-def my_pay(request):
-    return render_page(
-        request, "staff/my_pay.html", {"title": "My pay", "tab": "my_pay"}
-    )
-
-
-def _days_context(employee, monday, today):
-    records = {
+def _records(employee, monday):
+    return {
         r.date: r
         for r in employee.days.filter(date__range=(monday, week_days(monday)[-1]))
     }
+
+
+def _week(employee, monday, today):
+    records = {d: (r.start, r.end) for d, r in _records(employee, monday).items()}
+    return week_pay(
+        monday, records, employee.daily_wage, employee.overtime_multiplier, today
+    )
+
+
+def payout_rows(payouts):
+    return [
+        {
+            "payout": p,
+            "period": short_period(p.week_start),
+            "summary": payout_summary(p.days, p.overtime_minutes),
+        }
+        for p in payouts
+    ]
+
+
+@employee_required
+def my_pay(request):
+    employee = _my_employee(request)
+    today = timezone.localdate()
+    monday = week_start(today)
+    week = _week(employee, monday, today)
+    records = _records(employee, monday)
+    days = [
+        {"pay": d, "record": records.get(d.date)} for d in week.days if d.date <= today
+    ]
+    payouts = payout_rows(employee.payouts.all())
+    next_pay_day = pay_day(monday)
+    payout = employee.payouts.filter(week_start=monday).first()
+    return render_page(
+        request,
+        "staff/my_pay.html",
+        {
+            "title": "My pay",
+            "tab": "my_pay",
+            "week": week,
+            "week_label": week_label(monday),
+            "pay_day": next_pay_day,
+            "payout": payout,
+            "hourly": _hourly(employee, payout),
+            "days": days,
+            "payouts": payouts,
+            "empty_text": (
+                f"No payments yet. Your first pay day is {format_day(next_pay_day)}."
+            ),
+        },
+    )
+
+
+def _hourly(employee, payout):
+    """Hourly rate for the overtime row: the stored wage once the week is paid."""
+    return hourly_rate(payout.daily_wage if payout else employee.daily_wage)
+
+
+def _days_context(employee, monday, today):
+    records = _records(employee, monday)
+    week = _week(employee, monday, today)
+    payout = employee.payouts.filter(week_start=monday).first()
     return {
         "employee": employee,
         "today": today,
-        "rows": [day_row(d, records.get(d), today) for d in week_days(monday)],
+        "rows": [
+            day_row(d, records.get(d), today) | {"pay": week.days[i]}
+            for i, d in enumerate(week_days(monday))
+        ],
+        "week": week,
+        "monday": monday,
+        "hourly": _hourly(employee, payout),
+        "payout": payout,
+        "payouts": payout_rows(employee.payouts.all()),
+        "can_pay": monday <= today,
     }
 
 
@@ -66,7 +134,6 @@ def staff(request):
         )
         monday = parse_week(request.GET.get("week"), today)
         ctx |= _days_context(selected, monday, today) | {
-            "hourly": hourly_rate(selected.daily_wage),
             "week_label": week_label(monday),
             "prev_url": _staff_url(selected, monday - timedelta(days=7)),
             "next_url": _staff_url(selected, monday + timedelta(days=7)),
@@ -175,6 +242,7 @@ def day_sheet(request, pk, day):
                 employee, parsed, form.cleaned_data["start"], form.cleaned_data["end"]
             )
             ctx = _days_context(employee, week_start(parsed), timezone.localdate())
+            ctx["oob"] = True
             return sheet_saved_swap(
                 render(request, "staff/_days.html", ctx), "Day saved", "#staff-days"
             )
@@ -195,7 +263,78 @@ def day_end(request, pk, day):
     if parsed == timezone.localdate():
         end_day(employee, timezone.now(), by_owner=True)
     ctx = _days_context(employee, week_start(parsed), timezone.localdate())
+    ctx["oob"] = True
     return render(request, "staff/_days.html", ctx)
+
+
+@owner_required
+def payout_sheet(request, pk, week):
+    employee = get_object_or_404(Employee, pk=pk)
+    today = timezone.localdate()
+    try:
+        monday = date.fromisoformat(week)
+    except ValueError:
+        raise Http404 from None
+    if (
+        monday.weekday() != 0
+        or monday > today
+        or employee.payouts.filter(week_start=monday).exists()
+    ):
+        raise Http404
+    week_data = _week(employee, monday, today)
+    form = PayoutForm(
+        request.POST or None,
+        initial={
+            "amount": str(week_data.total.quantize(Decimal(1), ROUND_HALF_UP)),
+            "paid_on": min(pay_day(monday), today),
+            "method": Payout.CASH,
+        },
+    )
+    status = 200
+    if request.method == "POST":
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    week_data = _week(employee, monday, today)
+                    Payout.objects.create(
+                        employee=employee,
+                        week_start=monday,
+                        paid_on=form.cleaned_data["paid_on"],
+                        method=form.cleaned_data["method"],
+                        amount=form.cleaned_data["amount"],
+                        days=week_data.days_paid,
+                        daily_wage=week_data.daily_wage,
+                        base_total=week_data.base_total,
+                        overtime_minutes=week_data.overtime_minutes,
+                        overtime_multiplier=week_data.multiplier,
+                        overtime_total=week_data.overtime_total,
+                        calculated_total=week_data.total,
+                    )
+            except IntegrityError:
+                form.add_error(None, "This week is already paid.")
+            else:
+                return sheet_saved_swap(
+                    render(
+                        request,
+                        "staff/_payout_saved.html",
+                        _days_context(employee, monday, today),
+                    ),
+                    "Payout saved",
+                    "#staff-total",
+                )
+        status = 422
+    return render(
+        request,
+        "staff/payout_sheet.html",
+        {
+            "employee": employee,
+            "form": form,
+            "monday": monday,
+            "period": short_period(monday),
+            "week": week_data,
+        },
+        status=status,
+    )
 
 
 def _my_employee(request):

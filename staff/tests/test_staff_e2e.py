@@ -75,3 +75,49 @@ def test_owner_edit_employee_form(signed_in, live_server, db):
             if attempt == 4:
                 raise
     assert page.evaluate("window.__marker") == 1
+
+
+def _seed_week(employee):
+    from datetime import date, datetime
+    from zoneinfo import ZoneInfo
+
+    from staff.models import DayRecord
+
+    tz = ZoneInfo("Asia/Kolkata")
+    for day, end in ((9, 19), (10, 17), (11, 17)):
+        DayRecord.objects.create(
+            employee=employee,
+            date=date(2026, 11, day),
+            start=datetime(2026, 11, day, 9, 0, tzinfo=tz),
+            end=datetime(2026, 11, day, end, 0, tzinfo=tz),
+        )
+
+
+def test_owner_records_payout(signed_in, live_server, db):
+    _seed_week(_employee(db))
+    context, page = signed_in("owner")
+    page.goto(live_server.url + "/settings/staff/?week=2026-11-09")
+    page.evaluate("window.__marker = 1")
+    page.screenshot(path=str(SHOTS / "S10-staff.png"), full_page=True)
+    page.get_by_role("button", name="Record payout").click()
+    page.get_by_role("button", name="Save payout").wait_for()
+    page.screenshot(path=str(SHOTS / "S10-record-payout.png"))
+    page.get_by_role("button", name="Save payout").click()
+    page.locator("#staff-total").get_by_text("Paid ").wait_for()
+    assert not page.get_by_role("button", name="Save payout").is_visible()
+    assert page.evaluate("window.__marker") == 1
+
+
+@pytest.mark.parametrize("scheme", ["light", "dark"])
+def test_employee_my_pay(signed_in, live_server, scheme):
+    context, page = signed_in("employee")
+    user = User.objects.get(username="employee")
+    employee = Employee.objects.create(
+        name="Ali Khan", phone="9000011121", daily_wage=800, user=user
+    )
+    _seed_week(employee)
+    page.emulate_media(color_scheme=scheme)
+    page.goto(live_server.url + "/my-pay/")
+    expect(page.get_by_text("This week so far")).to_be_visible()
+    name = "S09-dark.png" if scheme == "dark" else "S09-my-pay.png"
+    page.screenshot(path=str(SHOTS / name), full_page=True)

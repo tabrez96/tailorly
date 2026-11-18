@@ -1,0 +1,12 @@
+{% load formats %}
+<p class="total-row t-body">
+    <span>{{ days }} days × {{ wage|inr }}</span><span>{{ base|inr }}</span>
+</p>
+{% if minutes %}
+    <p class="total-row t-body">
+        <span>Overtime {{ minutes|duration }} × {{ hourly|inr }} × {{ multiplier.normalize }}</span><span>{{ overtime|inr }}</span>
+    </p>
+{% endif %}
+<p class="total-row total-row--sum t-body">
+    <strong>To pay</strong><strong>{{ total|inr }}</strong>
+</p>

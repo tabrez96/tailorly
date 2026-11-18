@@ -1,6 +1,8 @@
 import pytest
+from django.contrib.auth.models import User
 
 from core import assets
+from staff.models import Employee
 
 pytestmark = pytest.mark.e2e
 
@@ -11,12 +13,22 @@ HOLD_FRAGMENT = (
 ORDERS_FRAGMENT = HOLD_FRAGMENT.replace("New order", "Orders")
 
 
+def _link_employee():
+    Employee.objects.create(
+        name="Ali Khan",
+        phone="9000011121",
+        daily_wage=800,
+        user=User.objects.get(username="employee"),
+    )
+
+
 def _nav(page, label):
     return page.locator(".nav__item", has_text=label)
 
 
 def test_tab_swaps_page_in_place(live_server, signed_in):
     _, page = signed_in("employee")
+    _link_employee()
     page.goto(live_server.url + "/my-work/")
     page.evaluate("window.__marker = 1")
     _nav(page, "My pay").click()
@@ -33,6 +45,7 @@ def test_tab_swaps_page_in_place(live_server, signed_in):
 
 def test_refresh_and_back_render_full_page(live_server, signed_in):
     _, page = signed_in("employee")
+    _link_employee()
     page.goto(live_server.url + "/my-work/")
     _nav(page, "My pay").click()
     page.wait_for_url("**/my-pay/")

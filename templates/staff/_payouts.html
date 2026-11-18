@@ -1,0 +1,22 @@
+{% load formats %}
+<section id="payouts"{% if oob %} hx-swap-oob="true"{% endif %}>
+    {% if payouts %}
+        <h2 class="t-section">{{ heading }}</h2>
+        <ul class="list card payouts">
+            {% for row in payouts %}
+                <li class="list__row">
+                    <div class="list__main">
+                        <p class="t-body">
+                            <strong>{{ row.payout.paid_on|day }} · {{ row.payout.get_method_display }}</strong>
+                        </p>
+                        <p class="t-small muted">For {{ row.period }} · {{ row.summary }}</p>
+                    </div>
+                    <strong class="day-row__pay">{{ row.payout.amount|inr }}</strong>
+                </li>
+            {% endfor %}
+        </ul>
+    {% elif empty_text %}
+        <h2 class="t-section">{{ heading }}</h2>
+        <p class="muted">{{ empty_text }}</p>
+    {% endif %}
+</section>

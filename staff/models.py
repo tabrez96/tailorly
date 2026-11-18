@@ -56,3 +56,39 @@ class DayRecord(models.Model):
 
     def __str__(self):
         return f"{self.employee} {self.date}"
+
+
+class Payout(models.Model):
+    CASH, UPI, BANK = "cash", "upi", "bank"
+    METHODS = [(CASH, "Cash"), (UPI, "UPI"), (BANK, "Bank")]
+
+    employee = models.ForeignKey(
+        Employee, on_delete=models.PROTECT, related_name="payouts"
+    )
+    week_start = models.DateField()  # Monday of the paid week
+    paid_on = models.DateField()
+    method = models.CharField(max_length=4, choices=METHODS)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)  # actually paid
+    # Snapshot of the calculation when paid; never recomputed.
+    days = models.PositiveSmallIntegerField()
+    daily_wage = models.DecimalField(max_digits=12, decimal_places=2)
+    base_total = models.DecimalField(max_digits=12, decimal_places=2)
+    overtime_minutes = models.PositiveIntegerField()
+    overtime_multiplier = models.DecimalField(max_digits=4, decimal_places=2)
+    overtime_total = models.DecimalField(max_digits=12, decimal_places=2)
+    calculated_total = models.DecimalField(max_digits=12, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-week_start"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["employee", "week_start"], name="payout_one_per_week"
+            ),
+            models.CheckConstraint(
+                condition=Q(amount__gte=0), name="payout_amount_not_negative"
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.employee} {self.week_start}"
