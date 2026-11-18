@@ -3,6 +3,7 @@ import pytest
 from catalog.listing import (
     ListFilter,
     filter_url,
+    material_used_by,
     options_summary,
     parse_filter,
     uses_summary,
@@ -78,3 +79,16 @@ def test_options_summary(names, text):
 )
 def test_uses_summary(uses, text):
     assert uses_summary(uses) == text
+
+
+def test_material_used_by():
+    note = "Changes apply to new orders only."
+    assert material_used_by([]) == note
+    three = [("Lining", "Blouse"), ("Lining", "Chudidar"), ("Lining", "Salwar suit")]
+    assert material_used_by(three) == (
+        f"Used by the Lining option on Blouse, Chudidar and Salwar suit. {note}"
+    )
+    two = [("Lining", "Blouse"), ("Can-can", "Blouse")]
+    assert material_used_by(two) == (
+        f"Used by the Lining and Can-can options on Blouse. {note}"
+    )

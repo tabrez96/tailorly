@@ -51,3 +51,21 @@ def uses_summary(uses: list[tuple[str, int, str]]) -> str:
     if len(products) == 1:
         return f"{options} on {next(iter(products.values()))}"
     return f"{options} on {len(products)} products"
+
+
+def _join(items: list[str]) -> str:
+    items = list(dict.fromkeys(items))
+    if len(items) == 1:
+        return items[0]
+    return f"{', '.join(items[:-1])} and {items[-1]}"
+
+
+def material_used_by(uses: list[tuple[str, str]]) -> str:
+    """Sheet subtitle for a material; `uses` is (option name, product name) pairs."""
+    note = "Changes apply to new orders only."
+    if not uses:
+        return note
+    options = list(dict.fromkeys(option for option, _ in uses))
+    noun = "option" if len(options) == 1 else "options"
+    products = _join([product for _, product in uses])
+    return f"Used by the {_join(options)} {noun} on {products}. {note}"

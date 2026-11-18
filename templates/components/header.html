@@ -21,7 +21,15 @@
                    hx-sync="#page:replace"
                    hx-push-url="true">{{ action_label }}</a>
             {% else %}
-                <button class="btn btn--tonal btn--sm header__action" type="button">{{ action_label }}</button>
+                {% if action_sheet %}
+                    <button class="btn btn--tonal btn--sm header__action"
+                            type="button"
+                            id="{{ action_id }}"
+                            hx-get="{{ action_sheet }}"
+                            hx-target="#sheet">{{ action_label }}</button>
+                {% else %}
+                    <button class="btn btn--tonal btn--sm header__action" type="button">{{ action_label }}</button>
+                {% endif %}
             {% endif %}
         {% endif %}
     </div>

@@ -69,3 +69,13 @@ def sheet_saved_swap(response: HttpResponse, toast: str, target: str) -> HttpRes
         {"sheet:close": True, "toast": {"message": toast}}
     )
     return response
+
+
+def sheet_saved_location(path: str, toast: str) -> HttpResponse:
+    """Close the sheet, show a toast and reload the list at `path` into #page."""
+    response = HttpResponse(status=204)
+    response["HX-Location"] = json.dumps({"path": path, "target": "#page"})
+    response["HX-Trigger"] = json.dumps(
+        {"sheet:close": True, "toast": {"message": toast}}
+    )
+    return response

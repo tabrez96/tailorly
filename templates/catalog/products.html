@@ -1,8 +1,12 @@
 {% load ui formats %}
-{% include "components/header.html" with title=title action_label="+ Add" %}
 <div id="catalog">
+    {% include "components/header.html" with title=title action_label="+ Add" action_sheet=add_url action_id="products-add" %}
     {% if not counts.sold and not counts.materials %}
-        {% include "components/empty_state.html" with icon="garment" title="No products yet" text="Add the garments you make and sell, with their usual price and options. They fill in for you when you take an order." button="+ Add product" %}
+        {% if filter.kind == "materials" %}
+            {% include "components/empty_state.html" with icon="fabric" title="No materials yet" text="Add lining or falls to use on items." button="+ Add material" button_sheet=add_url button_id="empty-add" %}
+        {% else %}
+            {% include "components/empty_state.html" with icon="garment" title="No products yet" text="Add the garments you make and sell, with their usual price and options. They fill in for you when you take an order." button="+ Add product" button_sheet=add_url button_id="empty-add" %}
+        {% endif %}
     {% else %}
         <nav class="seg" aria-label="Kind">
             <div class="seg__track">
@@ -21,9 +25,9 @@
             </div>
         </nav>
         {% if filter.kind == "materials" and not counts.materials %}
-            {% include "components/empty_state.html" with icon="fabric" title="No materials yet" text="Add lining or falls to use on items." button="+ Add material" %}
+            {% include "components/empty_state.html" with icon="fabric" title="No materials yet" text="Add lining or falls to use on items." button="+ Add material" button_sheet=add_url button_id="empty-add" %}
         {% elif filter.kind != "materials" and not counts.sold %}
-            {% include "components/empty_state.html" with icon="garment" title="No products yet" text="Add the garments you make and sell, with their usual price and options. They fill in for you when you take an order." button="+ Add product" %}
+            {% include "components/empty_state.html" with icon="garment" title="No products yet" text="Add the garments you make and sell, with their usual price and options. They fill in for you when you take an order." button="+ Add product" button_sheet=add_url button_id="empty-add" %}
         {% else %}
             <form id="catalog-search"
                   class="search"
@@ -62,48 +66,54 @@
                     <ul class="list">
                         {% for row in rows %}
                             <li class="list__row">
-                                {% if filter.kind == "materials" %}
-                                    {% with m=row.material %}
-                                        <span class="icon-tile">
-                                            {% if m.unit == "m" %}
-                                                {% include "components/icon.html" with name="fabric" %}
-                                            {% else %}
-                                                {% include "components/icon.html" with name="notions" %}
-                                            {% endif %}
-                                        </span>
-                                        <div class="list__main">
-                                            <p class="prow__name">
-                                                <span class="t-body prow__title">{{ m.name }}</span>
-                                            </p>
-                                            <p class="prow__sub muted t-small">
-                                                {% if m.billed_by_default %}sells {{ m.selling_price|inr }}{% else %}not billed on its own{% endif %} · {{ row.uses }}
-                                            </p>
-                                        </div>
-                                        <div class="prow__end">
-                                            <p class="prow__price tabular">{{ m.cost_price|inr }}</p>
-                                            <p class="t-small muted">cost a {{ m.unit }}</p>
-                                        </div>
-                                    {% endwith %}
-                                {% else %}
-                                    {% with p=row.product %}
-                                        <span class="icon-tile">
-                                            {% if p.type == "custom" %}
-                                                {% include "components/icon.html" with name="garment" %}
-                                            {% else %}
-                                                {% include "components/icon.html" with name="bag" %}
-                                            {% endif %}
-                                        </span>
-                                        <div class="list__main">
-                                            <p class="prow__name">
-                                                <span class="t-body prow__title">{{ p.name }}</span>
-                                                <span class="chip chip--grey">{{ p.get_type_display }}</span>
-                                            </p>
-                                            <p class="prow__sub muted t-small">{{ row.summary }}</p>
-                                        </div>
-                                        <p class="prow__price tabular">{{ p.usual_price|inr }}</p>
-                                    {% endwith %}
-                                {% endif %}
-                                {% include "components/icon.html" with name="chevron-right" %}
+                                <button class="prow-btn"
+                                        type="button"
+                                        id="row-{% if filter.kind == "materials" %}{{ row.material.pk }}{% else %}{{ row.product.pk }}{% endif %}"
+                                        hx-get="{{ row.edit_url }}"
+                                        hx-target="#sheet">
+                                    {% if filter.kind == "materials" %}
+                                        {% with m=row.material %}
+                                            <span class="icon-tile">
+                                                {% if m.unit == "m" %}
+                                                    {% include "components/icon.html" with name="fabric" %}
+                                                {% else %}
+                                                    {% include "components/icon.html" with name="notions" %}
+                                                {% endif %}
+                                            </span>
+                                            <div class="list__main">
+                                                <p class="prow__name">
+                                                    <span class="t-body prow__title">{{ m.name }}</span>
+                                                </p>
+                                                <p class="prow__sub muted t-small">
+                                                    {% if m.billed_by_default %}sells {{ m.selling_price|inr }}{% else %}not billed on its own{% endif %} · {{ row.uses }}
+                                                </p>
+                                            </div>
+                                            <div class="prow__end">
+                                                <p class="prow__price tabular">{{ m.cost_price|inr }}</p>
+                                                <p class="t-small muted">cost a {{ m.unit }}</p>
+                                            </div>
+                                        {% endwith %}
+                                    {% else %}
+                                        {% with p=row.product %}
+                                            <span class="icon-tile">
+                                                {% if p.type == "custom" %}
+                                                    {% include "components/icon.html" with name="garment" %}
+                                                {% else %}
+                                                    {% include "components/icon.html" with name="bag" %}
+                                                {% endif %}
+                                            </span>
+                                            <div class="list__main">
+                                                <p class="prow__name">
+                                                    <span class="t-body prow__title">{{ p.name }}</span>
+                                                    <span class="chip chip--grey">{{ p.get_type_display }}</span>
+                                                </p>
+                                                <p class="prow__sub muted t-small">{{ row.summary }}</p>
+                                            </div>
+                                            <p class="prow__price tabular">{{ p.usual_price|inr }}</p>
+                                        {% endwith %}
+                                    {% endif %}
+                                    {% include "components/icon.html" with name="chevron-right" %}
+                                </button>
                             </li>
                         {% endfor %}
                     </ul>
@@ -120,7 +130,10 @@
                             No {% if filter.kind == "materials" %}material{% else %}product{% endif %} called "{{ filter.q }}". Add it?
                         </h2>
                         <button class="btn btn--primary"
-                                type="button">+ Add {% if filter.kind == "materials" %}material{% else %}product{% endif %}</button>
+                                type="button"
+                                id="search-add"
+                                hx-get="{{ add_named_url }}"
+                                hx-target="#sheet">+ Add {% if filter.kind == "materials" %}material{% else %}product{% endif %}</button>
                     </div>
                 {% else %}
                     <p class="muted empty__text">No {% if filter.type == "custom" %}custom{% else %}ready-made{% endif %} products yet.</p>
@@ -128,4 +141,5 @@
             </div>
         {% endif %}
     {% endif %}
+    {% if open_add %}<div hidden hx-get="{{ add_url }}" hx-trigger="load" hx-target="#sheet"></div>{% endif %}
 </div>

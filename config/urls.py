@@ -14,6 +14,11 @@ urlpatterns = [
     path("my-work/day/end/", staff_views.end_my_day, name="end_my_day"),
     path("my-pay/", staff_views.my_pay, name="my_pay"),
     path("products/", catalog_views.products, name="products"),
+    path("products/new/", catalog_views.product_sheet, name="product_add"),
+    path("products/<int:pk>/", catalog_views.product_sheet, name="product_edit"),
+    path(
+        "products/<int:pk>/remove/", catalog_views.product_remove, name="product_remove"
+    ),
     path("", include("accounts.urls")),
     path("", include("staff.urls")),
     path("admin/", admin.site.urls),

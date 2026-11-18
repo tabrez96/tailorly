@@ -1,5 +1,6 @@
 // App shell: htmx page swaps plus the Alpine sheet, hold and toast components.
 let sheetOpener = null;
+let sheetFocusId = null;
 
 const store = () => Alpine.store("shell");
 
@@ -127,7 +128,9 @@ document.addEventListener("htmx:before:request", (evt) => {
     evt.preventDefault();
     history.back();
   } else if (target?.id === "sheet") {
-    sheetOpener = document.activeElement;
+    // A sheet that re-renders itself keeps its first opener.
+    if (target.open) sheetFocusId = document.activeElement?.id;
+    else sheetOpener = document.activeElement;
   }
 });
 
@@ -158,6 +161,8 @@ document.addEventListener("htmx:after:swap", (evt) => {
       window.dispatchEvent(
         new CustomEvent("sheet:open", { detail: { opener: sheetOpener } }),
       );
+    } else if (!target.querySelector('[aria-invalid="true"]')) {
+      document.getElementById(sheetFocusId)?.focus();
     }
   } else if (
     elt?.id &&
