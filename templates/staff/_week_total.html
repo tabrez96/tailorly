@@ -1,0 +1,22 @@
+{% load formats %}
+<section id="staff-total"
+         class="week-total"{% if oob %} hx-swap-oob="true"{% endif %}>
+    <h2 class="t-section">This week so far</h2>
+    <div class="card">
+        {% if payout %}
+            {% include "staff/_total_rows.html" with days=payout.days wage=payout.daily_wage base=payout.base_total minutes=payout.overtime_minutes multiplier=payout.overtime_multiplier overtime=payout.overtime_total total=payout.calculated_total %}
+        {% else %}
+            {% include "staff/_total_rows.html" with days=week.days_paid wage=week.daily_wage base=week.base_total minutes=week.overtime_minutes multiplier=week.multiplier overtime=week.overtime_total total=week.total %}
+        {% endif %}
+        {% if payout %}
+            <p class="t-small muted total-paid">
+                Paid {{ payout.paid_on|day }}, {{ payout.get_method_display }}, {{ payout.amount|inr }}
+            </p>
+        {% elif can_pay %}
+            <button class="btn btn--primary btn--block"
+                    type="button"
+                    hx-get="{% url 'payout_sheet' employee.pk monday.isoformat %}"
+                    hx-target="#sheet">Record payout</button>
+        {% endif %}
+    </div>
+</section>

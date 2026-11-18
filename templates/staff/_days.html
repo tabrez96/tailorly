@@ -9,7 +9,7 @@
                         hx-get="{{ sheet_url }}"
                         hx-target="#sheet">
                     <span class="day-row__label">{{ row.label }}</span>
-                    <span class="day-row__times muted">{{ row.times }}</span>
+                    <span class="day-row__times muted">{{ row.times }}{% if row.pay.overtime_minutes %} · <span class="ot-tag">+{{ row.pay.overtime_minutes|duration }} OT</span>{% endif %}</span>
                     {% if row.edited %}<span class="t-small muted">edited by owner</span>{% endif %}
                 </button>
                 {% if row.state == "open" and row.date == today %}
@@ -22,7 +22,7 @@
             {% else %}
                 <div class="day-row">
                     <span class="day-row__label">{{ row.label }}</span>
-                    <span class="day-row__times muted">{{ row.times }}</span>
+                    <span class="day-row__times muted">{{ row.times }}{% if row.pay.overtime_minutes %} · <span class="ot-tag">+{{ row.pay.overtime_minutes|duration }} OT</span>{% endif %}</span>
                     {% if row.edited %}<span class="t-small muted">edited by owner</span>{% endif %}
                 </div>
                 {% if row.state == "missing" and row.can_edit %}
@@ -34,6 +34,10 @@
                             aria-label="Add {{ row.label }}">Add</button>
                 {% endif %}
             {% endif %}
+            <span class="day-row__pay">{% if row.pay.paid %}{{ row.pay.total|inr }}{% else %}—{% endif %}</span>
         </li>
     {% endfor %}
 </ul>
+{% if oob %}
+    {% include "staff/_week_total.html" with oob=True %}
+{% endif %}

@@ -9,4 +9,9 @@ urlpatterns = [
     path("settings/staff/<int:pk>/photo/", views.employee_photo, name="employee_photo"),
     path("settings/staff/<int:pk>/days/<str:day>/", views.day_sheet, name="day_sheet"),
     path("settings/staff/<int:pk>/days/<str:day>/end/", views.day_end, name="day_end"),
+    path(
+        "settings/staff/<int:pk>/payout/<str:week>/",
+        views.payout_sheet,
+        name="payout_sheet",
+    ),
 ]

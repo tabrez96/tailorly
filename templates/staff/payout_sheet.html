@@ -1,0 +1,25 @@
+{% extends "components/sheet_content.html" %}
+{% load ui formats staff_ui %}
+{% block sheet_title %}Pay {{ employee.name|first_name }} for {{ period }}{% endblock %}
+{% block sheet_body %}
+    <p class="muted t-small">
+        Calculated so far: {{ week.days_paid }} days{% if week.overtime_minutes %}, {{ week.overtime_minutes|duration }} overtime{% endif %} = {{ week.total|inr }}
+    </p>
+    <form method="post"
+          novalidate
+          hx-post="{% url 'payout_sheet' employee.pk monday.isoformat %}"
+          hx-target="#sheet">
+        {% csrf_token %}
+        {% error_summary form "save this payout" %}
+        {% field form.amount %}
+        {% field form.paid_on %}
+        {% segmented form.method %}
+        <div class="sheet__actions">
+            <button class="btn btn--tonal"
+                    type="button"
+                    x-data
+                    @click="$dispatch('sheet:close')">Cancel</button>
+            <button class="btn btn--primary" type="submit">Save payout</button>
+        </div>
+    </form>
+{% endblock %}
