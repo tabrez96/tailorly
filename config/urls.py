@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.urls import include, path
 
+from catalog import views as catalog_views
 from core import views
 from production import views as production_views
 from staff import views as staff_views
@@ -10,6 +11,7 @@ urlpatterns = [
     path("", today_views.today, name="today"),
     path("my-work/", production_views.my_work, name="my_work"),
     path("my-pay/", staff_views.my_pay, name="my_pay"),
+    path("products/", catalog_views.products, name="products"),
     path("", include("accounts.urls")),
     path("admin/", admin.site.urls),
     path("styleguide/", views.styleguide, name="styleguide"),

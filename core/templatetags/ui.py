@@ -64,8 +64,8 @@ def checkbox_row(bound):
 
 
 @register.inclusion_tag("components/filter_chips.html")
-def filter_chips(chips, label):
-    return {"chips": chips, "label": label}
+def filter_chips(chips, label, target=None):
+    return {"chips": chips, "label": label, "target": target}
 
 
 @register.inclusion_tag("components/thumb.html")

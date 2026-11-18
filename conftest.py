@@ -1,6 +1,8 @@
 import os
 
 import pytest
+from django.contrib.auth.models import Group, User
+from django.test import Client
 
 # Playwright's sync API runs an event loop; the live server's ORM calls are
 # still synchronous.
@@ -16,3 +18,32 @@ def _plain_static_storage(settings):
             "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"
         },
     }
+
+
+@pytest.fixture
+def signed_in(live_server, browser, settings, db):
+    settings.DEBUG = True
+    contexts = []
+
+    def _open(role):
+        user = User.objects.create_user(role, password="x")
+        if role == "owner":
+            user.groups.add(Group.objects.get_or_create(name="owner")[0])
+        client = Client()
+        client.force_login(user)
+        context = browser.new_context(viewport={"width": 390, "height": 844})
+        contexts.append(context)
+        context.add_cookies(
+            [
+                {
+                    "name": "sessionid",
+                    "value": client.cookies["sessionid"].value,
+                    "url": live_server.url,
+                }
+            ]
+        )
+        return context, context.new_page()
+
+    yield _open
+    for context in contexts:
+        context.close()

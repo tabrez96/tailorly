@@ -153,6 +153,14 @@ document.addEventListener("htmx:after:swap", (evt) => {
         new CustomEvent("sheet:open", { detail: { opener: sheetOpener } }),
       );
     }
+  } else if (
+    elt?.id &&
+    !elt.isConnected &&
+    (!document.activeElement || document.activeElement === document.body)
+  ) {
+    // A chip or segment replaced itself and focus fell to the body: keep it
+    // on the new copy. If focus moved to another control, leave it there.
+    document.getElementById(elt.id)?.focus();
   }
   target.querySelector('[aria-invalid="true"]')?.focus();
 });
