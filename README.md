@@ -131,6 +131,20 @@ set -a; . ./.env; set +a
 uv run python manage.py runserver
 ```
 
+### First setup
+
+Create the owner account (asks for a password; the phone number is the username):
+
+```
+uv run python manage.py create_owner --phone "98450 12345" --name "Shop owner"
+```
+
+Use this command rather than `createsuperuser`: only accounts made here get the owner role.
+
+### Password reset
+
+The owner resets a forgotten password on this machine with `uv run python manage.py changepassword <phone>` (the username is the 10-digit phone number). Employees ask the owner.
+
 ### Pages and sheets
 
 Every page view returns `render_page(request, template, {"title": ..., "tab": ...})` from `core/pages.py`: htmx tab taps get the fragment, everything else gets the full shell. Sheets extend `components/sheet_content.html` and answer `sheet_saved(response, "toast text")` on success.

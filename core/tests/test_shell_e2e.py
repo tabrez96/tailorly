@@ -171,7 +171,8 @@ def test_expired_session_lands_on_sign_in(live_server, signed_in):
     context.clear_cookies()
     _nav(page, "Today").click()
     page.wait_for_url("**/sign-in/**")
-    assert page.inner_text("h1") == "Sign in"
+    assert page.inner_text("h1") == "Tailorly"
+    assert page.get_by_label("Phone number").is_visible()
 
 
 def test_new_asset_version_reloads_once(live_server, signed_in, monkeypatch):

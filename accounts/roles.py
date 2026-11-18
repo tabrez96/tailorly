@@ -1,3 +1,5 @@
+from django.contrib.auth.models import Group
+
 OWNER, EMPLOYEE = "owner", "employee"
 
 
@@ -10,3 +12,7 @@ def role_for(user) -> str:
 
 def home_url(role: str) -> str:
     return "/" if role == OWNER else "/my-work/"
+
+
+def add_to_role(user, role: str) -> None:
+    user.groups.add(Group.objects.get_or_create(name=role)[0])
