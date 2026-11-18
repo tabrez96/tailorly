@@ -147,6 +147,16 @@ def _subtitle(product: Product | None) -> str | None:
     return "Changes apply to new orders only."
 
 
+def _materials(instance: Product | None) -> list[Product]:
+    """Active materials, plus any inactive one an option of this product still uses."""
+    q = Q(active=True)
+    if instance:
+        q |= Q(used_by_options__product=instance)
+    return list(
+        Product.objects.filter(q, kind=Product.SECONDARY).distinct().order_by("name")
+    )
+
+
 @owner_required
 def product_sheet(request: HttpRequest, pk: int | None = None) -> HttpResponse:
     instance = get_object_or_404(Product, pk=pk, active=True) if pk else None
@@ -156,9 +166,10 @@ def product_sheet(request: HttpRequest, pk: int | None = None) -> HttpResponse:
         kind = Product.PRIMARY
     material = kind == Product.SECONDARY
     form_class = MaterialForm if material else ProductForm
+    kwargs = {"materials": _materials(instance)} if form_class is ProductForm else {}
     status = 200
     if request.method == "POST":
-        form = form_class(request.POST, instance=instance)
+        form = form_class(request.POST, instance=instance, **kwargs)
         if form.is_valid():
             product = form.save()
             verb = "saved" if instance else "added"
@@ -170,7 +181,7 @@ def product_sheet(request: HttpRequest, pk: int | None = None) -> HttpResponse:
         initial = {"kind": kind}
         if "name" in request.GET:
             initial["name"] = request.GET["name"].strip()[:80]
-        form = form_class(instance=instance, initial=initial)
+        form = form_class(instance=instance, initial=initial, **kwargs)
     template = (
         "catalog/material_sheet.html" if material else "catalog/product_sheet.html"
     )

@@ -13,6 +13,19 @@ def owner_client(client, db):
     return client
 
 
+BLOUSE_MEASUREMENTS = [
+    "Bust",
+    "Waist",
+    "Shoulder",
+    "Armhole",
+    "Sleeve length",
+    "Sleeve round",
+    "Blouse length",
+    "Front neck",
+    "Back neck",
+]
+
+
 def material(name, unit, cost, sells, billed=True):
     return Product.objects.create(
         name=name,
@@ -24,9 +37,13 @@ def material(name, unit, cost, sells, billed=True):
     )
 
 
-def garment(name, type_, price, options=()):
+def garment(name, type_, price, options=(), measurements=()):
     product = Product.objects.create(
-        name=name, kind="primary", type=type_, usual_price=price
+        name=name,
+        kind="primary",
+        type=type_,
+        usual_price=price,
+        measurement_fields=list(measurements),
     )
     for position, (option, mat, *rest) in enumerate(options):
         ProductOption.objects.create(
@@ -53,6 +70,7 @@ def demo_catalog(db):
         "custom",
         1800,
         [("Lining", lining), ("Sleeve style", None, sleeve), ("Padding", cups)],
+        measurements=BLOUSE_MEASUREMENTS,
     )
     garment("Chudidar", "custom", 1600, [("Lining", lining)])
     garment("Salwar suit", "custom", 2200, [("Lining", lining), ("Pockets", None)])

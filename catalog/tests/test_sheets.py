@@ -14,7 +14,7 @@ def test_add_sheet_is_empty_product_sheet(owner_client):
     html = owner_client.get("/products/new/").content.decode()
     assert "Add product" in html
     assert 'name="usual_price"' in html
-    assert "Remove" not in html
+    assert "hx-confirm" not in html
 
 
 def test_add_material_sheet(owner_client):
@@ -153,3 +153,176 @@ def test_empty_state_add_matches_kind(owner_client, db):
     products = owner_client.get("/products/").content.decode()
     assert "+ Add product" in products
     assert "+ Add material" not in products
+
+
+def editor_json(html):
+    marker = 'id="product-editor-data" type="application/json">'
+    start = html.index(marker) + len(marker)
+    return json.loads(html[start : html.index("</script>", start)])
+
+
+def blouse_post(demo_catalog, **extra):
+    return {
+        "name": "Blouse",
+        "kind": "primary",
+        "type": "custom",
+        "usual_price": "1800",
+    } | extra
+
+
+def test_edit_sheet_has_editor_state(owner_client, demo_catalog):
+    html = owner_client.get(f"/products/{pk('Blouse')}/").content.decode()
+    state = editor_json(html)
+    assert len(state["measurements"]) == 9
+    assert [o["name"] for o in state["options"]] == [
+        "Lining",
+        "Sleeve style",
+        "Padding",
+    ]
+    assert state["options"][0]["material"] == pk("Lining, cotton cream")
+    assert len(state["materials"]) == 6
+
+
+def test_save_measurements_and_options_in_order(owner_client, demo_catalog):
+    lining = pk("Lining, cotton cream")
+    options = [
+        {"name": "Sleeve style", "answer": "choice", "choices": ["Full", "Short"]},
+        {
+            "name": "Lining",
+            "material": lining,
+            "asks_quantity": True,
+            "asked_when": "when_done",
+        },
+    ]
+    response = owner_client.post(
+        f"/products/{pk('Blouse')}/",
+        blouse_post(
+            demo_catalog,
+            measurements_json=json.dumps(["Bust", "Waist"]),
+            options_json=json.dumps(options),
+        ),
+    )
+    assert response.status_code == 204
+    blouse = Product.objects.get(name="Blouse")
+    assert blouse.measurement_fields == ["Bust", "Waist"]
+    saved = list(blouse.options.all())
+    assert [(o.name, o.position) for o in saved] == [("Sleeve style", 0), ("Lining", 1)]
+    assert saved[0].choices == ["Full", "Short"]
+    assert saved[1].material_id == lining
+    assert saved[1].asks_quantity
+    assert saved[1].asked_when == "when_done"
+
+
+def test_save_removes_dropped_options(owner_client, demo_catalog):
+    response = owner_client.post(
+        f"/products/{pk('Blouse')}/",
+        blouse_post(demo_catalog, options_json=json.dumps([{"name": "Lining"}])),
+    )
+    assert response.status_code == 204
+    assert Product.objects.get(name="Blouse").options.count() == 1
+
+
+def test_ready_made_clears_measurements(owner_client, demo_catalog):
+    owner_client.post(
+        f"/products/{pk('Blouse')}/",
+        blouse_post(
+            demo_catalog, type="ready_made", measurements_json=json.dumps(["Bust"])
+        ),
+    )
+    assert Product.objects.get(name="Blouse").measurement_fields == []
+
+
+def test_missing_json_fields_keep_saved_data(owner_client, demo_catalog):
+    response = owner_client.post(
+        f"/products/{pk('Blouse')}/",
+        {"name": "Blouse", "kind": "primary", "type": "custom", "usual_price": "900"},
+    )
+    assert response.status_code == 204
+    blouse = Product.objects.get(name="Blouse")
+    assert len(blouse.measurement_fields) == 9
+    assert blouse.options.count() == 3
+
+
+def test_explicit_empty_lists_clear_saved_data(owner_client, demo_catalog):
+    owner_client.post(
+        f"/products/{pk('Blouse')}/",
+        blouse_post(demo_catalog, measurements_json="[]", options_json="[]"),
+    )
+    blouse = Product.objects.get(name="Blouse")
+    assert blouse.measurement_fields == []
+    assert blouse.options.count() == 0
+
+
+def test_ready_made_ignores_bad_measurements(owner_client, demo_catalog):
+    response = owner_client.post(
+        f"/products/{pk('Blouse')}/",
+        blouse_post(
+            demo_catalog,
+            type="ready_made",
+            measurements_json=json.dumps(["Bust", "bust"]),
+        ),
+    )
+    assert response.status_code == 204
+    assert Product.objects.get(name="Blouse").measurement_fields == []
+
+
+def test_too_many_options_marks_add_button(owner_client, demo_catalog):
+    many = [{"name": f"Option {i}"} for i in range(21)]
+    response = owner_client.post(
+        f"/products/{pk('Blouse')}/",
+        blouse_post(demo_catalog, options_json=json.dumps(many)),
+    )
+    assert response.status_code == 422
+    assert "Use 20 options or fewer." in response.content.decode()
+
+
+def test_choice_with_one_choice_keeps_sheet(owner_client, demo_catalog):
+    bad = [{"name": "Fall", "answer": "choice", "choices": ["Plain"]}]
+    response = owner_client.post(
+        f"/products/{pk('Blouse')}/",
+        blouse_post(demo_catalog, options_json=json.dumps(bad)),
+    )
+    assert response.status_code == 422
+    html = response.content.decode()
+    assert "Fix the options marked below." in html
+    state = editor_json(html)
+    assert state["errors"]["option"] == [{"choices": "Add at least 2 choices."}]
+    assert state["options"][0]["name"] == "Fall"
+    assert Product.objects.get(name="Blouse").options.count() == 3
+
+
+def test_unreadable_measurements_keep_sheet(owner_client, demo_catalog):
+    response = owner_client.post(
+        f"/products/{pk('Blouse')}/",
+        blouse_post(demo_catalog, measurements_json="{", options_json="{"),
+    )
+    assert response.status_code == 422
+    state = editor_json(response.content.decode())
+    assert (
+        state["errors"]["measurements"] == "Measurements could not be read. Try again."
+    )
+    assert state["errors"]["options"] == "Options could not be read. Try again."
+    assert state["measurements"] == [] and state["options"] == []
+
+
+def test_material_must_be_secondary(owner_client, demo_catalog):
+    bad = [{"name": "Lining", "material": pk("Kurta")}]
+    response = owner_client.post(
+        f"/products/{pk('Blouse')}/",
+        blouse_post(demo_catalog, options_json=json.dumps(bad)),
+    )
+    assert response.status_code == 422
+    assert "Choose a material from the list." in response.content.decode()
+
+
+def test_inactive_material_still_allowed_for_its_product(owner_client, demo_catalog):
+    Product.objects.filter(name="Padding cups").update(active=False)
+    cups = pk("Padding cups")
+    kept = [{"name": "Padding", "material": cups}]
+    response = owner_client.post(
+        f"/products/{pk('Blouse')}/",
+        blouse_post(demo_catalog, options_json=json.dumps(kept)),
+    )
+    assert response.status_code == 204
+    state = editor_json(owner_client.get(f"/products/{pk('Kurta')}/").content.decode())
+    assert "Padding cups" not in [m["name"] for m in state["materials"]]
