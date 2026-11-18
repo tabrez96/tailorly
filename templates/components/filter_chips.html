@@ -1,6 +1,9 @@
 <nav class="fchips" aria-label="{{ label }}">
     {% for c in chips %}
         <a class="fchip"
-           href="{{ c.url }}"{% if c.selected %} aria-current="true"{% endif %}>{{ c.label }}{% if c.count is not None %} <span class="tabular">({{ c.count }})</span>{% endif %}</a>
+           {% if c.id %}id="{{ c.id }}"{% endif %}
+           href="{{ c.url }}"
+           {% if target %}hx-get="{{ c.url }}" hx-target="#{{ target }}" hx-select="#{{ target }}" hx-swap="outerHTML" hx-sync="#{{ target }}:replace" hx-replace-url="true"{% endif %}
+           {% if c.selected %}aria-current="true"{% endif %}>{{ c.label }}{% if c.count is not None %} <span class="tabular">({{ c.count }})</span>{% endif %}</a>
     {% endfor %}
 </nav>

@@ -1,0 +1,131 @@
+{% load ui formats %}
+{% include "components/header.html" with title=title action_label="+ Add" %}
+<div id="catalog">
+    {% if not counts.sold and not counts.materials %}
+        {% include "components/empty_state.html" with icon="garment" title="No products yet" text="Add the garments you make and sell, with their usual price and options. They fill in for you when you take an order." button="+ Add product" %}
+    {% else %}
+        <nav class="seg" aria-label="Kind">
+            <div class="seg__track">
+                {% for s in segments %}
+                    <a class="seg__opt"
+                       id="{{ s.id }}"
+                       href="{{ s.url }}"
+                       {% if s.selected %}aria-current="true"{% endif %}
+                       hx-get="{{ s.url }}"
+                       hx-target="#catalog"
+                       hx-select="#catalog"
+                       hx-swap="outerHTML"
+                       hx-sync="#catalog:replace"
+                       hx-replace-url="true">{{ s.label }} <span class="tabular">({{ s.count }})</span></a>
+                {% endfor %}
+            </div>
+        </nav>
+        {% if filter.kind == "materials" and not counts.materials %}
+            {% include "components/empty_state.html" with icon="fabric" title="No materials yet" text="Add lining or falls to use on items." button="+ Add material" %}
+        {% elif filter.kind != "materials" and not counts.sold %}
+            {% include "components/empty_state.html" with icon="garment" title="No products yet" text="Add the garments you make and sell, with their usual price and options. They fill in for you when you take an order." button="+ Add product" %}
+        {% else %}
+            <form id="catalog-search"
+                  class="search"
+                  role="search"
+                  action="{{ base_url }}"
+                  method="get"
+                  hx-get="{{ base_url }}"
+                  hx-trigger="input delay:300ms, submit"
+                  hx-target="#catalog-results"
+                  hx-select="#catalog-results"
+                  hx-swap="outerHTML"
+                  hx-sync="#catalog-results:replace"
+                  hx-replace-url="true">
+                {% if filter.kind == "materials" %}<input type="hidden" name="kind" value="materials">{% endif %}
+                <label class="sr-only"
+                       for="catalog-q">Search {% if filter.kind == "materials" %}materials{% else %}products{% endif %}</label>
+                <input class="field__input"
+                       type="search"
+                       id="catalog-q"
+                       name="q"
+                       value="{{ filter.q }}"
+                       autocomplete="off"
+                       placeholder="Search {% if filter.kind == 'materials' %}materials{% else %}products{% endif %}">
+            </form>
+            <div id="catalog-results" aria-live="polite">
+                {% if filter.type %}
+                    <input type="hidden"
+                           name="type"
+                           value="{{ filter.type }}"
+                           form="catalog-search">
+                {% endif %}
+                {% if filter.kind != "materials" %}
+                    {% filter_chips chips "Type" "catalog-results" %}
+                {% endif %}
+                {% if rows %}
+                    <ul class="list">
+                        {% for row in rows %}
+                            <li class="list__row">
+                                {% if filter.kind == "materials" %}
+                                    {% with m=row.material %}
+                                        <span class="icon-tile">
+                                            {% if m.unit == "m" %}
+                                                {% include "components/icon.html" with name="fabric" %}
+                                            {% else %}
+                                                {% include "components/icon.html" with name="notions" %}
+                                            {% endif %}
+                                        </span>
+                                        <div class="list__main">
+                                            <p class="prow__name">
+                                                <span class="t-body prow__title">{{ m.name }}</span>
+                                            </p>
+                                            <p class="prow__sub muted t-small">
+                                                {% if m.billed_by_default %}sells {{ m.selling_price|inr }}{% else %}not billed on its own{% endif %} · {{ row.uses }}
+                                            </p>
+                                        </div>
+                                        <div class="prow__end">
+                                            <p class="prow__price tabular">{{ m.cost_price|inr }}</p>
+                                            <p class="t-small muted">cost a {{ m.unit }}</p>
+                                        </div>
+                                    {% endwith %}
+                                {% else %}
+                                    {% with p=row.product %}
+                                        <span class="icon-tile">
+                                            {% if p.type == "custom" %}
+                                                {% include "components/icon.html" with name="garment" %}
+                                            {% else %}
+                                                {% include "components/icon.html" with name="bag" %}
+                                            {% endif %}
+                                        </span>
+                                        <div class="list__main">
+                                            <p class="prow__name">
+                                                <span class="t-body prow__title">{{ p.name }}</span>
+                                                <span class="chip chip--grey">{{ p.get_type_display }}</span>
+                                            </p>
+                                            <p class="prow__sub muted t-small">{{ row.summary }}</p>
+                                        </div>
+                                        <p class="prow__price tabular">{{ p.usual_price|inr }}</p>
+                                    {% endwith %}
+                                {% endif %}
+                                {% include "components/icon.html" with name="chevron-right" %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                    <p class="footnote muted t-small">
+                        {% if filter.kind == "materials" %}
+                            Materials are what you use to make a garment. Add them to an item or a rework and the cost and selling price fill in. Product options like Lining use them too.
+                        {% else %}
+                            The price fills in when you add the product to an order. You can still change it there.
+                        {% endif %}
+                    </p>
+                {% elif filter.q %}
+                    <div class="empty">
+                        <h2 class="t-sheet empty__title">
+                            No {% if filter.kind == "materials" %}material{% else %}product{% endif %} called "{{ filter.q }}". Add it?
+                        </h2>
+                        <button class="btn btn--primary"
+                                type="button">+ Add {% if filter.kind == "materials" %}material{% else %}product{% endif %}</button>
+                    </div>
+                {% else %}
+                    <p class="muted empty__text">No {% if filter.type == "custom" %}custom{% else %}ready-made{% endif %} products yet.</p>
+                {% endif %}
+            </div>
+        {% endif %}
+    {% endif %}
+</div>
