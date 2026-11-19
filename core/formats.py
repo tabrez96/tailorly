@@ -18,6 +18,13 @@ def format_day(value: date | datetime | None) -> str:
     return f"{value:%a} {value.day} {value:%b}"
 
 
+def format_full_date(value: date | datetime | None) -> str:
+    if value is None:
+        return ""
+    value = _local(value)
+    return f"{value.day} {value:%b} {value.year}"
+
+
 def format_phone(digits: str) -> str:
     if len(digits) == 10:
         return f"{digits[:5]} {digits[5:]}"

@@ -18,6 +18,7 @@
             <p class="stat__value tabular{% if to_collect > 0 %} stat__value--due{% endif %}">{{ to_collect|inr }}</p>
         </section>
     </div>
+    {% include "customers/_measurements.html" %}
     <div class="action-bar">
         <a class="btn btn--primary"
            id="new-order"

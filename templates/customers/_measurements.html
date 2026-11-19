@@ -1,0 +1,52 @@
+{% load formats %}
+<section class="measure" aria-labelledby="measure-title">
+    <h2 class="t-section" id="measure-title">Measurements (inches)</h2>
+    {% if garments %}
+        <div class="card measure__card" x-data="{ g: {{ selected_id }} }">
+            <div class="seg__track measure__tabs" role="tablist" aria-label="Garment">
+                {% for g in garments %}
+                    <button type="button"
+                            role="tab"
+                            class="seg__opt"
+                            id="mtab-{{ g.id }}"
+                            aria-controls="mpanel-{{ g.id }}"
+                            aria-selected="{% if g.selected %}true{% else %}false{% endif %}"
+                            :aria-selected="(g === {{ g.id }}).toString()"
+                            @click="g = {{ g.id }}">{{ g.name }}</button>
+                {% endfor %}
+            </div>
+            {% for g in garments %}
+                <div role="tabpanel"
+                     id="mpanel-{{ g.id }}"
+                     aria-labelledby="mtab-{{ g.id }}"
+                     x-show="g === {{ g.id }}"
+                     {% if not g.selected %}x-cloak{% endif %}>
+                    <div class="measure__meta">
+                        <p class="t-small muted">Updated {{ g.updated|fulldate }}</p>
+                        <a class="measure__edit"
+                           href="{{ g.edit_url }}"
+                           hx-get="{{ g.edit_url }}"
+                           hx-target="#page"
+                           hx-sync="#page:replace"
+                           hx-push-url="true">Edit<span class="sr-only"> {{ g.name }} measurements</span></a>
+                    </div>
+                    {% include "components/measure_tiles.html" with tiles=g.tiles %}
+                </div>
+            {% endfor %}
+        </div>
+        <button class="btn btn--ghost"
+                type="button"
+                id="garment-add"
+                hx-get="{{ add_garment_url }}"
+                hx-target="#sheet">+ Add garment</button>
+    {% else %}
+        <div class="card measure__empty">
+            <p class="muted">No measurements yet.</p>
+            <button class="btn btn--tonal"
+                    type="button"
+                    id="garment-add"
+                    hx-get="{{ add_garment_url }}"
+                    hx-target="#sheet">+ Add garment</button>
+        </div>
+    {% endif %}
+</section>

@@ -4,6 +4,7 @@ from core.formats import (
     format_clock,
     format_day,
     format_duration,
+    format_full_date,
     format_month,
     format_phone,
 )
@@ -17,3 +18,4 @@ register.filter("clock", format_clock)
 register.filter("duration", format_duration)
 register.filter("phone", format_phone)
 register.filter("month", format_month)
+register.filter("fulldate", format_full_date)

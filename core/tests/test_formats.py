@@ -6,6 +6,7 @@ from core.formats import (
     format_clock,
     format_day,
     format_duration,
+    format_full_date,
     format_month,
     format_phone,
 )
@@ -50,3 +51,9 @@ def test_format_phone():
 def test_format_month():
     assert format_month(datetime(2025, 3, 31, 20, 0, tzinfo=UTC)) == "Apr 2025"
     assert format_month(None) == ""
+
+
+def test_format_full_date():
+    assert format_full_date(datetime(2026, 11, 2, 20, 0, tzinfo=UTC)) == "3 Nov 2026"
+    assert format_full_date(date(2026, 11, 2)) == "2 Nov 2026"
+    assert format_full_date(None) == ""
