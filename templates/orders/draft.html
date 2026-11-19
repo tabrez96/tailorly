@@ -1,0 +1,34 @@
+{% load ui formats %}
+<div class="draft-page">
+    {% include "components/header.html" with title=title back_url=back_url back_direct=back_direct overline=overline %}
+    <div class="draft-page__head">
+        <h2 class="t-section">Items</h2>
+        {% if rows %}
+            <p class="t-small muted">{{ rows|length }} item{{ rows|length|pluralize }}</p>
+        {% endif %}
+    </div>
+    {% if rows %}
+        <ul class="card list">
+            {% for row in rows %}
+                <li class="list__row">
+                    {% thumb row.name %}
+                    <div class="list__main">
+                        <p class="row-text__label">
+                            <span class="draft-page__num tabular">{{ row.number }}</span> {{ row.name }}
+                            {% include "components/chip.html" with label=row.custom|yesno:"Custom,Ready-made" tone="grey" %}
+                        </p>
+                        <p class="t-small muted">{{ row.summary }}</p>
+                    </div>
+                    <p class="tabular">{{ row.price|inr }}</p>
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+    <a class="btn btn--tonal btn--block"
+       id="add-item"
+       href="{{ add_url }}"
+       hx-get="{{ add_url }}"
+       hx-target="#page"
+       hx-sync="#page:replace"
+       hx-push-url="true">+ Add item</a>
+</div>

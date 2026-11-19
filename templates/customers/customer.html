@@ -20,12 +20,12 @@
     </div>
     {% include "customers/_measurements.html" %}
     <div class="action-bar">
-        <a class="btn btn--primary"
-           id="new-order"
-           href="{{ new_order_url }}"
-           hx-get="{{ new_order_url }}"
-           hx-target="#page"
-           hx-sync="#page:replace"
-           hx-push-url="true">+ New order for {{ first_name }}</a>
+        <form method="post"
+              action="{{ new_order_action }}"
+              hx-post="{{ new_order_action }}">
+            {% csrf_token %}
+            <input type="hidden" name="customer" value="{{ customer.pk }}">
+            <button class="btn btn--primary" id="new-order" type="submit">+ New order for {{ first_name }}</button>
+        </form>
     </div>
 </div>

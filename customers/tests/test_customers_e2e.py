@@ -78,7 +78,7 @@ def test_edit_changes_title_and_new_order_link(live_server, signed_in, people):
     _, page = signed_in("owner")
     c = Customer.objects.get(name="Meera Iyer")
     page.goto(live_server.url + f"/customers/{c.pk}/")
-    assert page.get_attribute("#new-order", "href") == f"/orders/new/?customer={c.pk}"
+    assert "+ New order for Meera" in page.locator("#new-order").inner_text()
     page.click("#customer-edit")
     page.fill("#id_name", "Meera Rao")
     page.get_by_role("button", name="Save").click()

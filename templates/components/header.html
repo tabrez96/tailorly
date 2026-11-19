@@ -6,7 +6,7 @@
            hx-target="#page"
            hx-sync="#page:replace"
            hx-push-url="true"
-           data-back
+           {% if not back_direct %}data-back{% endif %}
            aria-label="Back">{% include "components/icon.html" with name="chevron-back" %}</a>
     {% endif %}
     {% if overline %}<p class="t-over header__over">{{ overline }}</p>{% endif %}
