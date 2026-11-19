@@ -8,6 +8,8 @@ from django.urls.converters import IntConverter, UUIDConverter
 from accounts.roles import OWNER, add_to_role
 
 PUBLIC = {"sign_in", "sign_out", "manifest", "styleguide"}
+# Any signed-in user; the view checks access to the object itself.
+OBJECT_CHECKED = {"item_photo", "item_photo_thumb"}
 HTMX = {"HX-Request": "true", "HX-Request-Type": "partial"}
 
 
@@ -65,7 +67,8 @@ def test_every_url_is_classified():
     unclassified = [
         p.name
         for p in url_patterns()
-        if not hasattr(p.callback, "required_role") and p.name not in PUBLIC
+        if not hasattr(p.callback, "required_role")
+        and p.name not in PUBLIC | OBJECT_CHECKED
     ]
     assert unclassified == []
 
