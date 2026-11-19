@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 from django.db import transaction
+from django.db.models import Q
 
 from orders.models import ItemPhoto, Order
 
@@ -11,7 +12,9 @@ def delete_old_drafts(now) -> int:
     """Delete drafts over a day old, with their photo files. Returns how many went."""
     old = Order.objects.filter(status=Order.DRAFT, created_at__lt=now - MAX_AGE)
     with transaction.atomic():
-        photos = list(ItemPhoto.objects.filter(item__order__in=old))
+        photos = list(
+            ItemPhoto.objects.filter(Q(item__order__in=old) | Q(order__in=old))
+        )
         files = [
             (p.image.storage, n) for p in photos for n in (p.image.name, p.thumb.name)
         ]

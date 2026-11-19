@@ -21,6 +21,11 @@ urlpatterns = [
         views.item_measurements,
         name="order_item_measurements",
     ),
+    path(
+        "orders/drafts/<int:pk>/photos/",
+        views.item_photo_upload,
+        name="order_photo_upload",
+    ),
     path("orders/photos/<int:pk>/", views.item_photo, name="item_photo"),
     path(
         "orders/photos/<int:pk>/thumb/",

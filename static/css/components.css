@@ -729,6 +729,44 @@ p.row-text__label::after {
   font-size: 12px;
 }
 
+/* S20 photos: 76 px tiles, dashed + Add last */
+.photos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.photo-tile {
+  position: relative;
+  width: 76px;
+  height: 76px;
+}
+.photo-tile__veil,
+.photo-tile__retry {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  background: var(--scrim);
+}
+.photo-tile__retry {
+  border: 0;
+  color: var(--on-badge);
+  font: 600 11px/1.25 var(--font);
+  padding: var(--s1);
+  text-align: center;
+}
+.photo-add {
+  width: 76px;
+  height: 76px;
+  border: 1.5px dashed var(--field);
+  border-radius: 16px;
+  background: var(--card);
+  color: var(--pri);
+  font: 700 14px/1 var(--font);
+}
+
 /* Queue row: <ol class="list queue"> of queue_row.html */
 .qrow__rank {
   flex: none;

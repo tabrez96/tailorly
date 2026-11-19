@@ -11,7 +11,7 @@
         <ul class="card list">
             {% for row in rows %}
                 <li class="list__row">
-                    {% thumb row.name %}
+                    {% thumb row.name src=row.photo count=row.photo_count %}
                     <div class="list__main">
                         <p class="draft-page__name">
                             <span class="draft-page__num tabular">{{ row.number }}</span>

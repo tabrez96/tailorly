@@ -9,7 +9,8 @@
       hx-swap="outerHTML"
       hx-sync="this:drop"
       hx-disable="find button[type=submit]"
-      x-data="{ price: '{{ price_value|escapejs }}', picking: {{ product|yesno:'false,true' }} }">
+      @item-photos-busy="uploading = $event.detail"
+      x-data="{ price: '{{ price_value|escapejs }}', picking: {{ product|yesno:'false,true' }}, uploading: false }">
     {% csrf_token %}
     {% error_summary form "add this item" %}
     <div hx-get="{{ action }}"
@@ -24,7 +25,7 @@
         <p class="field__label">Product</p>
         {% if product %}
             <div class="card product-pick">
-                {% thumb product.name size="md" %}
+                {% include "orders/_item_picture.html" %}
                 <div class="list__main">
                     <p class="row-text__label">{{ product.name }}</p>
                     <p class="t-small muted">{{ product_summary }}</p>
@@ -89,6 +90,7 @@
                         type="submit"
                         name="next"
                         value="measurements"
+                        :disabled="uploading"
                         id="measure-edit">Edit</button>
             {% endif %}
         </div>
@@ -107,6 +109,7 @@
                     type="submit"
                     name="next"
                     value="measurements"
+                    :disabled="uploading"
                     id="measure-add">Add measurements</button>
         {% endif %}
     {% endif %}
@@ -119,6 +122,44 @@
     <h2 class="t-section">Materials</h2>
     <p class="empty-line">No materials for this item.</p>
     {% field form.notes %}
+    {{ photos_data|json_script:"item-photos-data" }}
+    <div class="photos-field" x-data="itemPhotos">
+        <p class="field__label" id="photos-label">Photos for this item</p>
+        <ul class="photos" aria-labelledby="photos-label">
+            <template x-for="(t, i) in tiles" :key="t.key">
+                <li class="photo-tile">
+                    <span class="thumb thumb--md">
+                        <img class="thumb__img" :src="t.src" :alt="alt(i)">
+                    </span>
+                    <span class="photo-tile__veil"
+                          x-show="t.status === 'uploading'"
+                          aria-hidden="true"></span>
+                    <button type="button"
+                            class="photo-tile__retry"
+                            x-show="t.status === 'failed'"
+                            @click="retry(t)"
+                            :aria-label="alt(i) + '. Upload failed. Tap to retry.'">
+                        Upload failed. Tap to retry.
+                    </button>
+                    <input type="hidden" name="photo" :value="t.id" :disabled="!t.id || t.saved">
+                </li>
+            </template>
+            <li x-show="tiles.length < max">
+                <button type="button"
+                        class="photo-add"
+                        id="photo-add"
+                        @click="$refs.file.click()">+ Add</button>
+            </li>
+        </ul>
+        <input type="file"
+               accept="image/*"
+               multiple
+               hidden
+               x-ref="file"
+               @change="pick($event)">
+        <p class="field__error" x-show="error" x-text="error"></p>
+        <p class="sr-only" aria-live="polite" x-text="status"></p>
+    </div>
     <div class="action-bar item-bar">
         {% if remove_url %}
             <button class="btn btn--ghost btn--danger"
@@ -135,6 +176,9 @@
                 </p>
             </div>
         {% endif %}
-        <button class="btn btn--primary" id="item-submit" type="submit">{{ submit_label }}</button>
+        <button class="btn btn--primary"
+                id="item-submit"
+                type="submit"
+                :disabled="uploading">{{ submit_label }}</button>
     </div>
 </form>
