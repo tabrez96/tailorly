@@ -86,7 +86,8 @@ def test_detail(owner_client, meera):
     assert "Customer since" in html
     assert "Prefers loose sleeves.<br>Sundays." in html
     assert html.count("₹0") == 2
-    assert f'href="/orders/new/?customer={meera.pk}"' in html
+    assert 'action="/orders/drafts/"' in html
+    assert f'name="customer" value="{meera.pk}"' in html
     assert "+ New order for Meera" in html
 
 

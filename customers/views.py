@@ -109,7 +109,7 @@ def customer(request: HttpRequest, pk: int) -> HttpResponse:
             "spent": Decimal(0),
             "to_collect": Decimal(0),
             "edit_url": reverse("customer_edit", args=[c.pk]),
-            "new_order_url": f"/orders/new/?customer={c.pk}",
+            "new_order_action": reverse("order_draft_create"),
             "garments": garments,
             "selected_id": selected.product_id if selected else 0,
             "add_garment_url": reverse("customer_garment_add", args=[c.pk]),

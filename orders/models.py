@@ -203,7 +203,9 @@ class OrderItem(models.Model):
         return self.name
 
     @classmethod
-    def from_product(cls, order, product, answers=()) -> OrderItem:
+    def from_product(
+        cls, order, product, answers=(), *, price=None, notes=""
+    ) -> OrderItem:
         """Add an item that copies the product (and, if custom, measurements)."""
         measurements = []
         if product.type == Product.CUSTOM:
@@ -219,9 +221,10 @@ class OrderItem(models.Model):
             product=product,
             name=product.name,
             type=product.type,
-            price=product.usual_price,
+            price=product.usual_price if price is None else price,
             usual_price=product.usual_price,
             options=[dict(a) for a in answers],
+            notes=notes,
             measurements=measurements,
             position=order.items.count(),
         )

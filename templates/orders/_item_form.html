@@ -1,0 +1,116 @@
+{% load ui formats %}
+<form id="item-form"
+      method="post"
+      action="{{ action }}"
+      novalidate
+      hx-post="{{ action }}"
+      hx-target="#item-form"
+      hx-select="#item-form"
+      hx-swap="outerHTML"
+      hx-sync="this:drop"
+      hx-disable="find button[type=submit]"
+      x-data="{ price: '{{ price_value|escapejs }}', picking: {{ product|yesno:'false,true' }} }">
+    {% csrf_token %}
+    {% error_summary form "add this item" %}
+    <div hx-get="{{ action }}"
+         hx-trigger="change"
+         hx-target="#item-form"
+         hx-select="#item-form"
+         hx-swap="outerHTML"
+         hx-sync="this:replace"
+         hx-disable="#item-submit"
+         hx-include="closest form">
+        {% segmented form.type %}
+        <p class="field__label">Product</p>
+        {% if product %}
+            <div class="card product-pick">
+                {% thumb product.name size="md" %}
+                <div class="list__main">
+                    <p class="row-text__label">{{ product.name }}</p>
+                    <p class="t-small muted">{{ product_summary }}</p>
+                </div>
+                <button type="button"
+                        class="link-btn"
+                        @click="picking = true"
+                        x-show="!picking">Change</button>
+            </div>
+        {% endif %}
+        {% if has_products %}
+            <div x-show="picking">{% radio_rows form.product %}</div>
+        {% else %}
+            <p class="muted">No {{ type_word }} products yet. Add one in Products first.</p>
+            {% if form.product.errors %}<p class="field__error">{{ form.product.errors|join:" " }}</p>{% endif %}
+        {% endif %}
+        <p class="t-small muted">
+            From your products. <a href="{{ products_url }}"
+                                   hx-get="{{ products_url }}"
+                                   hx-target="#page"
+                                   hx-push-url="true"
+                                   data-leave>Manage products</a>
+        </p>
+    </div>
+    {% field form.price %}
+    {% if form.option_rows %}
+        <h2 class="t-section">Options</h2>
+        <div class="card">
+            {% for row in form.option_rows %}
+                <div class="opt-row{% if row.yes_no %} opt-row--inline{% endif %}"
+                     role="group"
+                     aria-labelledby="{{ row.field.auto_id }}-label">
+                    <div class="opt-row__text">
+                        <p class="row-text__label" id="{{ row.field.auto_id }}-label">{{ row.field.label }}</p>
+                        {% if row.hint %}<p class="t-small muted">{{ row.hint }}</p>{% endif %}
+                    </div>
+                    {% if row.yes_no %}
+                        <div class="seg__track">
+                            {% for w in row.field %}
+                                <label class="seg__opt"
+                                       for="{{ w.id_for_label }}">{{ w.tag }}{{ w.choice_label }}</label>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="ochips">
+                            {% for w in row.field %}
+                                <label class="ochip" for="{{ w.id_for_label }}">{{ w.tag }}{{ w.choice_label }}</label>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+    {% if product and type_ == "custom" %}
+        <h2 class="t-section">
+            Measurements <span class="muted">(inches)</span>
+        </h2>
+        {% if saved %}
+            {% include "components/measure_tiles.html" with tiles=tiles %}
+            <p class="t-small muted">
+                Copied from {{ first_name }}'s {{ product.name }} set, {{ saved.updated_at|day }}. Changes here stay with this item.
+            </p>
+        {% else %}
+            <p class="muted">
+                No saved {{ product.name }} measurements for {{ first_name }} yet. Add them on the customer page.
+            </p>
+        {% endif %}
+    {% endif %}
+    {% if product and type_ == "ready_made" %}
+        <div class="note-panel">
+            <p class="row-text__label">Sold as it is</p>
+            <p class="t-small muted">Ready-made items have no measurements, options or estimate, and don't go to anyone's queue.</p>
+        </div>
+    {% endif %}
+    <h2 class="t-section">Materials</h2>
+    <p class="empty-line">No materials for this item.</p>
+    {% field form.notes %}
+    <div class="action-bar item-bar">
+        <div>
+            <p class="t-small muted">This item, with billed materials</p>
+            <p class="item-bar__total tabular"
+               x-text="'₹' + Math.round(Number(String(price).replace(/[,₹\s]/g, '')) || 0).toLocaleString('en-IN')">
+                {{ product.usual_price|default:0|inr }}
+            </p>
+        </div>
+        <button class="btn btn--primary" id="item-submit" type="submit">Add to order</button>
+    </div>
+</form>

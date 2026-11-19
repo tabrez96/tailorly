@@ -80,3 +80,12 @@ def sheet_saved_location(path: str, toast: str | None = None) -> HttpResponse:
         trigger["toast"] = {"message": toast}
     response["HX-Trigger"] = json.dumps(trigger)
     return response
+
+
+def page_location(path: str, toast: str | None = None) -> HttpResponse:
+    """Load `path` into #page (pushing the URL), with an optional toast."""
+    response = HttpResponse(status=204)
+    response["HX-Location"] = json.dumps({"path": path, "target": "#page"})
+    if toast:
+        response["HX-Trigger"] = json.dumps({"toast": {"message": toast}})
+    return response

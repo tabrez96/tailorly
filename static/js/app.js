@@ -173,7 +173,9 @@ document.addEventListener("htmx:after:swap", (evt) => {
     // on the new copy. If focus moved to another control, leave it there.
     document.getElementById(elt.id)?.focus();
   }
-  target.querySelector('[aria-invalid="true"]')?.focus();
+  // An outerHTML swap leaves `target` detached; look in its replacement.
+  const live = target.isConnected ? target : document.getElementById(target.id);
+  live?.querySelector('[aria-invalid="true"]')?.focus();
 });
 
 window.addEventListener("popstate", () => {
