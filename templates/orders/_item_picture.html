@@ -1,0 +1,19 @@
+{% load ui %}
+<span x-data="{ src: '{{ picture_url|escapejs }}', count: {{ photo_count }}, name: '{{ photo_name|escapejs }}' }"
+      @item-picture.window="src = $event.detail.src; count = $event.detail.count"
+      class="thumb thumb--md{% if not picture_url %} thumb--empty{% endif %}"
+      :class="src ? '' : 'thumb--empty'"
+      {% if not picture_url %}role="img" aria-label="{{ photo_name }}, no photo"{% endif %}
+      :role="src ? null : 'img'"
+      :aria-label="src ? null : name + ', no photo'">
+    <img class="thumb__img"
+         {% if picture_url %}src="{{ picture_url }}" alt="{{ photo_name }}, photo 1 of {{ photo_count }}"{% endif %}
+         x-show="src"
+         :src="src"
+         :alt="name + ', photo 1 of ' + count">
+    <span class="thumb__badge"
+          aria-hidden="true"
+          x-show="count > 1"
+          x-text="'1/' + count">{% if photo_count > 1 %}1/{{ photo_count }}{% endif %}</span>
+    <span x-show="!src">{% include "components/icon.html" with name="camera" %}</span>
+</span>

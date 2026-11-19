@@ -253,8 +253,18 @@ class OrderItem(models.Model):
 
 
 class ItemPhoto(models.Model):
-    # The first photo is the item's picture everywhere.
-    item = models.ForeignKey(OrderItem, on_delete=models.CASCADE, related_name="photos")
+    # The first photo is the item's picture everywhere. A photo uploaded on S20
+    # before its item is saved is staged: no item yet, only its draft order.
+    item = models.ForeignKey(
+        OrderItem,
+        on_delete=models.CASCADE,
+        related_name="photos",
+        null=True,
+        blank=True,
+    )
+    order = models.ForeignKey(
+        Order, on_delete=models.CASCADE, related_name="+", null=True, blank=True
+    )
     image = models.ImageField(upload_to="orders/")
     thumb = models.ImageField(upload_to="orders/thumbs/")
     position = models.PositiveSmallIntegerField(default=0)
@@ -262,9 +272,15 @@ class ItemPhoto(models.Model):
 
     class Meta:
         ordering = ["position", "id"]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(item__isnull=False) | Q(order__isnull=False),
+                name="photo_has_item_or_order",
+            )
+        ]
 
     def __str__(self):
-        return f"Photo of {self.item}"
+        return f"Photo of {self.item or self.order}"
 
 
 class Rework(models.Model):

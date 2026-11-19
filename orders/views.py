@@ -1,6 +1,6 @@
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
-from django.http import FileResponse, Http404, HttpResponseRedirect
+from django.http import FileResponse, Http404, HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.views.decorators.http import require_POST
@@ -22,13 +22,23 @@ from orders.items import (
     resolve_type,
 )
 from orders.models import ItemPhoto, Order, OrderItem
+from orders.photos import (
+    MAX_PHOTOS,
+    NOT_A_PHOTO,
+    attach_photos,
+    stage_photo,
+    staged_photos,
+)
 from staff.attendance import first_name
 
 
 @login_required
 def item_photo(request, pk, size="full"):
-    photo = get_object_or_404(ItemPhoto.objects.select_related("item__order"), pk=pk)
-    if not can_see_order(request.user, photo.item.order):
+    photo = get_object_or_404(
+        ItemPhoto.objects.select_related("item__order", "order"), pk=pk
+    )
+    order = photo.item.order if photo.item_id else photo.order
+    if not can_see_order(request.user, order):
         raise Http404  # don't reveal that the photo exists
     field = photo.thumb if size == "thumb" else photo.image
     try:
@@ -38,6 +48,23 @@ def item_photo(request, pk, size="full"):
     response = FileResponse(handle, content_type="image/jpeg")
     response["Cache-Control"] = "private, max-age=3600"
     return response
+
+
+@owner_required
+@require_POST
+def item_photo_upload(request, pk):
+    order = _draft_or_404(pk)
+    upload = request.FILES.get("photo")
+    if upload is None:
+        return JsonResponse({"error": NOT_A_PHOTO}, status=400)
+    try:
+        photo = stage_photo(order, upload)
+    except ValueError as e:
+        return JsonResponse({"error": str(e)}, status=400)
+    return JsonResponse(
+        {"id": photo.pk, "thumb": reverse("item_photo_thumb", args=[photo.pk])},
+        status=201,
+    )
 
 
 def _redirect_303(path):
@@ -69,17 +96,23 @@ def _draft_or_404(pk):
 @owner_required
 def draft(request, pk):
     order = _draft_or_404(pk)
-    rows = [
-        {
-            "number": n,
-            "name": i.name,
-            "custom": i.type == Product.CUSTOM,
-            "summary": item_summary(i),
-            "price": i.price,
-            "edit_url": reverse("order_item_edit", args=[order.pk, i.pk]),
-        }
-        for n, i in enumerate(order.items.all(), 1)
-    ]
+    rows = []
+    for n, i in enumerate(order.items.prefetch_related("photos"), 1):
+        pics = list(i.photos.all())
+        rows.append(
+            {
+                "number": n,
+                "name": i.name,
+                "custom": i.type == Product.CUSTOM,
+                "summary": item_summary(i),
+                "price": i.price,
+                "edit_url": reverse("order_item_edit", args=[order.pk, i.pk]),
+                "photo": reverse("item_photo_thumb", args=[pics[0].pk])
+                if pics
+                else None,
+                "photo_count": len(pics),
+            }
+        )
     return render_page(
         request,
         "orders/draft.html",
@@ -113,6 +146,7 @@ def item_edit(request, pk, item_pk):
 def _item_page(request, order, item=None):
     draft_path = reverse("order_draft", args=[order.pk])
     data = request.POST if request.method == "POST" else request.GET
+    photo_ids = data.getlist("photo")
     keep_pk = item.product_id if item else None
     # First GET of the edit page: nothing from the form yet, so show the item.
     fresh = item is not None and "product" not in data
@@ -144,23 +178,25 @@ def _item_page(request, order, item=None):
         if form.is_valid():
             chosen = form.cleaned_data["product"]
             notes = form.cleaned_data["notes"].strip()
-            if item is None:
-                item = OrderItem.from_product(
-                    order,
-                    chosen,
-                    form.answers(),
-                    price=form.cleaned_data["price"],
-                    notes=notes,
-                )
-                toast = f"{item.name} added"
-            else:
-                item.change(
-                    chosen,
-                    form.answers(),
-                    price=form.cleaned_data["price"],
-                    notes=notes,
-                )
-                toast = f"{item.name} saved"
+            with transaction.atomic():
+                if item is None:
+                    item = OrderItem.from_product(
+                        order,
+                        chosen,
+                        form.answers(),
+                        price=form.cleaned_data["price"],
+                        notes=notes,
+                    )
+                    toast = f"{item.name} added"
+                else:
+                    item.change(
+                        chosen,
+                        form.answers(),
+                        price=form.cleaned_data["price"],
+                        notes=notes,
+                    )
+                    toast = f"{item.name} saved"
+                attach_photos(item, photo_ids)
             if (
                 request.POST.get("next") == "measurements"
                 and item.type == Product.CUSTOM
@@ -233,6 +269,18 @@ def _item_page(request, order, item=None):
             "leave_text": "Leave without saving this item? Your changes will be lost.",
             "remove_url": reverse("order_item_remove", args=[order.pk, item.pk]),
         }
+    saved_photos = list(item.photos.all()) if item else []
+    saved_pks = {p.pk for p in saved_photos}
+    staged = staged_photos(order, photo_ids)[: max(0, MAX_PHOTOS - len(saved_photos))]
+    photos = [
+        {
+            "id": p.pk,
+            "thumb": reverse("item_photo_thumb", args=[p.pk]),
+            "saved": p.pk in saved_pks,
+        }
+        for p in saved_photos + staged
+    ]
+    photo_name = product.name if product else (item.name if item else "Item")
     return render_page(
         request,
         "orders/item_add.html",
@@ -255,6 +303,15 @@ def _item_page(request, order, item=None):
             "first_name": first_name(order.customer.name),
             "products_url": reverse("products"),
             "price_value": form["price"].value() or "",
+            "photos_data": {
+                "photos": photos,
+                "max": MAX_PHOTOS,
+                "url": reverse("order_photo_upload", args=[order.pk]),
+                "name": photo_name,
+            },
+            "picture_url": photos[0]["thumb"] if photos else "",
+            "photo_count": len(photos),
+            "photo_name": photo_name,
         },
         status=status,
     )
