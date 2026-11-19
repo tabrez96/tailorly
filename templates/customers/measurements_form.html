@@ -2,8 +2,12 @@
 <div class="customer-page measure-form">
     {% include "components/header.html" with title=title back_url=back_url %}
     <p class="t-small muted measure-form__sub">
-        {{ customer.name }}
-        {% if updated %}· last updated {{ updated|fulldate }}{% endif %}
+        {% if subline %}
+            {{ subline }}
+        {% else %}
+            {{ customer.name }}
+            {% if updated %}· last updated {{ updated|fulldate }}{% endif %}
+        {% endif %}
     </p>
     <form method="post"
           novalidate
@@ -116,6 +120,19 @@
                 type="button"
                 id="measure-add"
                 @click="addRow()">+ Add measurement</button>
+        {% if also_label %}
+            <div class="check-row">
+                <input class="check"
+                       type="checkbox"
+                       id="also-update"
+                       name="also_update"
+                       value="1"
+                       {% if also_checked %}checked{% endif %}>
+                <div class="row-text">
+                    <label class="row-text__label" for="also-update">{{ also_label }}</label>
+                </div>
+            </div>
+        {% endif %}
         <div class="action-bar">
             <a class="btn btn--tonal"
                href="{{ back_url }}"

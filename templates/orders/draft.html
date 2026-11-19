@@ -13,13 +13,20 @@
                 <li class="list__row">
                     {% thumb row.name %}
                     <div class="list__main">
-                        <p class="row-text__label">
-                            <span class="draft-page__num tabular">{{ row.number }}</span> {{ row.name }}
+                        <p class="draft-page__name">
+                            <span class="draft-page__num tabular">{{ row.number }}</span>
+                            <a class="draft-page__open"
+                               href="{{ row.edit_url }}"
+                               hx-get="{{ row.edit_url }}"
+                               hx-target="#page"
+                               hx-sync="#page:replace"
+                               hx-push-url="true">{{ row.name }}</a>
                             {% include "components/chip.html" with label=row.custom|yesno:"Custom,Ready-made" tone="grey" %}
                         </p>
                         <p class="t-small muted">{{ row.summary }}</p>
                     </div>
                     <p class="tabular">{{ row.price|inr }}</p>
+                    {% include "components/icon.html" with name="chevron-right" %}
                 </li>
             {% endfor %}
         </ul>

@@ -1,7 +1,7 @@
 from django import forms
 
 from catalog.models import Product, ProductOption
-from orders.items import material_hint, price_hint, price_message, products_for
+from orders.items import item_products, material_hint, price_hint, price_message
 
 PRICE_INVALID = "Enter a price in rupees, like 1800."
 
@@ -61,12 +61,18 @@ class ItemForm(forms.Form):
     )
 
     def __init__(
-        self, *args, type_: str, product: Product | None, options=(), **kwargs
+        self,
+        *args,
+        type_: str,
+        product: Product | None,
+        options=(),
+        keep_pk: int | None = None,
+        **kwargs,
     ):
         super().__init__(*args, **kwargs)
         self.chosen = product
         self.options = list(options)
-        self.fields["product"].queryset = products_for(type_)
+        self.fields["product"].queryset = item_products(type_, keep_pk)
         if product:
             self.fields["price"].help_text = price_hint(product)
         for o in self.options:

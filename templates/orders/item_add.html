@@ -3,7 +3,7 @@
      x-data="{ dirty: false }"
      @input="dirty = true"
      @change="dirty = true"
-     @click.capture="if (dirty && $event.target.closest('[data-back], [data-leave]') && !confirm('Leave without adding this item? Your changes will be lost.')) { $event.preventDefault(); $event.stopPropagation() }">
+     @click.capture="if (dirty && $event.target.closest('[data-back], [data-leave]') && !confirm('{{ leave_text|escapejs }}')) { $event.preventDefault(); $event.stopPropagation() }">
     {% include "components/header.html" with title=title back_url=back_url overline=overline %}
     {% include "orders/_item_form.html" %}
 </div>

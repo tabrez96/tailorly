@@ -4,6 +4,7 @@ from decimal import Decimal as D
 import pytest
 from django.db import IntegrityError, transaction
 
+from catalog.models import Product
 from customers.models import MeasurementSet
 from orders.models import MaterialLine, Order, OrderError, OrderItem, Payment, Rework
 
@@ -241,3 +242,72 @@ def test_place_stores_unsaved_due_date(customer, blouse):
     order.place()
     order.refresh_from_db()
     assert order.due_date == due
+
+
+def test_change_same_product_keeps_measurements(customer, blouse):
+    saved = MeasurementSet.objects.create(
+        customer=customer, product=blouse, values=[{"name": "Bust", "value": "34"}]
+    )
+    order = Order.objects.create(customer=customer)
+    item = OrderItem.from_product(order, blouse)
+    item.measurements = [
+        {"name": "Bust", "value": "40"},
+        {"name": "Waist", "value": ""},
+    ]
+    item.save()
+    saved.values = [{"name": "Bust", "value": "36"}]
+    saved.save()
+    item.change(
+        blouse, [{"name": "Lining", "answer": "Yes"}], price=D("1500"), notes="Hooks"
+    )
+    item.refresh_from_db()
+    assert item.price == D("1500") and item.notes == "Hooks"
+    assert item.options == [{"name": "Lining", "answer": "Yes"}]
+    assert item.measurements[0] == {"name": "Bust", "value": "40"}
+
+
+def test_change_product_recopies(customer, blouse):
+    other = Product.objects.create(
+        name="Salwar",
+        kind=Product.PRIMARY,
+        type=Product.CUSTOM,
+        usual_price=D("900"),
+        measurement_fields=["Hip"],
+    )
+    MeasurementSet.objects.create(
+        customer=customer, product=other, values=[{"name": "Hip", "value": "38"}]
+    )
+    item = OrderItem.from_product(Order.objects.create(customer=customer), blouse)
+    item.change(other, price=D("950"))
+    item.refresh_from_db()
+    assert (item.product, item.name, item.type) == (other, "Salwar", "custom")
+    assert item.usual_price == D("900") and item.price == D("950")
+    assert item.measurements == [{"name": "Hip", "value": "38"}]
+
+
+def test_change_to_ready_made_clears_measurements(customer, blouse, kurta):
+    item = OrderItem.from_product(Order.objects.create(customer=customer), blouse)
+    assert item.measurements
+    item.change(kurta, price=D("799"))
+    item.refresh_from_db()
+    assert item.type == "ready_made" and item.measurements == []
+
+
+def test_change_same_product_does_not_overwrite_newer_measurements(customer, blouse):
+    item = OrderItem.from_product(Order.objects.create(customer=customer), blouse)
+    stale = OrderItem.objects.get(pk=item.pk)
+    item.measurements = [{"name": "Bust", "value": "41"}]
+    item.save(update_fields=["measurements"])
+    stale.change(blouse, price=D("1500"))
+    item.refresh_from_db()
+    assert item.price == D("1500")
+    assert item.measurements == [{"name": "Bust", "value": "41"}]
+
+
+def test_new_item_goes_after_the_last_one_when_positions_have_gaps(customer, blouse):
+    order = make_order(customer, blouse, blouse, blouse, blouse)
+    first, second, *_ = order.items.all()
+    first.delete()
+    second.delete()
+    added = OrderItem.from_product(order, blouse)
+    assert list(order.items.all())[-1] == added

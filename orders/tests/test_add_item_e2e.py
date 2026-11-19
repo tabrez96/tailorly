@@ -52,6 +52,39 @@ def test_add_item_flow(live_server, signed_in, shop):
     assert Order.objects.get().items.count() == 1
 
 
+def test_edit_and_remove_item_flow(live_server, signed_in, shop):
+    _, page = signed_in("owner")
+    blouse = Product.objects.get(name="Blouse")
+    order = Order.objects.create(customer=shop)
+    OrderItem.from_product(order, blouse)
+    page.goto(live_server.url + f"/orders/drafts/{order.pk}/")
+    page.evaluate("window.__noReload = 1")
+    page.locator(".draft-page__open", has_text="Blouse").click()
+    page.wait_for_url("**/items/*/")
+    page.get_by_text("New order · Item 1 of 1").wait_for()
+    page.fill("#id_price", "1650")
+    page.get_by_role("button", name="Save item").click()
+    page.wait_for_url("**/orders/drafts/*/")
+    page.wait_for_function(
+        "document.querySelector('.draft-page .list').innerText.includes('₹1,650')"
+    )
+    page.locator(".draft-page__open", has_text="Blouse").click()
+    page.wait_for_url("**/items/*/")
+    page.click("#measure-edit")
+    page.wait_for_url("**/measurements/")
+    page.fill("#m-1", "36")
+    page.get_by_role("button", name="Save", exact=True).click()
+    page.wait_for_url(lambda url: url.rstrip("/").endswith(str(order.items.get().pk)))
+    page.locator(".tiles").get_by_text("36").wait_for()
+    assert MeasurementSet.objects.get().values[0]["value"] == "34"
+    page.once("dialog", lambda d: d.accept())
+    page.click("#item-remove")
+    page.wait_for_url("**/orders/drafts/*/")
+    page.get_by_text("+ Add item").wait_for()
+    assert not order.items.exists()
+    assert page.evaluate("window.__noReload") == 1
+
+
 def test_back_asks_when_changed(live_server, signed_in, shop):
     _, page = signed_in("owner")
     open_add_item(live_server, page, shop)
@@ -108,5 +141,8 @@ def test_screenshots(live_server, signed_in, browser, shop):
     page.get_by_role("button", name="Add to order").click()
     page.get_by_text("Enter a price. The usual price").wait_for()
     page.screenshot(path=ARTIFACTS / "S20-error.png", full_page=True)
+    edit = f"{live_server.url}/orders/drafts/{order.pk}/items/{order.items.get().pk}/"
+    shot(page, "S20-edit.png", edit)
+    shot(page, "S20-item-measurements.png", edit + "measurements/")
     Product.objects.filter(type=Product.READY_MADE).delete()
     shot(page, "S20-no-products.png", f"{url}?type=ready_made")
