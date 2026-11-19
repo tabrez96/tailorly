@@ -80,18 +80,34 @@
         </div>
     {% endif %}
     {% if product and type_ == "custom" %}
-        <h2 class="t-section">
-            Measurements <span class="muted">(inches)</span>
-        </h2>
-        {% if saved %}
+        <div class="item-page__head">
+            <h2 class="t-section">
+                Measurements <span class="muted">(inches)</span>
+            </h2>
+            {% if has_values %}
+                <button class="link-btn"
+                        type="submit"
+                        name="next"
+                        value="measurements"
+                        id="measure-edit">Edit</button>
+            {% endif %}
+        </div>
+        {% if has_values %}
             {% include "components/measure_tiles.html" with tiles=tiles %}
-            <p class="t-small muted">
-                Copied from {{ first_name }}'s {{ product.name }} set, {{ saved.updated_at|day }}. Changes here stay with this item.
-            </p>
+            {% if from_set %}
+                <p class="t-small muted">
+                    Copied from {{ first_name }}'s {{ product.name }} set, {{ copied_on|day }}. Changes here stay with this item.
+                </p>
+            {% else %}
+                <p class="t-small muted">Measurements for this item only.</p>
+            {% endif %}
         {% else %}
-            <p class="muted">
-                No saved {{ product.name }} measurements for {{ first_name }} yet. Add them on the customer page.
-            </p>
+            <p class="muted">No saved {{ product.name }} measurements for {{ first_name }} yet.</p>
+            <button class="btn btn--tonal btn--block"
+                    type="submit"
+                    name="next"
+                    value="measurements"
+                    id="measure-add">Add measurements</button>
         {% endif %}
     {% endif %}
     {% if product and type_ == "ready_made" %}
@@ -104,13 +120,21 @@
     <p class="empty-line">No materials for this item.</p>
     {% field form.notes %}
     <div class="action-bar item-bar">
-        <div>
-            <p class="t-small muted">This item, with billed materials</p>
-            <p class="item-bar__total tabular"
-               x-text="'₹' + Math.round(Number(String(price).replace(/[,₹\s]/g, '')) || 0).toLocaleString('en-IN')">
-                {{ product.usual_price|default:0|inr }}
-            </p>
-        </div>
-        <button class="btn btn--primary" id="item-submit" type="submit">Add to order</button>
+        {% if remove_url %}
+            <button class="btn btn--ghost btn--danger"
+                    type="button"
+                    id="item-remove"
+                    hx-post="{{ remove_url }}"
+                    hx-confirm="Remove {{ title }} from this order?">Remove item</button>
+        {% else %}
+            <div>
+                <p class="t-small muted">This item, with billed materials</p>
+                <p class="item-bar__total tabular"
+                   x-text="'₹' + Math.round(Number(String(price).replace(/[,₹\s]/g, '')) || 0).toLocaleString('en-IN')">
+                    {{ product.usual_price|default:0|inr }}
+                </p>
+            </div>
+        {% endif %}
+        <button class="btn btn--primary" id="item-submit" type="submit">{{ submit_label }}</button>
     </div>
 </form>

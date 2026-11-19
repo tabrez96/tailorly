@@ -2,7 +2,7 @@
 
 from decimal import Decimal
 
-from django.db.models import QuerySet
+from django.db.models import Q, QuerySet
 from django.db.models.functions import Lower
 
 from catalog.models import Product, ProductOption
@@ -16,6 +16,17 @@ def products_for(type_: str) -> QuerySet[Product]:
     return Product.objects.filter(
         kind=Product.PRIMARY, type=type_, active=True
     ).order_by(Lower("name"), "pk")
+
+
+def item_products(type_: str, keep_pk: int | None = None) -> QuerySet[Product]:
+    """Active products of the type, plus the item's own product even if archived."""
+    if keep_pk is None:
+        return products_for(type_)
+    return (
+        Product.objects.filter(kind=Product.PRIMARY, type=type_)
+        .filter(Q(active=True) | Q(pk=keep_pk))
+        .order_by(Lower("name"), "pk")
+    )
 
 
 def resolve_type(raw: str | None) -> str:

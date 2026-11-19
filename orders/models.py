@@ -146,6 +146,13 @@ class Order(models.Model):
         return invoice.build(items, [p.amount for p in self.payments.all()])
 
 
+def copy_measurements(customer, product) -> list[dict]:
+    """The customer's saved values for the product's fields, as an item's own copy."""
+    saved = MeasurementSet.objects.filter(customer=customer, product=product).first()
+    rows = merge_fields(product.measurement_fields, saved.values if saved else [])
+    return [{"name": r.name, "value": r.value} for r in rows]
+
+
 class OrderItem(models.Model):
     NOT_STARTED, IN_PROGRESS, FINISHED = "not_started", "in_progress", "finished"
     STATUSES = [
@@ -207,15 +214,11 @@ class OrderItem(models.Model):
         cls, order, product, answers=(), *, price=None, notes=""
     ) -> OrderItem:
         """Add an item that copies the product (and, if custom, measurements)."""
-        measurements = []
-        if product.type == Product.CUSTOM:
-            saved = MeasurementSet.objects.filter(
-                customer=order.customer, product=product
-            ).first()
-            rows = merge_fields(
-                product.measurement_fields, saved.values if saved else []
-            )
-            measurements = [{"name": r.name, "value": r.value} for r in rows]
+        measurements = (
+            copy_measurements(order.customer, product)
+            if product.type == Product.CUSTOM
+            else []
+        )
         return cls.objects.create(
             order=order,
             product=product,
@@ -226,8 +229,27 @@ class OrderItem(models.Model):
             options=[dict(a) for a in answers],
             notes=notes,
             measurements=measurements,
-            position=order.items.count(),
+            position=(order.items.aggregate(m=Max("position"))["m"] or -1) + 1,
         )
+
+    def change(self, product, answers=(), *, price, notes="") -> None:
+        """Save edits; a different product replaces the copies (and measurements)."""
+        fields = ["price", "options", "notes"]
+        if product.pk != self.product_id:
+            self.product = product
+            self.name = product.name
+            self.type = product.type
+            self.usual_price = product.usual_price
+            self.measurements = (
+                copy_measurements(self.order.customer, product)
+                if product.type == Product.CUSTOM
+                else []
+            )
+            fields += ["product", "name", "type", "usual_price", "measurements"]
+        self.price = price
+        self.options = [dict(a) for a in answers]
+        self.notes = notes
+        self.save(update_fields=fields)
 
 
 class ItemPhoto(models.Model):

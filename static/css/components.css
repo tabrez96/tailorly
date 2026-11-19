@@ -4,6 +4,9 @@
   box-sizing: border-box;
 }
 
+html {
+  scroll-padding-bottom: 96px;
+}
 body {
   margin: 0;
   background: var(--bg);
@@ -489,6 +492,10 @@ textarea.field__input {
   content: "";
   position: absolute;
   inset: 0;
+}
+/* Plain text labels are not tap targets; only label elements stretch. */
+p.row-text__label::after {
+  content: none;
 }
 .switch-row {
   position: relative;
@@ -1416,11 +1423,28 @@ body[data-subpage="1"] .nav {
   text-align: center;
   font-size: 12px;
 }
+.draft-page__name {
+  font-weight: 700;
+}
+.draft-page__open {
+  color: inherit;
+  text-decoration: none;
+}
+.draft-page__open::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
 .draft-page .list {
   margin-bottom: var(--s4);
 }
 .item-page {
   padding-bottom: 96px;
+}
+.item-page__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
 }
 .item-page h2 {
   margin: var(--s5) 0 var(--s2);
