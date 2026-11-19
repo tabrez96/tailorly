@@ -1,0 +1,129 @@
+{% load formats %}
+<div class="customer-page measure-form">
+    {% include "components/header.html" with title=title back_url=back_url %}
+    <p class="t-small muted measure-form__sub">
+        {{ customer.name }}
+        {% if updated %}· last updated {{ updated|fulldate }}{% endif %}
+    </p>
+    <form method="post"
+          novalidate
+          hx-post="{{ action }}"
+          hx-target="#page"
+          x-data="measureForm('{{ unit }}')">
+        {% csrf_token %}
+        {% if error_text %}
+            {% include "components/error_summary.html" with text=error_text %}
+        {% endif %}
+        <fieldset class="seg">
+            <legend class="field__label">Units</legend>
+            <div class="seg__track">
+                <label class="seg__opt" for="unit-in">
+                    <input class="seg__input"
+                           type="radio"
+                           id="unit-in"
+                           name="unit"
+                           value="in"
+                           {% if unit == "in" %}checked{% endif %}
+                           @change="convert($event.target.value)">
+                    Inches
+                </label>
+                <label class="seg__opt" for="unit-cm">
+                    <input class="seg__input"
+                           type="radio"
+                           id="unit-cm"
+                           name="unit"
+                           value="cm"
+                           {% if unit == "cm" %}checked{% endif %}
+                           @change="convert($event.target.value)">
+                    cm
+                </label>
+            </div>
+        </fieldset>
+        <div class="measure-grid">
+            {% for r in rows %}
+                {% if not r.new %}
+                    <div class="field{% if r.error %} field--error{% endif %}">
+                        <label class="field__label" for="m-{{ forloop.counter }}">{{ r.name }}</label>
+                        <input type="hidden" name="field" value="{{ r.name }}">
+                        <input class="field__input"
+                               id="m-{{ forloop.counter }}"
+                               name="value"
+                               value="{{ r.value }}"
+                               inputmode="decimal"
+                               autocomplete="off"
+                               placeholder="Optional"
+                               data-measure
+                               {% if r.error %}aria-invalid="true" aria-describedby="m-{{ forloop.counter }}_error"{% endif %}>
+                        {% if r.error %}<p class="field__error"
+                                           id="m-{{ forloop.counter }}_error">{{ r.error }}</p>{% endif %}
+                    </div>
+                {% endif %}
+            {% endfor %}
+            {% for r in rows %}
+                {% if r.new %}
+                    <div class="measure-grid__new">
+                        <div class="field{% if r.error and r.field == "name" %} field--error{% endif %}">
+                            <label class="field__label" for="new-name-s{{ forloop.counter }}">Measurement name</label>
+                            <input class="field__input"
+                                   id="new-name-s{{ forloop.counter }}"
+                                   name="new_name"
+                                   value="{{ r.name }}"
+                                   autocomplete="off"
+                                   placeholder="Like Hip"
+                                   {% if r.error and r.field == "name" %}aria-invalid="true" aria-describedby="new-name-s{{ forloop.counter }}_error"{% endif %}>
+                            {% if r.error and r.field == "name" %}<p class="field__error"
+                                                                     id="new-name-s{{ forloop.counter }}_error">{{ r.error }}</p>{% endif %}
+                        </div>
+                        <div class="field{% if r.error and r.field == "value" %} field--error{% endif %}">
+                            <label class="field__label" for="new-value-s{{ forloop.counter }}">Value</label>
+                            <input class="field__input"
+                                   id="new-value-s{{ forloop.counter }}"
+                                   name="new_value"
+                                   value="{{ r.value }}"
+                                   inputmode="decimal"
+                                   autocomplete="off"
+                                   data-measure
+                                   {% if r.error and r.field == "value" %}aria-invalid="true" aria-describedby="new-value-s{{ forloop.counter }}_error"{% endif %}>
+                            {% if r.error and r.field == "value" %}<p class="field__error"
+                                                                      id="new-value-s{{ forloop.counter }}_error">{{ r.error }}</p>{% endif %}
+                        </div>
+                    </div>
+                {% endif %}
+            {% endfor %}
+            <template x-for="i in newRows" :key="i">
+                <div class="measure-grid__new">
+                    <div class="field">
+                        <label class="field__label" :for="'new-name-' + i">Measurement name</label>
+                        <input class="field__input"
+                               :id="'new-name-' + i"
+                               name="new_name"
+                               autocomplete="off"
+                               placeholder="Like Hip">
+                    </div>
+                    <div class="field">
+                        <label class="field__label" :for="'new-value-' + i">Value</label>
+                        <input class="field__input"
+                               :id="'new-value-' + i"
+                               name="new_value"
+                               inputmode="decimal"
+                               autocomplete="off"
+                               data-measure>
+                    </div>
+                </div>
+            </template>
+        </div>
+        <button class="btn btn--ghost"
+                type="button"
+                id="measure-add"
+                @click="addRow()">+ Add measurement</button>
+        <div class="action-bar">
+            <a class="btn btn--tonal"
+               href="{{ back_url }}"
+               hx-get="{{ back_url }}"
+               hx-target="#page"
+               hx-sync="#page:replace"
+               hx-push-url="true">Cancel</a>
+            <button class="btn btn--primary" type="submit">Save</button>
+        </div>
+    </form>
+</div>

@@ -1,0 +1,35 @@
+{% extends "components/sheet_content.html" %}
+{% load ui %}
+{% block sheet_title %}
+    Add garment
+{% endblock %}
+{% block sheet_body %}
+    {% if form.product.field.queryset or form.is_bound %}
+        <form method="post" novalidate hx-post="{{ action }}" hx-target="#sheet">
+            {% csrf_token %}
+            {% error_summary form "add a garment" %}
+            {% radio_rows form.product %}
+            <div class="sheet__actions">
+                <button class="btn btn--tonal"
+                        type="button"
+                        x-data
+                        @click="$dispatch('sheet:close')">Cancel</button>
+                <button class="btn btn--primary" type="submit">Next</button>
+            </div>
+        </form>
+    {% else %}
+        <p class="muted">
+            {% if has_custom %}
+                Every custom garment already has measurements for this customer.
+            {% else %}
+                Add a custom product in Products first.
+            {% endif %}
+        </p>
+        <div class="sheet__actions">
+            <button class="btn btn--tonal"
+                    type="button"
+                    x-data
+                    @click="$dispatch('sheet:close')">Close</button>
+        </div>
+    {% endif %}
+{% endblock %}

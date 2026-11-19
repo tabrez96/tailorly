@@ -436,7 +436,8 @@ textarea.field__input {
   margin: 0;
   pointer-events: none;
 }
-.seg__opt:has(.seg__input:checked) {
+.seg__opt:has(.seg__input:checked),
+.seg__opt[aria-selected="true"] {
   background: var(--card);
   color: var(--pri-d);
   box-shadow: var(--shadow-card);
@@ -1334,4 +1335,67 @@ body[data-subpage="1"] .nav {
 }
 .stat__value--due {
   color: var(--warn);
+}
+.measure {
+  margin-top: var(--s5);
+}
+.measure__card {
+  padding: var(--s4);
+  margin-bottom: var(--s3);
+}
+.measure__tabs {
+  overflow-x: auto;
+}
+.measure__tabs .seg__opt {
+  flex: 1 0 auto;
+  border: 0;
+  background: none;
+}
+.measure__tabs .seg__opt[aria-selected="true"] {
+  background: var(--card);
+}
+.measure__meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: var(--s4) 0 var(--s3);
+}
+.measure__meta .t-small {
+  margin: 0;
+}
+.measure__edit {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--pri);
+  font-weight: 700;
+  text-decoration: none;
+}
+.measure__empty {
+  padding: var(--s4);
+}
+.measure__empty p {
+  margin: 0 0 var(--s3);
+}
+.measure-form__sub {
+  margin: 0 0 var(--s3);
+}
+.measure-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s3);
+  margin-bottom: var(--s3);
+}
+.measure-grid__new {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s3);
+}
+.measure .tile {
+  padding: var(--s3) var(--s2);
+}
+.measure .tile__label {
+  font-size: 12px;
+  white-space: nowrap;
 }

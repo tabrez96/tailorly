@@ -1,7 +1,9 @@
 from django import forms
 from django.core.exceptions import ValidationError
+from django.db.models.functions import Lower
 
 from accounts.phones import is_valid_phone, normalize_phone
+from catalog.models import Product
 from customers.models import Customer
 
 
@@ -30,3 +32,29 @@ class CustomerForm(forms.ModelForm):
         if not is_valid_phone(phone):
             raise ValidationError("Enter a 10-digit mobile number.")
         return phone
+
+
+def garments_to_add(customer: Customer):
+    """Active custom products the customer has no measurement set for."""
+    return (
+        Product.objects.filter(kind=Product.PRIMARY, type=Product.CUSTOM, active=True)
+        .exclude(measurement_sets__customer=customer)
+        .order_by(Lower("name"))
+    )
+
+
+class GarmentForm(forms.Form):
+    product = forms.ModelChoiceField(
+        queryset=Product.objects.none(),
+        label="Garment",
+        widget=forms.RadioSelect,
+        empty_label=None,
+        error_messages={
+            "required": "Choose a garment.",
+            "invalid_choice": "Choose a garment from the list.",
+        },
+    )
+
+    def __init__(self, *args, customer: Customer, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["product"].queryset = garments_to_add(customer)

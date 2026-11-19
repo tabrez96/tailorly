@@ -7,7 +7,7 @@ from django.http import HttpResponse
 from django.test import RequestFactory
 
 from core import assets
-from core.pages import is_partial, render_page, sheet_saved
+from core.pages import is_partial, render_page, sheet_saved, sheet_saved_location
 
 
 @pytest.fixture
@@ -63,3 +63,10 @@ def test_sheet_saved():
     assert trigger["sheet:close"] is True
     assert trigger["toast"]["message"] == "Saved"
     assert response["HX-Reswap"] == "none"
+
+
+def test_sheet_saved_location_without_toast():
+    response = sheet_saved_location("/x/")
+    trigger = json.loads(response["HX-Trigger"])
+    assert trigger == {"sheet:close": True}
+    assert json.loads(response["HX-Location"])["path"] == "/x/"
