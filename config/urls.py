@@ -22,6 +22,7 @@ urlpatterns = [
     path("", include("accounts.urls")),
     path("", include("staff.urls")),
     path("", include("customers.urls")),
+    path("", include("orders.urls")),
     path("admin/", admin.site.urls),
     path("styleguide/", views.styleguide, name="styleguide"),
     path("styleguide/shell/", views.shell_check, name="shell_check"),
