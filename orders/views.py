@@ -18,15 +18,29 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from accounts.decorators import owner_required
+from accounts.roles import OWNER, role_for
 from catalog.models import Product
+from core.formats import format_day
 from core.forms_ui import error_summary_text
-from core.pages import page_location, render_page, sheet_saved_location
+from core.money import format_inr
+from core.pages import (
+    page_location,
+    render_page,
+    sheet_saved_location,
+    sheet_saved_swap,
+)
 from customers.forms import CustomerForm
 from customers.listing import add_initial, parse_query, search_filter
 from customers.measurements import CM, INCHES, clean_rows, merge_fields, tiles
 from customers.models import Customer, MeasurementSet
 from orders.access import can_see_order
-from orders.forms import ItemForm, PlaceForm
+from orders.detail import (
+    assigned_line,
+    measurement_summary,
+    queue_rank,
+    status_steps,
+)
+from orders.forms import ItemForm, PaymentForm, PlaceForm
 from orders.items import (
     TYPE_WORDS,
     item_products,
@@ -39,6 +53,7 @@ from orders.listing import (
     OPEN,
     READY,
     SHOWS,
+    STATUS_CHIPS,
     ListFilter,
     filter_url,
     order_row,
@@ -49,7 +64,7 @@ from orders.listing import (
 )
 from orders.listing import search_filter as order_search_filter
 from orders.making import ordinal, queue_place
-from orders.models import ItemPhoto, Order, OrderError, OrderItem
+from orders.models import ItemPhoto, Order, OrderError, OrderItem, Payment
 from orders.photos import (
     MAX_PHOTOS,
     NOT_A_PHOTO,
@@ -429,20 +444,151 @@ def order_detail(request, pk):
     )
     if not can_see_order(request.user, order):
         raise Http404
-    return render_page(
-        request,
-        "orders/order.html",
-        {
-            "title": f"Order #{order.number}",
-            "overline": order.customer.name,
-            "tab": "orders",
-            "subpage": True,
-            "back_url": reverse("orders"),
-            "order": order,
-            "items": list(order.items.all()),
-            "invoice": order.invoice(),
-            "payments": list(order.payments.all()),
+    return render_page(request, "orders/order.html", _order_context(request, order))
+
+
+ITEM_TONES = {"not_started": "warn", "in_progress": "pri", "finished": "ok"}
+
+
+def _order_context(request, order) -> dict:
+    owner = role_for(request.user) == OWNER
+    assigned = None
+    maker = ""
+    if order.assignee:
+        name = order.assignee.name
+        maker = first_name(name)
+        place = None
+        if order.status in (Order.OPEN, Order.IN_PROGRESS):
+            others = (
+                Order.objects.filter(
+                    assignee=order.assignee,
+                    status__in=[Order.OPEN, Order.IN_PROGRESS],
+                )
+                .exclude(pk=order.pk)
+                .values_list("pk", "due_date")
+            )
+            place = queue_rank(list(others), order.pk, order.due_date)
+        assigned = {"initials": initials(name), "line": assigned_line(name, place)}
+    saved = {
+        s.product_id: s for s in MeasurementSet.objects.filter(customer=order.customer)
+    }
+    items = order.items.select_related("product").prefetch_related("photos")
+    label, tone = STATUS_CHIPS[order.status]
+    return {
+        "title": f"Order #{order.number}",
+        "tab": "orders",
+        "subpage": True,
+        "back_url": reverse("orders"),
+        "is_owner": owner,
+        "customer_url": reverse("customer", args=[order.customer.pk]) if owner else "",
+        "status_chip": {"label": label, "tone": tone},
+        "steps": status_steps(order.status),
+        "assigned": assigned,
+        "maker": maker,
+        "free": order.is_free,
+        "items": [
+            _item_card(order, item, number, saved.get(item.product_id))
+            for number, item in enumerate(items, start=1)
+        ],
+        **_invoice_context(order),
+    }
+
+
+def _item_card(order, item, number, saved_set) -> dict:
+    custom = item.type == Product.CUSTOM
+    item_tiles = (
+        tiles(
+            item.product.measurement_fields if item.product else [], item.measurements
+        )
+        if custom
+        else []
+    )
+    # A set saved after the item was made says nothing about where it came from.
+    if saved_set and saved_set.updated_at <= item.created_at:
+        copied = (
+            f"Copied from {first_name(order.customer.name)}'s {item.name} set, "
+            f"{format_day(item.created_at)}. Kept with this item."
+        )
+    else:
+        copied = "Measurements for this item only."
+    photos = list(item.photos.all())
+    return {
+        "pk": item.pk,
+        "number": number,
+        "name": item.name,
+        "custom": custom,
+        "type_label": item.get_type_display(),
+        "price": item.price,
+        "status_label": item.get_status_display(),
+        "status_tone": ITEM_TONES[item.status],
+        "tiles": item_tiles,
+        "has_values": any(str(m.get("value", "")).strip() for m in item.measurements),
+        "summary": measurement_summary(item_tiles),
+        "copied_text": copied,
+        "notes": item.notes,
+        "thumb": reverse("item_photo_thumb", args=[photos[0].pk]) if photos else None,
+        "photos": [
+            {
+                "thumb": reverse("item_photo_thumb", args=[p.pk]),
+                "full": reverse("item_photo", args=[p.pk]),
+            }
+            for p in photos
+        ],
+    }
+
+
+def _invoice_context(order) -> dict:
+    invoice = order.invoice()
+    return {
+        "order": order,
+        "invoice": invoice,
+        "payments": list(order.payments.all()) if invoice else [],
+        "payment_url": reverse("order_payment", args=[order.pk]),
+    }
+
+
+@owner_required
+def payment_sheet(request, pk):
+    order = get_object_or_404(
+        Order.objects.select_related("customer").exclude(status=Order.DRAFT), pk=pk
+    )
+    invoice = order.invoice()
+    form = PaymentForm(
+        request.POST or None,
+        initial={
+            "amount": price_input(max(invoice.balance, Decimal(0))) if invoice else "",
+            "date": timezone.localdate(),
+            "method": Payment.CASH,
         },
+    )
+    status = 200
+    if request.method == "POST":
+        if form.is_valid():
+            cd = form.cleaned_data
+            try:
+                with transaction.atomic():
+                    order.record_payment(cd["amount"], cd["date"], cd["method"])
+            except OrderError as e:
+                form.add_error(None, str(e))
+            else:
+                return sheet_saved_swap(
+                    render(
+                        request,
+                        "orders/_invoice.html",
+                        {**_invoice_context(order), "is_owner": True},
+                    ),
+                    "Payment saved",
+                    "#order-invoice",
+                )
+        status = 422
+    subline = f"#{order.number}"
+    if invoice:
+        subline += f" · balance {format_inr(invoice.balance)}"
+    return render(
+        request,
+        "orders/payment_sheet.html",
+        {"form": form, "order": order, "subline": subline},
+        status=status,
     )
 
 

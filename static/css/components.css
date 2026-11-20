@@ -1726,3 +1726,165 @@ body[data-subpage="1"] .nav {
 .draft-bar p {
   margin: 0;
 }
+
+/* S04 Order detail */
+.order-head {
+  padding: var(--s4);
+  margin-bottom: var(--s4);
+}
+.order-head p {
+  margin: 0;
+}
+.order-head__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--s3);
+}
+.order-head__name {
+  color: var(--pri);
+  font-size: 18px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.order-head__chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--s1);
+}
+.steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--s2);
+  margin: var(--s4) 0;
+  padding: 0;
+  list-style: none;
+}
+.steps__step {
+  display: grid;
+  gap: var(--s1);
+  text-align: center;
+  color: var(--muted);
+}
+.steps__bar {
+  height: 4px;
+  border-radius: var(--r-pill);
+  background: var(--sunk);
+}
+.steps__step--done {
+  color: var(--pri-d);
+}
+.steps__step--done .steps__bar {
+  background: var(--pri);
+}
+.steps__step--current {
+  color: var(--ink);
+  font-weight: 700;
+}
+.steps__step--current .steps__bar {
+  background: var(--acc);
+}
+.assign-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--line);
+}
+.assign-row__text {
+  flex: 1;
+}
+.assign-row__line {
+  font-weight: 700;
+}
+.item-card {
+  padding: var(--s4);
+  margin-bottom: var(--s4);
+}
+.item-card__head {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+.item-card__toggle {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.item-card__main {
+  flex: 1;
+  display: grid;
+  gap: var(--s1);
+  justify-items: start;
+}
+.item-card__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s1);
+}
+.item-card__name {
+  font-weight: 700;
+}
+.item-card__price {
+  font-weight: 700;
+}
+.item-card__price--struck {
+  color: var(--muted);
+  font-weight: 400;
+  text-decoration: line-through;
+}
+.item-card__chevron {
+  display: grid;
+  color: var(--muted);
+}
+.item-card__summary {
+  margin: var(--s3) 0 0;
+  padding-top: var(--s3);
+  border-top: 1px solid var(--line);
+}
+.item-card__label {
+  margin: var(--s4) 0 var(--s2);
+  font-weight: 700;
+  font-size: 14px;
+}
+.item-card__notes {
+  margin: 0;
+  padding: var(--s3);
+  border-radius: var(--r-field);
+  background: var(--sunk);
+}
+.item-card__photos {
+  display: flex;
+  gap: var(--s2);
+  margin: 0;
+  padding: 0;
+  overflow-x: auto;
+  list-style: none;
+}
+.item-card__photos img {
+  display: block;
+  width: 64px;
+  height: 64px;
+  border-radius: var(--r-field);
+  object-fit: cover;
+}
+.order-invoice__paid {
+  color: var(--ok);
+}
+.order-invoice__payment {
+  font-size: 14px;
+}
+.order-invoice .btn {
+  margin: var(--s3) 0;
+}

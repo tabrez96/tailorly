@@ -1,0 +1,36 @@
+{% load formats %}
+<section id="order-invoice" class="order-invoice">
+    <h2 class="t-section">Invoice</h2>
+    <div class="card pay-summary">
+        <p>
+            <span>Total</span><span class="tabular">{{ invoice.total|inr }}</span>
+        </p>
+        <p>
+            <span>Received</span><span class="tabular">{{ invoice.received|inr }}</span>
+        </p>
+        <p class="pay-summary__last">
+            <span>Balance</span>
+            {% if invoice.paid %}
+                <span class="order-invoice__paid">Paid</span>
+            {% else %}
+                <span class="tabular">{{ invoice.balance|inr }}</span>
+            {% endif %}
+        </p>
+        {% for p in payments %}
+            <p class="order-invoice__payment">
+                <span class="t-small muted">{{ p.date|day }} · {{ p.get_method_display }}</span><span class="tabular">{{ p.amount|inr }}</span>
+            </p>
+        {% empty %}
+            <p class="order-invoice__payment">
+                <span class="muted t-small">No payments yet.</span>
+            </p>
+        {% endfor %}
+        {% if is_owner and not invoice.paid %}
+            <button class="btn btn--tonal btn--block"
+                    type="button"
+                    id="record-payment"
+                    hx-get="{{ payment_url }}"
+                    hx-target="#sheet">Record payment</button>
+        {% endif %}
+    </div>
+</section>

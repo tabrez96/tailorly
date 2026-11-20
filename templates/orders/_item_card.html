@@ -1,0 +1,68 @@
+{% load ui formats %}
+<article class="card item-card"
+         id="item-{{ item.pk }}"
+         x-data="{ open: true }">
+    <div class="item-card__head">
+        <button type="button"
+                class="item-card__toggle"
+                @click="open = !open"
+                :aria-expanded="open"
+                aria-controls="item-{{ item.pk }}-body">
+            {% thumb item.name item.thumb size="md" %}
+            <span class="item-card__main">
+                <span class="item-card__title">
+                    <span class="draft-page__num">{{ item.number }}</span>
+                    <span class="item-card__name">{{ item.name }}</span>
+                    {% include "components/chip.html" with label=item.type_label tone="grey" %}
+                </span>
+                {% include "components/chip.html" with label=item.status_label tone=item.status_tone %}
+            </span>
+            <span class="tabular item-card__price">
+                {% if is_owner %}
+                    {% if free %}
+                        <s class="item-card__price--struck">{{ item.price|inr }}</s>
+                    {% else %}
+                        {{ item.price|inr }}
+                    {% endif %}
+                {% endif %}
+            </span>
+        </button>
+        <span class="item-card__chevron" aria-hidden="true">
+            {% include "components/icon.html" with name="chevron-right" %}
+        </span>
+    </div>
+    {% if item.summary %}
+        <p class="item-card__summary t-small muted" x-show="!open" x-cloak>{{ item.summary }}</p>
+    {% endif %}
+    <div id="item-{{ item.pk }}-body" x-show="open">
+        {% if item.custom %}
+            <p class="item-card__label">
+                Measurements <span class="muted">(inches)</span>
+            </p>
+            {% if item.has_values %}
+                {% include "components/measure_tiles.html" with tiles=item.tiles %}
+                <p class="t-small muted">{{ item.copied_text }}</p>
+            {% else %}
+                <p class="muted">No measurements yet for this {{ item.name|lower }}.</p>
+            {% endif %}
+        {% endif %}
+        {% if item.notes %}
+            <p class="item-card__label">Notes{% if maker %} for {{ maker }}{% endif %}</p>
+            <p class="item-card__notes">{{ item.notes }}</p>
+        {% endif %}
+        {% if item.photos %}
+            <p class="item-card__label">Photos</p>
+            <ul class="item-card__photos">
+                {% for p in item.photos %}
+                    <li>
+                        <a href="{{ p.full }}" target="_blank" rel="noopener">
+                            <img src="{{ p.thumb }}"
+                                 alt="{{ item.name }} photo {{ forloop.counter }}"
+                                 loading="lazy">
+                        </a>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </div>
+</article>
