@@ -1,11 +1,11 @@
 import json
-from decimal import Decimal
 from urllib.parse import urlencode
 
 from django.db.models.functions import Lower
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 
 from accounts.decorators import owner_required
 from catalog.models import Product
@@ -21,6 +21,8 @@ from customers.measurements import (
     tiles,
 )
 from customers.models import Customer, MeasurementSet
+from orders.listing import customer_totals, order_row, rows_queryset
+from orders.models import Order
 from staff.attendance import first_name
 
 
@@ -95,6 +97,13 @@ def customer(request: HttpRequest, pk: int) -> HttpResponse:
         }
         for s in sets
     ]
+    order_rows = [
+        order_row(o, timezone.localdate())
+        for o in rows_queryset(
+            c.orders.exclude(status=Order.DRAFT).order_by("-created_at", "-pk")
+        )
+    ]
+    spent, to_collect = customer_totals(order_rows)
     return render_page(
         request,
         "customers/customer.html",
@@ -105,9 +114,9 @@ def customer(request: HttpRequest, pk: int) -> HttpResponse:
             "back_url": reverse("customers"),
             "customer": c,
             "first_name": first_name(c.name),
-            # Orders don't exist yet, so nothing has been spent or is owed.
-            "spent": Decimal(0),
-            "to_collect": Decimal(0),
+            "spent": spent,
+            "to_collect": to_collect,
+            "order_rows": order_rows,
             "edit_url": reverse("customer_edit", args=[c.pk]),
             "new_order_action": reverse("order_draft_create"),
             "garments": garments,

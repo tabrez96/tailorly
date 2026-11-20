@@ -35,6 +35,19 @@ from orders.items import (
     product_summary,
     resolve_type,
 )
+from orders.listing import (
+    OPEN,
+    READY,
+    SHOWS,
+    ListFilter,
+    filter_url,
+    order_row,
+    ordering,
+    parse_filter,
+    rows_queryset,
+    show_filter,
+)
+from orders.listing import search_filter as order_search_filter
 from orders.making import ordinal, queue_place
 from orders.models import ItemPhoto, Order, OrderError, OrderItem
 from orders.photos import (
@@ -424,7 +437,7 @@ def order_detail(request, pk):
             "overline": order.customer.name,
             "tab": "orders",
             "subpage": True,
-            "back_url": reverse("today"),
+            "back_url": reverse("orders"),
             "order": order,
             "items": list(order.items.all()),
             "invoice": order.invoice(),
@@ -708,4 +721,46 @@ def item_measurements(request, pk, item_pk):
             else "",
         },
         status=status,
+    )
+
+
+@owner_required
+def orders(request):
+    f = parse_filter(request.GET)
+    today = timezone.localdate()
+    base = reverse("orders")
+    placed = Order.objects.exclude(status=Order.DRAFT)
+    counts = placed.aggregate(
+        open=Count("id", filter=show_filter(OPEN, today)),
+        ready=Count("id", filter=show_filter(READY, today)),
+    )
+    qs = placed.filter(show_filter(f.show, today))
+    if f.q:
+        qs = qs.filter(order_search_filter(f.q))
+    rows = [order_row(o, today) for o in rows_queryset(qs.order_by(*ordering(f.show)))]
+    chips = [
+        {
+            "id": f"chip-{key}",
+            "label": label,
+            "count": counts.get(key),
+            "url": filter_url(base, ListFilter(key, f.q)),
+            "selected": f.show == key,
+        }
+        for key, label in SHOWS
+    ]
+    return render_page(
+        request,
+        "orders/orders.html",
+        {
+            "title": "Orders",
+            "tab": "orders",
+            "filter": f,
+            "chips": chips,
+            "rows": rows,
+            "has_any": placed.exists(),
+            "base_url": base,
+            "new_url": reverse("order_new"),
+            "clear_url": filter_url(base, ListFilter(f.show)),
+            "show_label": dict(SHOWS)[f.show].lower(),
+        },
     )

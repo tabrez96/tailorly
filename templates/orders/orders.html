@@ -1,0 +1,75 @@
+{% load ui formats static %}
+<div id="orders">
+    {% include "components/header.html" with title=title action_label="+ New order" action_url=new_url %}
+    {% if not has_any %}
+        <div class="empty">
+            <img class="empty__mark"
+                 src="{% static 'brand/mark.svg' %}"
+                 width="72"
+                 height="72"
+                 alt="">
+            <h2 class="t-sheet empty__title">No orders yet</h2>
+            <p class="muted empty__text">When a customer orders a garment or buys something ready-made, add it here.</p>
+            <a class="btn btn--primary"
+               id="empty-new"
+               href="{{ new_url }}"
+               hx-get="{{ new_url }}"
+               hx-target="#page"
+               hx-sync="#page:replace"
+               hx-push-url="true">+ New order</a>
+        </div>
+    {% else %}
+        <form id="orders-search"
+              class="search"
+              role="search"
+              action="{{ base_url }}"
+              method="get"
+              hx-get="{{ base_url }}"
+              hx-trigger="input delay:300ms, submit"
+              hx-target="#orders-results"
+              hx-select="#orders-results"
+              hx-swap="outerHTML"
+              hx-sync="#orders-results:replace"
+              hx-replace-url="true">
+            <label class="sr-only" for="orders-q">Search orders</label>
+            <input class="field__input"
+                   type="search"
+                   id="orders-q"
+                   name="q"
+                   value="{{ filter.q }}"
+                   autocomplete="off"
+                   placeholder="Search by name, phone or order no.">
+        </form>
+        <div id="orders-results" aria-live="polite">
+            {% if filter.show != "open" %}
+                <input type="hidden"
+                       name="show"
+                       value="{{ filter.show }}"
+                       form="orders-search">
+            {% endif %}
+            {% filter_chips chips "Status" "orders-results" %}
+            {% if rows %}
+                <ul class="list">
+                    {% for row in rows %}
+                        {% include "orders/_order_row.html" %}
+                    {% endfor %}
+                </ul>
+            {% elif filter.q %}
+                <div class="empty">
+                    <h2 class="t-sheet empty__title">No orders match "{{ filter.q }}".</h2>
+                    <a id="clear-search"
+                       href="{{ clear_url }}"
+                       hx-get="{{ clear_url }}"
+                       hx-target="#orders"
+                       hx-select="#orders"
+                       hx-swap="outerHTML"
+                       hx-replace-url="true">Clear search</a>
+                </div>
+            {% else %}
+                <p class="muted empty__text">
+                    {% if filter.show == "all" %}No orders.{% else %}No {{ show_label }} orders.{% endif %}
+                </p>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
