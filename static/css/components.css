@@ -1452,6 +1452,46 @@ body[data-subpage="1"] .nav {
   justify-content: space-between;
   margin: var(--s4) 0 var(--s2);
 }
+.draft-page__step {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+.draft-page__step-num {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--pri);
+  color: var(--on-pri);
+  font-size: 14px;
+  font-weight: 700;
+}
+.draft-customer {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s4);
+}
+.draft-customer .list__main {
+  flex: 1;
+}
+.draft-customer__change,
+.draft-page__link {
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--pri);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.draft-page__hint {
+  margin-top: var(--s3);
+  text-align: center;
+}
 .draft-page__num {
   display: inline-block;
   min-width: 22px;

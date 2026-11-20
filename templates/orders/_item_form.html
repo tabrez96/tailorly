@@ -104,7 +104,13 @@
                 <p class="t-small muted">Measurements for this item only.</p>
             {% endif %}
         {% else %}
-            <p class="muted">No saved {{ product.name }} measurements for {{ first_name }} yet.</p>
+            <p class="muted">
+                {% if first_name %}
+                    No saved {{ product.name }} measurements for {{ first_name }} yet.
+                {% else %}
+                    Choose the customer to copy their saved {{ product.name }} measurements.
+                {% endif %}
+            </p>
             <button class="btn btn--tonal btn--block"
                     type="submit"
                     name="next"

@@ -311,3 +311,63 @@ def test_new_item_goes_after_the_last_one_when_positions_have_gaps(customer, blo
     second.delete()
     added = OrderItem.from_product(order, blouse)
     assert list(order.items.all())[-1] == added
+
+
+def test_draft_can_have_no_customer(db):
+    assert Order.objects.create().customer is None
+
+
+def test_placed_order_needs_customer_constraint(db):
+    order = Order.objects.create()
+    with pytest.raises(IntegrityError), transaction.atomic():
+        Order.objects.filter(pk=order.pk).update(status="open", number=1)
+
+
+def test_place_without_customer_raises(blouse):
+    order = Order.objects.create(due_date=TODAY)
+    OrderItem.from_product(order, blouse)
+    with pytest.raises(OrderError, match="Choose a customer."):
+        order.place()
+
+
+def test_choose_customer_recopies_custom_items(customer, blouse, kurta):
+    MeasurementSet.objects.create(
+        customer=customer,
+        product=blouse,
+        values=[{"name": "Bust", "value": "34"}, {"name": "Waist", "value": "28"}],
+    )
+    order = Order.objects.create()
+    custom = OrderItem.from_product(order, blouse)
+    ready = OrderItem.from_product(order, kurta)
+    assert custom.measurements[0]["value"] == ""
+    order.choose_customer(customer)
+    custom.refresh_from_db()
+    ready.refresh_from_db()
+    order.refresh_from_db()
+    assert order.customer == customer
+    assert custom.measurements == [
+        {"name": "Bust", "value": "34"},
+        {"name": "Waist", "value": "28"},
+    ]
+    assert ready.measurements == []
+
+
+def test_choose_customer_overwrites_item_edits_and_clears_for_new_customer(
+    customer, blouse
+):
+    from customers.models import Customer
+
+    order = Order.objects.create(customer=customer)
+    item = OrderItem.from_product(order, blouse)
+    item.measurements = [{"name": "Bust", "value": "40"}]
+    item.save()
+    order.choose_customer(Customer.objects.create(name="Meera Iyer"))
+    item.refresh_from_db()
+    assert [m["value"] for m in item.measurements] == ["", ""]
+
+
+def test_choose_customer_on_placed_order_raises(customer, blouse):
+    order = make_order(customer, blouse)
+    order.place()
+    with pytest.raises(OrderError):
+        order.choose_customer(customer)
