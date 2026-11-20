@@ -1,0 +1,19 @@
+# Betterleaks: the default rules, minus values that are fake on purpose
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Test fixtures and examples hold made-up passwords and database URLs"
+paths = [
+  '''(^|/)tests/''',
+  '''(^|/)\.env\.example$''',
+]
+
+[[allowlists]]
+description = "Throwaway database credentials: the CI service container and the DATABASE_URL hint"
+regexTarget = "line"
+regexes = [
+  '''POSTGRES_PASSWORD: tailorly''',
+  '''postgres://tailorly:tailorly@localhost''',
+  '''postgres://user:pass@localhost''',
+]

@@ -178,6 +178,23 @@ Check (CI runs this on every pull request):
 uv run ruff format --check . && uv run ruff check . && uv run djlint --check templates && npx prettier --check .
 ```
 
+### Secret scan
+
+CI scans the whole git history with [betterleaks](https://github.com/betterleaks/betterleaks) on every pull
+request and fails on any finding. To run the same scan locally, install the version pinned in
+`.github/workflows/ci.yml` and run from a full (non-shallow) clone:
+
+```
+betterleaks git . --redact --verbose --exit-code 1 --config .betterleaks.toml
+```
+
+Fake values in tests and examples are allowlisted in `.betterleaks.toml`, and a real secret anywhere else still
+fails the build.
+
+To update the pin, set `BETTERLEAKS_VERSION` in `.github/workflows/ci.yml` to the latest stable release and
+`BETTERLEAKS_SHA256` to the sha256 of `betterleaks_<version>_linux_x64.tar.gz` from that release's checksums
+file. Change both together.
+
 ### Test
 
 ```
