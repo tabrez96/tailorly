@@ -175,7 +175,7 @@ document.addEventListener("htmx:after:swap", (evt) => {
   }
   // An outerHTML swap leaves `target` detached; look in its replacement.
   const live = target.isConnected ? target : document.getElementById(target.id);
-  live?.querySelector('[aria-invalid="true"]')?.focus();
+  live?.querySelector('[aria-invalid="true"], [data-invalid]')?.focus();
 });
 
 window.addEventListener("popstate", () => {

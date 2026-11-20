@@ -1642,3 +1642,65 @@ body[data-subpage="1"] .nav {
   font: 700 15px/1 var(--font);
   cursor: pointer;
 }
+
+/* New order: making it, payment */
+.draft-page {
+  padding-bottom: 96px;
+}
+.draft-page__price {
+  text-align: right;
+}
+.draft-items__error {
+  margin: 0 0 var(--s3);
+  padding: var(--s4);
+  border: 1px solid var(--bad);
+  border-radius: var(--r-card);
+  background: var(--bad-bg);
+  color: var(--bad);
+  font: 700 13px/1.35 var(--font);
+  text-align: center;
+}
+.draft-estimates__hint {
+  margin: var(--s3) 0 0;
+}
+.draft-estimates__label {
+  margin: var(--s4) 0 var(--s2);
+}
+.estimate-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  margin-bottom: var(--s2);
+}
+.estimate-row .field__input {
+  width: 128px;
+  text-align: right;
+}
+.estimate-row .field__label {
+  margin: 0;
+}
+.estimate-row__error {
+  margin: 0 0 var(--s2);
+  text-align: right;
+}
+.pay-summary {
+  padding: var(--s2) var(--s4);
+  margin-bottom: var(--s4);
+}
+.pay-summary p {
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+  padding: var(--s3) 0;
+  border-bottom: 1px solid var(--line);
+}
+.pay-summary p:last-child {
+  border-bottom: 0;
+}
+.pay-summary__last {
+  font-weight: 800;
+}
+.draft-bar p {
+  margin: 0;
+}

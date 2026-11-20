@@ -45,7 +45,7 @@ def test_add_item_flow(live_server, signed_in, shop):
     assert page.locator(".item-bar__total").inner_text() == "₹1,500"
     page.get_by_role("button", name="Add to order").click()
     page.wait_for_url("**/orders/drafts/*/")
-    page.get_by_text("1 item").wait_for()
+    page.get_by_text("1 item", exact=True).wait_for()
     assert "₹1,500" in page.locator(".draft-page .list").inner_text()
     page.reload()
     assert "Blouse" in page.locator(".draft-page .list").inner_text()

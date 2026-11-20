@@ -1,0 +1,53 @@
+{% load formats %}
+<div class="order-page">
+    {% include "components/header.html" with title=title back_url=back_url overline=overline %}
+    <p class="t-small muted">
+        {% include "components/chip.html" with label=order.get_status_display tone="pri" %}
+        {% if order.due_date %}Due {{ order.due_date|day }}{% endif %}
+        {% if order.assignee %}· {{ order.assignee.name }}{% endif %}
+    </p>
+    <ul class="card list">
+        {% for item in items %}
+            <li class="list__row">
+                <div class="list__main">
+                    <p class="draft-page__name">
+                        {{ item.name }}
+                        {% include "components/chip.html" with label=item.get_type_display tone="grey" %}
+                    </p>
+                </div>
+                <p class="tabular">{{ item.price|inr }}</p>
+            </li>
+        {% endfor %}
+    </ul>
+    {% if invoice %}
+        <div class="card pay-summary">
+            <p>
+                <span>Total</span><span class="tabular">{{ invoice.total|inr }}</span>
+            </p>
+            <p>
+                <span>Received</span><span class="tabular">{{ invoice.received|inr }}</span>
+            </p>
+            <p class="pay-summary__last">
+                <span>Balance</span><span class="tabular">{{ invoice.balance|inr }}</span>
+            </p>
+        </div>
+    {% else %}
+        <p class="muted">Free order, not charged.</p>
+    {% endif %}
+    <h2 class="t-section">Payments</h2>
+    {% if payments %}
+        <ul class="card list">
+            {% for p in payments %}
+                <li class="list__row">
+                    <div class="list__main">
+                        <p>{{ p.date|day }}</p>
+                        <p class="t-small muted">{{ p.get_method_display }}</p>
+                    </div>
+                    <p class="tabular">{{ p.amount|inr }}</p>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p class="muted">No payments yet.</p>
+    {% endif %}
+</div>
