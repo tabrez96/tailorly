@@ -1,0 +1,33 @@
+{% load formats %}
+<li class="list__row">
+    <a class="prow-btn orow"
+       id="order-{{ row.order.pk }}"
+       href="{{ row.url }}"
+       hx-get="{{ row.url }}"
+       hx-target="#page"
+       hx-sync="#page:replace"
+       hx-push-url="true">
+        <div class="list__main">
+            <p class="prow__name">
+                <span class="t-body prow__title">#{{ row.order.number }} · {{ row.order.customer.name }}</span>
+            </p>
+            <p class="prow__sub muted t-small">{{ row.items }}{% if row.assignee %} · {{ row.assignee }}{% endif %}</p>
+            {% if row.due %}
+                <p class="prow__sub t-small{% if row.late %} orow__due--late{% else %} muted{% endif %}">
+                    {% if row.late %}Overdue ·{% endif %}
+                    {{ row.due }}
+                </p>
+            {% endif %}
+        </div>
+        <div class="prow__end">
+            {% include "components/chip.html" with label=row.status_label tone=row.status_tone %}
+            {% if row.free %}
+                <p class="t-small muted">Free</p>
+            {% elif row.balance > 0 %}
+                <p class="t-small orow__due tabular">{{ row.balance|inr }} due</p>
+            {% else %}
+                <p class="t-small muted">Paid</p>
+            {% endif %}
+        </div>
+    </a>
+</li>

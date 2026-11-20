@@ -1381,6 +1381,28 @@ body[data-subpage="1"] .nav {
 .stat__value--due {
   color: var(--warn);
 }
+/* Orders list */
+.orow {
+  text-decoration: none;
+  align-items: flex-start;
+}
+.orow__due {
+  color: var(--warn);
+  font-weight: 700;
+}
+.orow__due--late {
+  color: var(--warn);
+  font-weight: 600;
+}
+.orow .prow__end {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--s2);
+}
+.customer-orders {
+  margin-top: var(--s5);
+}
 .measure {
   margin-top: var(--s5);
 }

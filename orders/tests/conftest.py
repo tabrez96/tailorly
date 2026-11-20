@@ -71,3 +71,24 @@ def employee_user(db):
 def media(settings, tmp_path):
     settings.MEDIA_ROOT = tmp_path
     return tmp_path
+
+
+def make_order(customer, number, *, status="open", due=None, free=False, price="1000"):
+    """A placed order with one item; the number is given directly."""
+    from orders.models import Order, OrderItem
+
+    order = Order.objects.create(
+        customer=customer,
+        number=None if status == "draft" else number,
+        status=status,
+        due_date=due,
+        paid_by=Order.FREE if free else Order.CUSTOMER,
+    )
+    OrderItem.objects.create(
+        order=order,
+        name="Blouse",
+        type=Product.CUSTOM,
+        price=Decimal(price),
+        usual_price=Decimal(price),
+    )
+    return order

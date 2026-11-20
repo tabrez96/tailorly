@@ -19,6 +19,18 @@
         </section>
     </div>
     {% include "customers/_measurements.html" %}
+    <section class="customer-orders">
+        <h2 class="t-section">Orders</h2>
+        {% if order_rows %}
+            <ul class="card list">
+                {% for row in order_rows %}
+                    {% include "orders/_order_row.html" %}
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="muted">No orders yet.</p>
+        {% endif %}
+    </section>
     <div class="action-bar">
         <form method="post"
               action="{{ new_order_action }}"
