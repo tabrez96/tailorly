@@ -1,53 +1,56 @@
 {% load formats %}
 <div class="order-page">
-    {% include "components/header.html" with title=title back_url=back_url overline=overline %}
-    <p class="t-small muted">
-        {% include "components/chip.html" with label=order.get_status_display tone="pri" %}
-        {% if order.due_date %}Due {{ order.due_date|day }}{% endif %}
-        {% if order.assignee %}· {{ order.assignee.name }}{% endif %}
-    </p>
-    <ul class="card list">
-        {% for item in items %}
-            <li class="list__row">
-                <div class="list__main">
-                    <p class="draft-page__name">
-                        {{ item.name }}
-                        {% include "components/chip.html" with label=item.get_type_display tone="grey" %}
-                    </p>
-                </div>
-                <p class="tabular">{{ item.price|inr }}</p>
-            </li>
-        {% endfor %}
-    </ul>
-    {% if invoice %}
-        <div class="card pay-summary">
-            <p>
-                <span>Total</span><span class="tabular">{{ invoice.total|inr }}</span>
-            </p>
-            <p>
-                <span>Received</span><span class="tabular">{{ invoice.received|inr }}</span>
-            </p>
-            <p class="pay-summary__last">
-                <span>Balance</span><span class="tabular">{{ invoice.balance|inr }}</span>
-            </p>
+    {% include "components/header.html" with title=title back_url=back_url %}
+    <div class="card order-head">
+        <div class="order-head__top">
+            <div>
+                {% if customer_url %}
+                    <a href="{{ customer_url }}"
+                       hx-get="{{ customer_url }}"
+                       hx-target="#page"
+                       hx-push-url="true"
+                       class="order-head__name">{{ order.customer.name }}</a>
+                {% else %}
+                    <p class="order-head__name">{{ order.customer.name }}</p>
+                {% endif %}
+                <p class="t-small muted">
+                    {% if order.customer.phone %}{{ order.customer.phone|phone }}{% endif %}
+                    {% if order.customer.phone and order.due_date %}·{% endif %}
+                    {% if order.due_date %}Due {{ order.due_date|day }}{% endif %}
+                </p>
+            </div>
+            <div class="order-head__chips">
+                {% include "components/chip.html" with label=status_chip.label tone=status_chip.tone %}
+                {% if free %}
+                    {% include "components/chip.html" with label="Free" tone="warn" %}
+                {% endif %}
+            </div>
         </div>
-    {% else %}
-        <p class="muted">Free order, not charged.</p>
-    {% endif %}
-    <h2 class="t-section">Payments</h2>
-    {% if payments %}
-        <ul class="card list">
-            {% for p in payments %}
-                <li class="list__row">
-                    <div class="list__main">
-                        <p>{{ p.date|day }}</p>
-                        <p class="t-small muted">{{ p.get_method_display }}</p>
-                    </div>
-                    <p class="tabular">{{ p.amount|inr }}</p>
+        <ol class="steps">
+            {% for s in steps %}
+                <li class="steps__step steps__step--{{ s.state }}"
+                    {% if s.state == "current" %}aria-current="step"{% endif %}>
+                    <span class="steps__bar"></span>
+                    <span class="t-small">{{ s.label }}</span>
                 </li>
             {% endfor %}
-        </ul>
-    {% else %}
-        <p class="muted">No payments yet.</p>
+        </ol>
+        <div class="assign-row">
+            {% if assigned %}<span class="avatar">{{ assigned.initials }}</span>{% endif %}
+            <div class="assign-row__text">
+                <p class="t-small muted">Assigned to</p>
+                <p class="assign-row__line">{% if assigned %}{{ assigned.line }}{% else %}Not assigned{% endif %}</p>
+            </div>
+            {% if is_owner %}<button class="btn btn--tonal" type="button" disabled>Change</button>{% endif %}
+        </div>
+    </div>
+    <h2 class="t-section">
+        Items <span class="muted">({{ items|length }})</span>
+    </h2>
+    {% for item in items %}
+        {% include "orders/_item_card.html" %}
+    {% endfor %}
+    {% if invoice and is_owner %}
+        {% include "orders/_invoice.html" %}
     {% endif %}
 </div>

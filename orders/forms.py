@@ -6,6 +6,7 @@ from core.formats import format_duration
 from orders.items import item_products, material_hint, price_hint, price_message
 from orders.making import parse_duration, usual_minutes
 from orders.models import Order, Payment
+from staff.attendance import parse_decimal
 from staff.models import Employee
 
 PRICE_INVALID = "Enter a price in rupees, like 1800."
@@ -231,3 +232,34 @@ class PlaceForm(forms.Form):
     def error_count(self) -> int:
         """Things to fix (after is_valid())."""
         return len(self.errors) + bool(self.customer_error) + bool(self.items_error)
+
+
+class PaymentForm(forms.Form):
+    amount = forms.CharField(
+        label="Amount (₹)", widget=forms.TextInput(attrs={"inputmode": "decimal"})
+    )
+    date = forms.DateField(
+        label="Date",
+        input_formats=["%Y-%m-%d"],
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+    )
+    method = forms.ChoiceField(
+        label="Method", choices=Payment.METHODS, widget=forms.RadioSelect
+    )
+
+    def clean_amount(self):
+        value = parse_decimal(self.cleaned_data["amount"].replace(",", ""))
+        if (
+            value is None
+            or value <= 0
+            or value.adjusted() >= 10
+            or value.as_tuple().exponent < -2
+        ):
+            raise forms.ValidationError("Enter an amount above zero.")
+        return value
+
+    def clean_date(self):
+        date = self.cleaned_data["date"]
+        if date > timezone.localdate():
+            raise forms.ValidationError("Pick today or an earlier date.")
+        return date

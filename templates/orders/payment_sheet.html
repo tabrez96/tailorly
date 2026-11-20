@@ -1,0 +1,24 @@
+{% extends "components/sheet_content.html" %}
+{% load ui %}
+{% block sheet_title %}Record payment{% endblock %}
+{% block sheet_body %}
+    <p class="muted t-small">{{ subline }}</p>
+    <form method="post"
+          novalidate
+          hx-post="{% url 'order_payment' order.pk %}"
+          hx-target="#sheet"
+          hx-sync="this:drop">
+        {% csrf_token %}
+        {% error_summary form "save this payment" %}
+        {% field form.amount %}
+        {% field form.date %}
+        {% segmented form.method %}
+        <div class="sheet__actions">
+            <button class="btn btn--tonal"
+                    type="button"
+                    x-data
+                    @click="$dispatch('sheet:close')">Cancel</button>
+            <button class="btn btn--primary" type="submit">Save payment</button>
+        </div>
+    </form>
+{% endblock %}
