@@ -1,8 +1,58 @@
 {% load ui formats %}
 <div class="draft-page">
     {% include "components/header.html" with title=title back_url=back_url back_direct=back_direct overline=overline %}
+    <section id="draft-customer" x-data="{ changing: false }">
+        <div class="draft-page__head">
+            <h2 class="t-section draft-page__step">
+                <span class="draft-page__step-num" aria-hidden="true">1</span>Customer
+            </h2>
+        </div>
+        {% if customer %}
+            <div class="card draft-customer" x-show="!changing">
+                <span class="icon-tile crow__initials" aria-hidden="true">{{ customer.initials }}</span>
+                <div class="list__main">
+                    <p class="draft-page__name">{{ customer.name }}</p>
+                    <p class="t-small muted tabular">
+                        {{ customer.phone|phone }} · {{ customer.orders }} order{{ customer.orders|pluralize }}
+                    </p>
+                </div>
+                <button class="draft-customer__change"
+                        type="button"
+                        @click="changing = true; $nextTick(() => $refs.q.focus())">Change</button>
+            </div>
+        {% endif %}
+        <div {% if customer %}x-show="changing" x-cloak{% endif %}>
+            <form id="draft-customer-search"
+                  class="search"
+                  role="search"
+                  action="{{ search_url }}"
+                  method="get"
+                  hx-get="{{ search_url }}"
+                  hx-trigger="input delay:300ms, submit"
+                  hx-target="#draft-customer-results"
+                  hx-swap="innerHTML"
+                  hx-sync="this:replace">
+                <label class="sr-only" for="draft-customer-q">Search customers</label>
+                <input class="field__input"
+                       type="search"
+                       id="draft-customer-q"
+                       name="q"
+                       x-ref="q"
+                       autocomplete="off"
+                       placeholder="Search name or phone">
+            </form>
+            <div id="draft-customer-results" aria-live="polite"></div>
+        </div>
+        <button type="button"
+                class="draft-page__link"
+                id="new-customer"
+                hx-get="{{ customer_add_url }}"
+                hx-target="#sheet">+ New customer</button>
+    </section>
     <div class="draft-page__head">
-        <h2 class="t-section">Items</h2>
+        <h2 class="t-section draft-page__step">
+            <span class="draft-page__step-num" aria-hidden="true">2</span>Items
+        </h2>
         {% if rows %}
             <p class="t-small muted">{{ rows|length }} item{{ rows|length|pluralize }}</p>
         {% endif %}
@@ -38,4 +88,9 @@
        hx-target="#page"
        hx-sync="#page:replace"
        hx-push-url="true">+ Add item</a>
+    {% if rows %}
+        <p class="t-small muted draft-page__hint">
+            Tap an item to change its options, measurements, materials or photos.
+        </p>
+    {% endif %}
 </div>

@@ -1,14 +1,18 @@
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.db.models import Count, Q
+from django.db.models.functions import Lower
 from django.http import FileResponse, Http404, HttpResponseRedirect, JsonResponse
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from accounts.decorators import owner_required
 from catalog.models import Product
 from core.forms_ui import error_summary_text
-from core.pages import page_location, render_page
+from core.pages import page_location, render_page, sheet_saved_location
+from customers.forms import CustomerForm
+from customers.listing import add_initial, parse_query, search_filter
 from customers.measurements import CM, INCHES, clean_rows, merge_fields, tiles
 from customers.models import Customer, MeasurementSet
 from orders.access import can_see_order
@@ -29,7 +33,7 @@ from orders.photos import (
     stage_photo,
     staged_photos,
 )
-from staff.attendance import first_name
+from staff.attendance import first_name, initials
 
 
 @login_required
@@ -93,9 +97,83 @@ def _draft_or_404(pk):
     )
 
 
+def _to_draft(request, order, toast=None):
+    path = reverse("order_draft", args=[order.pk])
+    if request.headers.get("HX-Request"):
+        return page_location(path, toast)
+    return _redirect_303(path)
+
+
+@owner_required
+def draft_new(request):
+    return _to_draft(request, Order.objects.create())
+
+
+@owner_required
+@require_POST
+def draft_customer(request, pk):
+    order = _draft_or_404(pk)
+    raw = request.POST.get("customer", "")
+    if not raw.isdigit():
+        raise Http404
+    order.choose_customer(get_object_or_404(Customer, pk=int(raw)))
+    return _to_draft(request, order)
+
+
+def _placed_count():
+    return Count("orders", filter=~Q(orders__status=Order.DRAFT))
+
+
+@owner_required
+def draft_customer_search(request, pk):
+    order = _draft_or_404(pk)
+    q = parse_query(request.GET)
+    results = (
+        Customer.objects.filter(search_filter(q))
+        .annotate(order_count=_placed_count())
+        .order_by(Lower("name"), "pk")[:8]
+        if q
+        else []
+    )
+    return render(
+        request,
+        "orders/_customer_results.html",
+        {
+            "q": q,
+            "results": results,
+            "choose_url": reverse("order_draft_customer", args=[order.pk]),
+        },
+    )
+
+
+@owner_required
+def draft_customer_add(request, pk):
+    order = _draft_or_404(pk)
+    status = 200
+    if request.method == "POST":
+        form = CustomerForm(request.POST)
+        if form.is_valid():
+            with transaction.atomic():
+                saved = form.save()
+                order.choose_customer(saved)
+            return sheet_saved_location(
+                reverse("order_draft", args=[order.pk]), f"{saved.name} added"
+            )
+        status = 422
+    else:
+        form = CustomerForm(initial=add_initial(request.GET.get("q", "")))
+    return render(
+        request,
+        "customers/customer_sheet.html",
+        {"form": form, "customer": None, "action": request.path},
+        status=status,
+    )
+
+
 @owner_required
 def draft(request, pk):
     order = _draft_or_404(pk)
+    chosen = order.customer
     rows = []
     for n, i in enumerate(order.items.prefetch_related("photos"), 1):
         pics = list(i.photos.all())
@@ -121,8 +199,21 @@ def draft(request, pk):
             "overline": "Sale order",
             "tab": "orders",
             "subpage": True,
-            "back_url": reverse("customer", args=[order.customer_id]),
+            "back_url": reverse("customer", args=[chosen.pk])
+            if chosen
+            else reverse("today"),
             "back_direct": True,
+            "customer": {
+                "name": chosen.name,
+                "phone": chosen.phone,
+                "initials": initials(chosen.name),
+                "orders": chosen.orders.exclude(status=Order.DRAFT).count(),
+            }
+            if chosen
+            else None,
+            "choose_url": reverse("order_draft_customer", args=[order.pk]),
+            "search_url": reverse("order_draft_customer_search", args=[order.pk]),
+            "customer_add_url": reverse("order_draft_customer_add", args=[order.pk]),
             "rows": rows,
             "add_url": reverse("order_item_add", args=[order.pk]),
         },
@@ -252,10 +343,11 @@ def _item_page(request, order, item=None):
         from_set = saved is not None
         measure_tiles = tiles(product.measurement_fields, copy)
     has_values = any(str(m.get("value", "")).strip() for m in copy)
+    name = order.customer.name if order.customer else ""
     if item is None:
         labels = {
             "title": "Add item",
-            "overline": f"New order · {order.customer.name}",
+            "overline": f"New order · {name}" if name else "New order",
             "submit_label": "Add to order",
             "leave_text": "Leave without adding this item? Your changes will be lost.",
             "remove_url": "",
@@ -300,7 +392,7 @@ def _item_page(request, order, item=None):
             "has_values": has_values,
             "copied_on": copied_on,
             "from_set": from_set,
-            "first_name": first_name(order.customer.name),
+            "first_name": first_name(name) if name else "",
             "products_url": reverse("products"),
             "price_value": form["price"].value() or "",
             "photos_data": {
@@ -345,7 +437,11 @@ def item_measurements(request, pk, item_pk):
     status, unit, errors, also = 200, INCHES, 0, False
     if request.method == "POST":
         unit = CM if request.POST.get("unit") == CM else INCHES
-        also = product is not None and request.POST.get("also_update") == "1"
+        also = (
+            product is not None
+            and order.customer is not None
+            and request.POST.get("also_update") == "1"
+        )
         pairs, rows = clean_rows(
             request.POST.getlist("field"),
             request.POST.getlist("value"),
@@ -382,14 +478,15 @@ def item_measurements(request, pk, item_pk):
             "back_url": edit_path,
             "customer": order.customer,
             "subline": f"Item {ids.index(item.pk) + 1} of {len(ids)} · "
-            f"{order.customer.name} · this order only",
+            + (f"{order.customer.name} · " if order.customer else "")
+            + "this order only",
             "rows": rows,
             "unit": unit,
             "action": request.path,
             "also_label": (
                 f"Also update {first_name(order.customer.name)}'s "
                 f"saved {product.name} measurements"
-                if product
+                if product and order.customer
                 else ""
             ),
             "also_checked": also,

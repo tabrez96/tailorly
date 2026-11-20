@@ -40,8 +40,12 @@ class Order(models.Model):
         null=True, blank=True, unique=True
     )  # given when the draft is placed
     customer = models.ForeignKey(
-        "customers.Customer", on_delete=models.PROTECT, related_name="orders"
-    )
+        "customers.Customer",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="orders",
+    )  # chosen on the new order page; required once placed
     due_date = models.DateField(null=True, blank=True)
     status = models.CharField(max_length=12, choices=STATUSES, default=DRAFT)
     paid_by = models.CharField(max_length=8, choices=PAID_BY, default=CUSTOMER)
@@ -73,6 +77,10 @@ class Order(models.Model):
                 condition=Q(status="draft") | Q(number__isnull=False),
                 name="order_number_when_placed",
             ),
+            models.CheckConstraint(
+                condition=Q(status="draft") | Q(customer__isnull=False),
+                name="order_customer_when_placed",
+            ),
         ]
 
     def __str__(self):
@@ -81,6 +89,20 @@ class Order(models.Model):
     @property
     def is_free(self) -> bool:
         return self.paid_by == self.FREE
+
+    def choose_customer(self, customer) -> None:
+        """Set the draft's customer and re-copy their saved measurements."""
+        if self.status != self.DRAFT:
+            raise OrderError("Only a draft's customer can change.")
+        with transaction.atomic():
+            self.customer = customer
+            self.save(update_fields=["customer", "updated_at"])
+            items = self.items.filter(
+                type=Product.CUSTOM, product__type=Product.CUSTOM
+            ).select_related("product")
+            for item in items:
+                item.measurements = copy_measurements(customer, item.product)
+                item.save(update_fields=["measurements"])
 
     def _move(self, to: str) -> None:
         if to not in self.TRANSITIONS[self.status]:
@@ -95,6 +117,8 @@ class Order(models.Model):
         with transaction.atomic():
             if self.status != self.DRAFT:
                 self._move(self.OPEN)  # raises
+            if self.customer_id is None:
+                raise OrderError("Choose a customer.")
             if not self.items.exists():
                 raise OrderError("Add at least one item.")
             # A ready-made sale is saved as Delivered.

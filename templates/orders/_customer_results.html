@@ -1,0 +1,25 @@
+{% load formats staff_ui %}
+{% if results %}
+    <ul class="card list">
+        {% for c in results %}
+            <li class="list__row">
+                <form method="post" action="{{ choose_url }}" hx-post="{{ choose_url }}">
+                    {% csrf_token %}
+                    <input type="hidden" name="customer" value="{{ c.pk }}">
+                    <button class="prow-btn crow" type="submit" id="choose-{{ c.pk }}">
+                        <span class="icon-tile crow__initials" aria-hidden="true">{{ c.name|initials }}</span>
+                        <div class="list__main">
+                            <p class="t-body prow__title">{{ c.name }}</p>
+                            <p class="prow__sub muted t-small tabular">
+                                {% if c.phone %}{{ c.phone|phone }} ·{% endif %}
+                                {{ c.order_count }} order{{ c.order_count|pluralize }}
+                            </p>
+                        </div>
+                    </button>
+                </form>
+            </li>
+        {% endfor %}
+    </ul>
+{% elif q %}
+    <p class="muted">No customer matches "{{ q }}".</p>
+{% endif %}
