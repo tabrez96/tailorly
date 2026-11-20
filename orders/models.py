@@ -154,10 +154,8 @@ class Order(models.Model):
             raise OrderError("Enter an amount above zero.")
         return self.payments.create(amount=amount, date=date, method=method)
 
-    def invoice(self) -> invoice.Invoice | None:
-        if self.is_free:
-            return None
-        items = [
+    def _invoice_items(self) -> list[invoice.Item]:
+        return [
             invoice.Item(
                 i.price,
                 tuple(
@@ -167,7 +165,17 @@ class Order(models.Model):
             )
             for i in self.items.prefetch_related("materials")
         ]
-        return invoice.build(items, [p.amount for p in self.payments.all()])
+
+    def billed_total(self):
+        """What the items bill, even on a free order (its usual billed amount)."""
+        return invoice.build(self._invoice_items(), []).total
+
+    def invoice(self) -> invoice.Invoice | None:
+        if self.is_free:
+            return None
+        return invoice.build(
+            self._invoice_items(), [p.amount for p in self.payments.all()]
+        )
 
 
 def copy_measurements(customer, product) -> list[dict]:

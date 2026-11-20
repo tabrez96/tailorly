@@ -21,6 +21,22 @@ urlpatterns = [
         views.draft_customer_add,
         name="order_draft_customer_add",
     ),
+    path(
+        "orders/drafts/<int:pk>/paid-by/",
+        views.draft_paid_by,
+        name="order_draft_paid_by",
+    ),
+    path(
+        "orders/drafts/<int:pk>/queue-hint/",
+        views.draft_queue_hint,
+        name="order_draft_queue_hint",
+    ),
+    path(
+        "orders/drafts/<int:pk>/place/",
+        views.draft_place,
+        name="order_draft_place",
+    ),
+    path("orders/<int:pk>/", views.order_detail, name="order"),
     path("orders/drafts/<int:pk>/items/new/", views.item_add, name="order_item_add"),
     path(
         "orders/drafts/<int:pk>/items/<int:item_pk>/",

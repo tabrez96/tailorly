@@ -9,7 +9,7 @@ from accounts.roles import OWNER, add_to_role
 
 PUBLIC = {"sign_in", "sign_out", "manifest", "styleguide"}
 # Any signed-in user; the view checks access to the object itself.
-OBJECT_CHECKED = {"item_photo", "item_photo_thumb"}
+OBJECT_CHECKED = {"item_photo", "item_photo_thumb", "order"}
 HTMX = {"HX-Request": "true", "HX-Request-Type": "partial"}
 
 

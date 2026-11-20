@@ -1,10 +1,20 @@
+from datetime import date
+from decimal import Decimal
+
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.db.models import Count, Q
 from django.db.models.functions import Lower
-from django.http import FileResponse, Http404, HttpResponseRedirect, JsonResponse
+from django.http import (
+    FileResponse,
+    Http404,
+    HttpResponse,
+    HttpResponseRedirect,
+    JsonResponse,
+)
 from django.shortcuts import get_object_or_404, render
-from django.urls import reverse
+from django.urls import NoReverseMatch, reverse
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from accounts.decorators import owner_required
@@ -16,7 +26,7 @@ from customers.listing import add_initial, parse_query, search_filter
 from customers.measurements import CM, INCHES, clean_rows, merge_fields, tiles
 from customers.models import Customer, MeasurementSet
 from orders.access import can_see_order
-from orders.forms import ItemForm
+from orders.forms import ItemForm, PlaceForm
 from orders.items import (
     TYPE_WORDS,
     item_products,
@@ -25,7 +35,8 @@ from orders.items import (
     product_summary,
     resolve_type,
 )
-from orders.models import ItemPhoto, Order, OrderItem
+from orders.making import ordinal, queue_place
+from orders.models import ItemPhoto, Order, OrderError, OrderItem
 from orders.photos import (
     MAX_PHOTOS,
     NOT_A_PHOTO,
@@ -34,6 +45,7 @@ from orders.photos import (
     staged_photos,
 )
 from staff.attendance import first_name, initials
+from staff.models import Employee
 
 
 @login_required
@@ -170,12 +182,47 @@ def draft_customer_add(request, pk):
     )
 
 
-@owner_required
-def draft(request, pk):
-    order = _draft_or_404(pk)
+def _default_assignee(order):
+    if order.assignee_id:
+        return order.assignee
+    active = list(Employee.objects.filter(active=True)[:2])
+    return active[0] if len(active) == 1 else None
+
+
+def _queue_hint(employee, due):
+    try:
+        work_plan_url = reverse("work_plan")
+    except NoReverseMatch:  # the Work plan page isn't built yet
+        work_plan_url = ""
+    if employee is None:
+        text = "Not in anyone's queue yet. You can assign it later in"
+    else:
+        dates = Order.objects.filter(
+            assignee=employee, status__in=[Order.OPEN, Order.IN_PROGRESS]
+        ).values_list("due_date", flat=True)
+        text = (
+            f"Goes {ordinal(queue_place(list(dates), due))} in "
+            f"{first_name(employee.name)}'s queue, by due date and time needed. "
+            "You can move it in"
+        )
+    return {"text": text, "work_plan_url": work_plan_url}
+
+
+def _place_form(order, items, data=None, **kwargs):
+    return PlaceForm(
+        data,
+        order=order,
+        items=items,
+        total=order.billed_total(),
+        **kwargs,
+    )
+
+
+def _draft_context(request, order, form):
+    items = list(order.items.prefetch_related("photos"))
     chosen = order.customer
     rows = []
-    for n, i in enumerate(order.items.prefetch_related("photos"), 1):
+    for n, i in enumerate(items, 1):
         pics = list(i.photos.all())
         rows.append(
             {
@@ -184,6 +231,7 @@ def draft(request, pk):
                 "custom": i.type == Product.CUSTOM,
                 "summary": item_summary(i),
                 "price": i.price,
+                "usual": i.usual_price,
                 "edit_url": reverse("order_item_edit", args=[order.pk, i.pk]),
                 "photo": reverse("item_photo_thumb", args=[pics[0].pk])
                 if pics
@@ -191,31 +239,196 @@ def draft(request, pk):
                 "photo_count": len(pics),
             }
         )
+    form.is_valid()  # no-op for an unbound form
+    assignee = form["assignee"].value()
+    due = form["due_date"].value()
+    try:
+        due = date.fromisoformat(due) if isinstance(due, str) else due
+    except ValueError:
+        due = None
+    employee = (
+        Employee.objects.filter(pk=assignee, active=True).first()
+        if str(assignee).isdigit()
+        else None
+    )
+    return {
+        "title": "New order",
+        "overline": "Sale order",
+        "tab": "orders",
+        "subpage": True,
+        "back_url": reverse("customer", args=[chosen.pk])
+        if chosen
+        else reverse("today"),
+        "back_direct": True,
+        "customer": {
+            "name": chosen.name,
+            "phone": chosen.phone,
+            "initials": initials(chosen.name),
+            "orders": chosen.orders.exclude(status=Order.DRAFT).count(),
+        }
+        if chosen
+        else None,
+        "choose_url": reverse("order_draft_customer", args=[order.pk]),
+        "search_url": reverse("order_draft_customer_search", args=[order.pk]),
+        "customer_add_url": reverse("order_draft_customer_add", args=[order.pk]),
+        "rows": rows,
+        "add_url": reverse("order_item_add", args=[order.pk]),
+        "form": form,
+        "free": form["paid_by"].value() == Order.FREE,
+        "total": form.total,
+        "usual_total": sum((i.usual_price for i in items), Decimal("0")),
+        "item_count": len(rows),
+        "show_making": not rows or form.custom,
+        "estimates": [form[n] for n in form.estimate_names],
+        "place_url": reverse("order_draft_place", args=[order.pk]),
+        "paid_by_url": reverse("order_draft_paid_by", args=[order.pk]),
+        "hint_url": reverse("order_draft_queue_hint", args=[order.pk]),
+        "hint": _queue_hint(employee, due),
+        "error_text": error_summary_text(form.error_count(), "create this order")
+        if form.is_bound and form.error_count()
+        else "",
+    }
+
+
+@owner_required
+def draft(request, pk):
+    order = _draft_or_404(pk)
+    form = _place_form(
+        order,
+        list(order.items.select_related("product")),
+        initial={
+            "paid_by": order.paid_by,
+            "assignee": _default_assignee(order),
+        },
+    )
+    return render_page(
+        request, "orders/draft.html", _draft_context(request, order, form)
+    )
+
+
+@owner_required
+@require_POST
+def draft_paid_by(request, pk):
+    _draft_or_404(pk)
+    value = request.POST.get("paid_by")
+    if value not in (Order.CUSTOMER, Order.FREE):
+        return HttpResponse(status=400)
+    # Only while it is still a draft: a placed order must keep its payer.
+    changed = Order.objects.filter(pk=pk, status=Order.DRAFT).update(
+        paid_by=value, updated_at=timezone.now()
+    )
+    return HttpResponse(status=204 if changed else 409)
+
+
+@owner_required
+def draft_queue_hint(request, pk):
+    order = _draft_or_404(pk)
+    raw = request.GET.get("assignee", "")
+    employee = (
+        Employee.objects.filter(pk=int(raw), active=True).first()
+        if raw.isdigit()
+        else None
+    )
+    try:
+        due = date.fromisoformat(request.GET.get("due_date", ""))
+    except ValueError:
+        due = None
+    return render(
+        request,
+        "orders/_queue_hint.html",
+        {
+            "hint": _queue_hint(employee, due),
+            "hint_url": reverse("order_draft_queue_hint", args=[order.pk]),
+        },
+    )
+
+
+class _AlreadyPlaced(Exception):
+    pass
+
+
+def _redirect_or_location(request, path):
+    if request.headers.get("HX-Request"):
+        return page_location(path)
+    return _redirect_303(path)
+
+
+@owner_required
+@require_POST
+def draft_place(request, pk):
+    order = _draft_or_404(pk)
+    items = list(order.items.select_related("product"))
+    form = _place_form(order, items, request.POST)
+    if form.ready():
+        cd = form.cleaned_data
+        try:
+            with transaction.atomic():
+                # Lock the row so a second tab can't place the same draft again.
+                if not Order.objects.select_for_update().filter(
+                    pk=order.pk, status=Order.DRAFT
+                ):
+                    raise _AlreadyPlaced
+                order.paid_by = cd["paid_by"]
+                order.due_date = cd["due_date"] if form.custom else None
+                order.assignee = cd["assignee"] if form.custom else None
+                order.save(
+                    update_fields=["paid_by", "due_date", "assignee", "updated_at"]
+                )
+                for item in items:
+                    if item.pk in form.estimates:
+                        updated = OrderItem.objects.filter(pk=item.pk).update(
+                            estimate_minutes=form.estimates[item.pk]
+                        )
+                        if not updated:
+                            raise OrderError("An item was removed. Check the items.")
+                order.place()
+                if not order.is_free and cd["advance"]:
+                    order.record_payment(
+                        cd["advance"], timezone.localdate(), cd["method"]
+                    )
+        except _AlreadyPlaced:
+            return _redirect_or_location(request, reverse("order", args=[order.pk]))
+        except OrderError as e:  # e.g. an item was removed in another tab
+            items = list(order.items.select_related("product"))
+            form = _place_form(order, items, request.POST)
+            form.is_valid()
+            form.items_error = str(e)
+        else:
+            path = reverse("order", args=[order.pk])
+            if request.headers.get("HX-Request"):
+                return page_location(path, f"Order #{order.number} created")
+            return _redirect_303(path)
     return render_page(
         request,
         "orders/draft.html",
+        _draft_context(request, order, form),
+        status=422,
+    )
+
+
+@login_required
+def order_detail(request, pk):
+    order = get_object_or_404(
+        Order.objects.select_related("customer", "assignee").exclude(
+            status=Order.DRAFT
+        ),
+        pk=pk,
+    )
+    if not can_see_order(request.user, order):
+        raise Http404
+    return render_page(
+        request,
+        "orders/order.html",
         {
-            "title": "New order",
-            "overline": "Sale order",
+            "title": f"Order #{order.number}",
+            "overline": order.customer.name,
             "tab": "orders",
             "subpage": True,
-            "back_url": reverse("customer", args=[chosen.pk])
-            if chosen
-            else reverse("today"),
-            "back_direct": True,
-            "customer": {
-                "name": chosen.name,
-                "phone": chosen.phone,
-                "initials": initials(chosen.name),
-                "orders": chosen.orders.exclude(status=Order.DRAFT).count(),
-            }
-            if chosen
-            else None,
-            "choose_url": reverse("order_draft_customer", args=[order.pk]),
-            "search_url": reverse("order_draft_customer_search", args=[order.pk]),
-            "customer_add_url": reverse("order_draft_customer_add", args=[order.pk]),
-            "rows": rows,
-            "add_url": reverse("order_item_add", args=[order.pk]),
+            "back_url": reverse("today"),
+            "order": order,
+            "items": list(order.items.all()),
+            "invoice": order.invoice(),
+            "payments": list(order.payments.all()),
         },
     )
 

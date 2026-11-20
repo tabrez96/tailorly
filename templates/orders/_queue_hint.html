@@ -1,0 +1,13 @@
+<p class="t-small muted"
+   id="queue-hint"
+   hx-get="{{ hint_url }}"
+   hx-trigger="change from:#id_due_date, change from:#id_assignee"
+   hx-include="#id_due_date, #id_assignee"
+   hx-swap="outerHTML"
+   aria-live="polite">
+    {{ hint.text }}
+    {% if hint.work_plan_url %}<a href="{{ hint.work_plan_url }}"
+                                  hx-get="{{ hint.work_plan_url }}"
+                                  hx-target="#page"
+                                  hx-push-url="true">Work plan</a>{% else %}Work plan{% endif %}.
+</p>

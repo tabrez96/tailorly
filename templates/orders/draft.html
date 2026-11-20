@@ -1,6 +1,9 @@
-{% load ui formats %}
-<div class="draft-page">
+{% load ui formats l10n %}
+<div class="draft-page"
+     id="draft"
+     x-data="{ free: {{ free|yesno:'true,false' }}, advance: '{{ form.advance.value|default:''|escapejs }}', total: {{ total|unlocalize }}, saving: false }">
     {% include "components/header.html" with title=title back_url=back_url back_direct=back_direct overline=overline %}
+    {% include "components/error_summary.html" with text=error_text %}
     <section id="draft-customer" x-data="{ changing: false }">
         <div class="draft-page__head">
             <h2 class="t-section draft-page__step">
@@ -39,8 +42,12 @@
                        name="q"
                        x-ref="q"
                        autocomplete="off"
+                       {% if form.customer_error %}aria-invalid="true" aria-describedby="draft-customer-error"{% endif %}
                        placeholder="Search name or phone">
             </form>
+            {% if form.customer_error %}
+                <p class="field__error" id="draft-customer-error">{{ form.customer_error }}</p>
+            {% endif %}
             <div id="draft-customer-results" aria-live="polite"></div>
         </div>
         <button type="button"
@@ -48,6 +55,44 @@
                 id="new-customer"
                 hx-get="{{ customer_add_url }}"
                 hx-target="#sheet">+ New customer</button>
+        <fieldset class="seg">
+            <legend class="field__label">Who pays</legend>
+            <div class="seg__track">
+                <label class="seg__opt" for="paid-by-customer">
+                    <input class="seg__input"
+                           type="radio"
+                           id="paid-by-customer"
+                           name="paid_by"
+                           form="draft-place"
+                           value="customer"
+                           {% if not free %}checked{% endif %}
+                           @change="free = $el.value === 'free'"
+                           hx-post="{{ paid_by_url }}"
+                           hx-vals='{"paid_by": "customer"}'
+                           hx-trigger="change"
+                           hx-swap="none">
+                    Customer
+                </label>
+                <label class="seg__opt" for="paid-by-free">
+                    <input class="seg__input"
+                           type="radio"
+                           id="paid-by-free"
+                           name="paid_by"
+                           form="draft-place"
+                           value="free"
+                           {% if free %}checked{% endif %}
+                           @change="free = $el.value === 'free'"
+                           hx-post="{{ paid_by_url }}"
+                           hx-vals='{"paid_by": "free"}'
+                           hx-trigger="change"
+                           hx-swap="none">
+                    Free: self or family
+                </label>
+            </div>
+        </fieldset>
+        <p class="t-small muted" x-show="free" x-cloak>
+            Nothing is charged and no invoice is made. Prices are kept as the usual price, so you can see what it cost the shop.
+        </p>
     </section>
     <div class="draft-page__head">
         <h2 class="t-section draft-page__step">
@@ -75,14 +120,22 @@
                         </p>
                         <p class="t-small muted">{{ row.summary }}</p>
                     </div>
-                    <p class="tabular">{{ row.price|inr }}</p>
+                    <div class="draft-page__price">
+                        <p class="tabular" x-show="!free">{{ row.price|inr }}</p>
+                        <p class="tabular" x-show="free" x-cloak>{{ row.usual|inr }}</p>
+                        <p class="t-small muted" x-show="free" x-cloak>usual</p>
+                    </div>
                     {% include "components/icon.html" with name="chevron-right" %}
                 </li>
             {% endfor %}
         </ul>
     {% endif %}
-    <a class="btn btn--tonal btn--block"
+    {% if form.items_error %}
+        <p class="draft-items__error" id="draft-items-error">{{ form.items_error }}</p>
+    {% endif %}
+    <a class="btn {% if form.items_error %}btn--primary{% else %}btn--tonal{% endif %} btn--block"
        id="add-item"
+       {% if form.items_error %}data-invalid aria-describedby="draft-items-error"{% endif %}
        href="{{ add_url }}"
        hx-get="{{ add_url }}"
        hx-target="#page"
@@ -93,4 +146,98 @@
             Tap an item to change its options, measurements, materials or photos.
         </p>
     {% endif %}
+    <form id="draft-place"
+          method="post"
+          action="{{ place_url }}"
+          novalidate
+          hx-post="{{ place_url }}"
+          hx-target="#draft"
+          hx-select="#draft"
+          hx-swap="outerHTML"
+          hx-sync="this:drop"
+          hx-disable="find button[type=submit]"
+          @submit="saving = true"
+          @htmx:after:request="saving = false">
+        {% csrf_token %}
+        {% if show_making %}
+            <div class="draft-page__head">
+                <h2 class="t-section draft-page__step">
+                    <span class="draft-page__step-num" aria-hidden="true">3</span>Making it
+                </h2>
+            </div>
+            {% field form.due_date %}
+            {% field form.assignee %}
+            {% include "orders/_queue_hint.html" %}
+            {% if estimates %}
+                <p class="field__label draft-estimates__label">Your estimate to make it</p>
+                {% for f in estimates %}
+                    <div class="estimate-row{% if f.errors %} field--error{% endif %}">
+                        <label class="field__label" for="{{ f.auto_id }}">{{ f.label }}</label>
+                        <input class="field__input"
+                               type="text"
+                               inputmode="text"
+                               autocomplete="off"
+                               id="{{ f.auto_id }}"
+                               name="{{ f.html_name }}"
+                               value="{{ f.value|default:'' }}"
+                               {% if f.errors %}aria-invalid="true" aria-describedby="{{ f.auto_id }}_error"{% endif %}>
+                    </div>
+                    {% if f.errors %}
+                        <p class="field__error estimate-row__error"
+                           id="{{ f.auto_id }}_error">{{ f.errors|join:" " }}</p>
+                    {% endif %}
+                {% endfor %}
+                <p class="t-small muted draft-estimates__hint">
+                    Filled with the usual time for each product. Change it if this one is harder or easier; Production compares it with the time logged.
+                </p>
+            {% endif %}
+        {% endif %}
+        <div class="draft-page__head">
+            <h2 class="t-section draft-page__step">
+                <span class="draft-page__step-num"
+                      aria-hidden="true">{% if show_making %}4{% else %}3{% endif %}</span>Payment
+            </h2>
+        </div>
+        <div x-show="!free">
+            {% field form.advance %}
+            {% segmented form.method %}
+            <div class="card pay-summary">
+                <p>
+                    <span>Items total</span><span class="tabular">{{ total|inr }}</span>
+                </p>
+                <p>
+                    <span>Advance</span><span class="tabular"
+                                              x-text="'₹' + Math.round(Number(String(advance).replace(/[,₹\s]/g, '')) || 0).toLocaleString('en-IN')">₹0</span>
+                </p>
+                <p class="pay-summary__last">
+                    <span>Balance after this</span><span class="tabular"
+                                                         x-text="'₹' + Math.round(total - (Number(String(advance).replace(/[,₹\s]/g, '')) || 0)).toLocaleString('en-IN')">{{ total|inr }}</span>
+                </p>
+            </div>
+        </div>
+        <div x-show="free" x-cloak class="card pay-summary">
+            <p>
+                <span>Usual price</span><span class="tabular">{{ usual_total|inr }}</span>
+            </p>
+            <p class="pay-summary__last">
+                <span>Charged</span><span class="tabular">₹0</span>
+            </p>
+        </div>
+        <div class="action-bar item-bar draft-bar">
+            <div>
+                <p class="t-small muted"
+                   x-text="free ? 'Free, not charged' : 'Total, {{ item_count }} item{{ item_count|pluralize }}'">
+                    Total, {{ item_count }} item{{ item_count|pluralize }}
+                </p>
+                <p class="item-bar__total tabular"
+                   x-text="free ? '₹0' : '{{ total|inr }}'">{{ total|inr }}</p>
+            </div>
+            <button type="submit"
+                    class="btn btn--primary"
+                    id="create-order"
+                    x-text="saving ? 'Creating...' : (free ? 'Create free order' : 'Create order')">
+                Create order
+            </button>
+        </div>
+    </form>
 </div>
