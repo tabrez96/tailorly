@@ -39,6 +39,16 @@ urlpatterns = [
     ),
     path("orders/<int:pk>/", views.order_detail, name="order"),
     path("orders/<int:pk>/payments/new/", views.payment_sheet, name="order_payment"),
+    path(
+        "orders/<int:pk>/items/<int:item_pk>/measurements/",
+        views.item_measurements_sheet,
+        name="order_item_measurements_sheet",
+    ),
+    path(
+        "orders/<int:pk>/items/<int:item_pk>/photos/",
+        views.item_photo_add,
+        name="order_item_photo_add",
+    ),
     path("orders/drafts/<int:pk>/items/new/", views.item_add, name="order_item_add"),
     path(
         "orders/drafts/<int:pk>/items/<int:item_pk>/",

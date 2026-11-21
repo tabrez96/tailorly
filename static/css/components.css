@@ -1453,6 +1453,18 @@ body[data-subpage="1"] .nav {
   gap: var(--s3);
   margin-bottom: var(--s3);
 }
+.measure-grid--3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+.sheet-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  margin-bottom: var(--s3);
+}
+.sheet-head .sheet__title {
+  margin: 0;
+}
 .measure-grid__new {
   grid-column: 1 / -1;
   display: grid;
@@ -1852,6 +1864,12 @@ body[data-subpage="1"] .nav {
   margin: var(--s3) 0 0;
   padding-top: var(--s3);
   border-top: 1px solid var(--line);
+}
+.item-card__label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s2);
 }
 .item-card__label {
   margin: var(--s4) 0 var(--s2);

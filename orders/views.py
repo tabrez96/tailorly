@@ -66,8 +66,12 @@ from orders.listing import search_filter as order_search_filter
 from orders.making import ordinal, queue_place
 from orders.models import ItemPhoto, Order, OrderError, OrderItem, Payment
 from orders.photos import (
+    MAX_BYTES,
     MAX_PHOTOS,
     NOT_A_PHOTO,
+    TOO_BIG,
+    TOO_MANY,
+    add_photo,
     attach_photos,
     stage_photo,
     staged_photos,
@@ -487,14 +491,29 @@ def _order_context(request, order) -> dict:
         "maker": maker,
         "free": order.is_free,
         "items": [
-            _item_card(order, item, number, saved.get(item.product_id))
+            _item_card(order, item, number, saved.get(item.product_id), owner)
             for number, item in enumerate(items, start=1)
         ],
         **_invoice_context(order),
     }
 
 
-def _item_card(order, item, number, saved_set) -> dict:
+def _placed_item_or_404(pk, item_pk, **filters) -> OrderItem:
+    return get_object_or_404(
+        OrderItem.objects.select_related(
+            "order__customer", "order__assignee", "product"
+        ).exclude(order__status=Order.DRAFT),
+        pk=item_pk,
+        order_id=pk,
+        **filters,
+    )
+
+
+def _maker(order) -> str:
+    return first_name(order.assignee.name) if order.assignee else ""
+
+
+def _item_card(order, item, number, saved_set, owner=False) -> dict:
     custom = item.type == Product.CUSTOM
     item_tiles = (
         tiles(
@@ -526,6 +545,28 @@ def _item_card(order, item, number, saved_set) -> dict:
         "summary": measurement_summary(item_tiles),
         "copied_text": copied,
         "notes": item.notes,
+        "measure_url": reverse(
+            "order_item_measurements_sheet", args=[order.pk, item.pk]
+        )
+        if owner and custom and (item.product_id or item.measurements)
+        else "",
+        "photo_data_id": f"item-{item.pk}-photos-data",
+        "photo_data": {
+            "photos": [
+                {
+                    "id": p.pk,
+                    "thumb": reverse("item_photo_thumb", args=[p.pk]),
+                    "full": reverse("item_photo", args=[p.pk]),
+                    "saved": True,
+                }
+                for p in photos
+            ],
+            "max": MAX_PHOTOS,
+            "url": reverse("order_item_photo_add", args=[order.pk, item.pk]),
+            "name": item.name,
+        }
+        if owner
+        else None,
         "thumb": reverse("item_photo_thumb", args=[photos[0].pk]) if photos else None,
         "photos": [
             {
@@ -535,6 +576,118 @@ def _item_card(order, item, number, saved_set) -> dict:
             for p in photos
         ],
     }
+
+
+def _render_item_card(request, item) -> HttpResponse:
+    order = item.order
+    ids = list(order.items.values_list("pk", flat=True))
+    saved_set = MeasurementSet.objects.filter(
+        customer=order.customer, product_id=item.product_id
+    ).first()
+    fresh = (
+        OrderItem.objects.select_related("product")
+        .prefetch_related("photos")
+        .get(pk=item.pk)
+    )
+    card = _item_card(order, fresh, ids.index(item.pk) + 1, saved_set, owner=True)
+    return render(
+        request,
+        "orders/_item_card.html",
+        {"item": card, "is_owner": True, "free": order.is_free, "maker": _maker(order)},
+    )
+
+
+@owner_required
+def item_measurements_sheet(request, pk, item_pk):
+    item = _placed_item_or_404(pk, item_pk, type=Product.CUSTOM)
+    order, product = item.order, item.product
+    status, errors = 200, 0
+    if request.method == "POST":
+        also = product is not None and request.POST.get("also_update") == "1"
+        pairs, rows = clean_rows(
+            request.POST.getlist("field"),
+            request.POST.getlist("value"),
+            [],
+            [],
+            INCHES,
+        )
+        errors = sum(1 for r in rows if r.error)
+        if not errors:
+            with transaction.atomic():
+                item.measurements = pairs
+                item.save(update_fields=["measurements"])
+                if also:
+                    MeasurementSet.objects.update_or_create(
+                        customer=order.customer,
+                        product=product,
+                        defaults={"values": pairs},
+                    )
+            if not request.headers.get("HX-Request"):
+                return _redirect_303(reverse("order", args=[order.pk]))
+            return sheet_saved_swap(
+                _render_item_card(request, item),
+                f"{item.name} measurements saved",
+                f"#item-{item.pk}",
+            )
+        status = 422
+    else:
+        also = product is not None  # on by default
+        rows = merge_fields(
+            product.measurement_fields if product else [], item.measurements
+        )
+    ids = list(order.items.values_list("pk", flat=True))
+    first = item.photos.order_by("position", "pk").first()
+    return render(
+        request,
+        "orders/measurements_sheet.html",
+        {
+            "item": item,
+            "thumb": reverse("item_photo_thumb", args=[first.pk]) if first else None,
+            "subline": f"Item {ids.index(item.pk) + 1} of {len(ids)} · "
+            f"#{order.number} · inches",
+            "rows": rows,
+            "action": request.path,
+            "also_label": (
+                f"Also update {first_name(order.customer.name)}'s "
+                f"saved {product.name} measurements"
+                if product
+                else ""
+            ),
+            "also_checked": also,
+            "error_text": error_summary_text(errors, "save these measurements")
+            if errors
+            else "",
+        },
+        status=status,
+    )
+
+
+@owner_required
+@require_POST
+def item_photo_add(request, pk, item_pk):
+    item = _placed_item_or_404(pk, item_pk)
+    upload = request.FILES.get("photo")
+    if upload is None:
+        return JsonResponse({"error": NOT_A_PHOTO}, status=400)
+    if upload.size > MAX_BYTES:
+        return JsonResponse({"error": TOO_BIG}, status=400)
+    try:
+        with transaction.atomic():
+            # Lock the item so two uploads can't both pass the count check.
+            OrderItem.objects.select_for_update().get(pk=item.pk)
+            if item.photos.count() >= MAX_PHOTOS:
+                return JsonResponse({"error": TOO_MANY}, status=400)
+            photo = add_photo(item, upload)
+    except ValueError as e:
+        return JsonResponse({"error": str(e)}, status=400)
+    return JsonResponse(
+        {
+            "id": photo.pk,
+            "thumb": reverse("item_photo_thumb", args=[photo.pk]),
+            "full": reverse("item_photo", args=[photo.pk]),
+        },
+        status=201,
+    )
 
 
 def _invoice_context(order) -> dict:

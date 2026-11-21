@@ -8,7 +8,7 @@ function csrfHeaders() {
 
 const MAX_BYTES = 20 * 1024 * 1024;
 
-function itemPhotos() {
+function itemPhotos(dataId = "item-photos-data") {
   return {
     tiles: [],
     max: 3,
@@ -18,14 +18,13 @@ function itemPhotos() {
     error: "",
     uid: 0,
     init() {
-      const data = JSON.parse(
-        document.getElementById("item-photos-data").textContent,
-      );
+      const data = JSON.parse(document.getElementById(dataId).textContent);
       Object.assign(this, { max: data.max, url: data.url, name: data.name });
       this.tiles = data.photos.map((p) => ({
         key: ++this.uid,
         id: p.id,
         src: p.thumb,
+        full: p.full ?? null,
         saved: p.saved,
         status: "done",
         file: null,
@@ -46,6 +45,7 @@ function itemPhotos() {
         this.tiles.push({
           key: ++this.uid,
           id: null,
+          full: null,
           src: URL.createObjectURL(file),
           saved: false,
           status: "uploading",
@@ -67,7 +67,9 @@ function itemPhotos() {
           credentials: "same-origin",
         });
         if (!r.ok) throw new Error(r.status);
-        t.id = (await r.json()).id;
+        const json = await r.json();
+        t.id = json.id;
+        t.full = json.full ?? null;
         t.status = "done";
         this.status = `Photo ${this.tiles.indexOf(t) + 1} added.`;
       } catch {

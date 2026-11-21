@@ -36,21 +36,75 @@
     {% endif %}
     <div id="item-{{ item.pk }}-body" x-show="open">
         {% if item.custom %}
-            <p class="item-card__label">
-                Measurements <span class="muted">(inches)</span>
-            </p>
+            <div class="item-card__label-row">
+                <p class="item-card__label">
+                    Measurements <span class="muted">(inches)</span>
+                </p>
+                {% if item.measure_url and item.has_values %}
+                    <button type="button"
+                            class="link-btn"
+                            id="measure-{{ item.pk }}"
+                            hx-get="{{ item.measure_url }}"
+                            hx-target="#sheet">Edit</button>
+                {% endif %}
+            </div>
             {% if item.has_values %}
                 {% include "components/measure_tiles.html" with tiles=item.tiles %}
                 <p class="t-small muted">{{ item.copied_text }}</p>
             {% else %}
                 <p class="muted">No measurements yet for this {{ item.name|lower }}.</p>
+                {% if item.measure_url %}
+                    <button type="button"
+                            class="btn btn--tonal"
+                            id="measure-{{ item.pk }}"
+                            hx-get="{{ item.measure_url }}"
+                            hx-target="#sheet">Add measurements</button>
+                {% endif %}
             {% endif %}
         {% endif %}
         {% if item.notes %}
             <p class="item-card__label">Notes{% if maker %} for {{ maker }}{% endif %}</p>
             <p class="item-card__notes">{{ item.notes }}</p>
         {% endif %}
-        {% if item.photos %}
+        {% if item.photo_data %}
+            <p class="item-card__label">Photos</p>
+            {{ item.photo_data|json_script:item.photo_data_id }}
+            <div class="photos-field" x-data="itemPhotos('{{ item.photo_data_id }}')">
+                <ul class="photos" aria-label="{{ item.name }} photos">
+                    <template x-for="(t, i) in tiles" :key="t.key">
+                        <li class="photo-tile">
+                            <a class="thumb thumb--md" :href="t.full" target="_blank" rel="noopener">
+                                <img class="thumb__img" :src="t.src" :alt="alt(i)">
+                            </a>
+                            <span class="photo-tile__veil"
+                                  x-show="t.status === 'uploading'"
+                                  aria-hidden="true"></span>
+                            <button type="button"
+                                    class="photo-tile__retry"
+                                    x-show="t.status === 'failed'"
+                                    @click="retry(t)"
+                                    :aria-label="alt(i) + '. Upload failed. Tap to retry.'">
+                                Upload failed. Tap to retry.
+                            </button>
+                        </li>
+                    </template>
+                    <li x-show="tiles.length < max">
+                        <button type="button"
+                                class="photo-add"
+                                id="photo-add-{{ item.pk }}"
+                                @click="$refs.file.click()">+ Add</button>
+                    </li>
+                </ul>
+                <input type="file"
+                       accept="image/*"
+                       multiple
+                       hidden
+                       x-ref="file"
+                       @change="pick($event)">
+                <p class="field__error" x-show="error" x-text="error"></p>
+                <p class="sr-only" aria-live="polite" x-text="status"></p>
+            </div>
+        {% elif item.photos %}
             <p class="item-card__label">Photos</p>
             <ul class="item-card__photos">
                 {% for p in item.photos %}

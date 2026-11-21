@@ -2,9 +2,11 @@ from pathlib import Path
 
 import pytest
 
+from catalog.models import Product
 from customers.models import Customer
 from orders.models import Order, OrderItem
 from orders.tests.conftest import make_employee, make_order
+from orders.tests.test_item_photos_e2e import files
 
 pytestmark = pytest.mark.e2e
 
@@ -90,3 +92,73 @@ def test_screenshots(live_server, signed_in, browser, shop):
     page.goto(url)
     settle(page)
     page.screenshot(path=ARTIFACTS / "S04-free.png", full_page=True)
+
+
+def blouse_item(shop):
+    blouse = Product.objects.create(
+        name="Blouse",
+        kind=Product.PRIMARY,
+        type=Product.CUSTOM,
+        usual_price=1800,
+        measurement_fields=["Bust", "Waist"],
+    )
+    item = shop.items.get()
+    item.product = blouse
+    item.save()
+    return item
+
+
+def test_edit_measurements_sheet_saves_card_in_place(
+    live_server, signed_in, browser, shop
+):
+    item = blouse_item(shop)
+    context, page = signed_in("owner")
+    url = live_server.url + f"/orders/{shop.pk}/"
+    page.goto(url)
+    page.evaluate("window.__marker = 1")
+    page.click(f"#measure-{item.pk}")
+    page.locator("#sheet").get_by_text("Blouse measurements").first.wait_for()
+    settle(page)
+    page.screenshot(path=ARTIFACTS / "S04-edit-measurements.png")
+
+    dark = browser.new_context(
+        viewport={"width": 390, "height": 844}, color_scheme="dark"
+    )
+    dark.add_cookies(context.cookies())
+    dark_page = dark.new_page()
+    dark_page.goto(url)
+    dark_page.click(f"#measure-{item.pk}")
+    dark_page.locator("#sheet").get_by_text("Blouse measurements").first.wait_for()
+    settle(dark_page)
+    dark_page.screenshot(path=ARTIFACTS / "S04-edit-measurements-dark.png")
+    dark.close()
+
+    page.fill("#ms-1", "36")
+    page.get_by_role("button", name="Save", exact=True).click()
+    page.locator(f"#item-{item.pk}-body").get_by_text("36").first.wait_for()
+    assert page.url == url
+    assert page.evaluate("window.__marker") == 1
+    page.wait_for_selector(".toast:has-text('Blouse measurements saved')")
+    item.refresh_from_db()
+    assert item.measurements[0]["value"] == "36"
+
+
+def test_add_photo_on_card_and_retry(live_server, signed_in, shop):
+    item = shop.items.get()
+    _, page = signed_in("owner")
+    page.goto(live_server.url + f"/orders/{shop.pk}/")
+    card = page.locator(f"#item-{item.pk}")
+    one, two = files(2)
+    card.locator("input[type=file]").set_input_files(one)
+    link = card.locator(".photos a")
+    link.wait_for()
+    page.wait_for_function("document.querySelector('.photos a').getAttribute('href')")
+    assert "/orders/photos/" in link.get_attribute("href")
+
+    page.route("**/photos/", lambda route: route.abort(), times=1)
+    card.locator("input[type=file]").set_input_files(two)
+    retry = card.get_by_role("button", name="Upload failed. Tap to retry.")
+    retry.first.wait_for()
+    retry.first.click()
+    page.wait_for_function("document.querySelectorAll('.photos a[href]').length === 2")
+    assert shop.items.get().photos.count() == 2
