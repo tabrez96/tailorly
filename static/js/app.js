@@ -10,6 +10,10 @@ function sheet() {
     opener: null,
     startY: null,
     dy: 0,
+    init() {
+      // A load-triggered swap can land before Alpine starts; open it then.
+      if (this.$el.innerHTML.trim()) this.show();
+    },
     show(detail) {
       this.opener = detail?.opener ?? null;
       this.$el.showModal();

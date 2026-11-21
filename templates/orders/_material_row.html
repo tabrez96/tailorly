@@ -1,0 +1,5 @@
+<span class="item-materials__text">
+    <span class="row-text__label">{{ row.name }} <span class="muted">{{ row.qty }}</span></span>
+    <span class="t-small muted">{{ row.bought }} · cost {{ row.cost }} · sells {{ row.sell }}</span>
+</span>
+{% include "components/chip.html" with label=row.bill_label tone=row.on_bill|yesno:"pri,grey" %}

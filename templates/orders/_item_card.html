@@ -118,5 +118,6 @@
                 {% endfor %}
             </ul>
         {% endif %}
+        {% include "orders/_item_materials.html" with block=item.materials %}
     </div>
 </article>

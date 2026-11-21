@@ -385,6 +385,7 @@ class MaterialLine(models.Model):
     )
     selling_price = models.DecimalField(max_digits=12, decimal_places=2)  # per unit
     on_bill = models.BooleanField(default=False)
+    bought_on = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -424,6 +425,9 @@ class MaterialLine(models.Model):
         rework=None,
         cost_price=None,
         selling_price=None,
+        on_bill: bool | None = None,
+        bought_on=None,
+        cost_unknown: bool = False,
     ) -> MaterialLine:
         """Copy the material (per-unit prices from the product unless given).
 
@@ -436,11 +440,15 @@ class MaterialLine(models.Model):
             name=product.name,
             unit=product.unit,
             quantity=quantity,
-            cost_price=product.cost_price if cost_price is None else cost_price,
+            cost_price=None
+            if cost_unknown
+            else (product.cost_price if cost_price is None else cost_price),
             selling_price=(
                 product.selling_price if selling_price is None else selling_price
             ),
-            on_bill=product.billed_by_default and rework is None,
+            on_bill=(product.billed_by_default if on_bill is None else on_bill)
+            and rework is None,
+            bought_on=bought_on,
         )
 
 
