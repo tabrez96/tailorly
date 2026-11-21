@@ -21,7 +21,9 @@
          hx-sync="this:replace"
          hx-disable="#item-submit"
          hx-include="closest form">
-        {% segmented form.type %}
+        {% if not lock_product %}
+            {% segmented form.type %}
+        {% endif %}
         <p class="field__label">Product</p>
         {% if product %}
             <div class="card product-pick">
@@ -30,10 +32,12 @@
                     <p class="row-text__label">{{ product.name }}</p>
                     <p class="t-small muted">{{ product_summary }}</p>
                 </div>
-                <button type="button"
-                        class="link-btn"
-                        @click="picking = true"
-                        x-show="!picking">Change</button>
+                {% if not lock_product %}
+                    <button type="button"
+                            class="link-btn"
+                            @click="picking = true"
+                            x-show="!picking">Change</button>
+                {% endif %}
             </div>
         {% endif %}
         {% if has_products %}
@@ -85,7 +89,7 @@
             <h2 class="t-section">
                 Measurements <span class="muted">(inches)</span>
             </h2>
-            {% if has_values %}
+            {% if has_values and not placed %}
                 <button class="link-btn"
                         type="submit"
                         name="next"
@@ -111,12 +115,14 @@
                     Choose the customer to copy their saved {{ product.name }} measurements.
                 {% endif %}
             </p>
-            <button class="btn btn--tonal btn--block"
-                    type="submit"
-                    name="next"
-                    value="measurements"
-                    :disabled="uploading"
-                    id="measure-add">Add measurements</button>
+            {% if not placed %}
+                <button class="btn btn--tonal btn--block"
+                        type="submit"
+                        name="next"
+                        value="measurements"
+                        :disabled="uploading"
+                        id="measure-add">Add measurements</button>
+            {% endif %}
         {% endif %}
     {% endif %}
     {% if product and type_ == "ready_made" %}
@@ -128,44 +134,46 @@
     <h2 class="t-section">Materials</h2>
     <p class="empty-line">No materials for this item.</p>
     {% field form.notes %}
-    {{ photos_data|json_script:"item-photos-data" }}
-    <div class="photos-field" x-data="itemPhotos">
-        <p class="field__label" id="photos-label">Photos for this item</p>
-        <ul class="photos" aria-labelledby="photos-label">
-            <template x-for="(t, i) in tiles" :key="t.key">
-                <li class="photo-tile">
-                    <span class="thumb thumb--md">
-                        <img class="thumb__img" :src="t.src" :alt="alt(i)">
-                    </span>
-                    <span class="photo-tile__veil"
-                          x-show="t.status === 'uploading'"
-                          aria-hidden="true"></span>
+    {% if not placed %}
+        {{ photos_data|json_script:"item-photos-data" }}
+        <div class="photos-field" x-data="itemPhotos">
+            <p class="field__label" id="photos-label">Photos for this item</p>
+            <ul class="photos" aria-labelledby="photos-label">
+                <template x-for="(t, i) in tiles" :key="t.key">
+                    <li class="photo-tile">
+                        <span class="thumb thumb--md">
+                            <img class="thumb__img" :src="t.src" :alt="alt(i)">
+                        </span>
+                        <span class="photo-tile__veil"
+                              x-show="t.status === 'uploading'"
+                              aria-hidden="true"></span>
+                        <button type="button"
+                                class="photo-tile__retry"
+                                x-show="t.status === 'failed'"
+                                @click="retry(t)"
+                                :aria-label="alt(i) + '. Upload failed. Tap to retry.'">
+                            Upload failed. Tap to retry.
+                        </button>
+                        <input type="hidden" name="photo" :value="t.id" :disabled="!t.id || t.saved">
+                    </li>
+                </template>
+                <li x-show="tiles.length < max">
                     <button type="button"
-                            class="photo-tile__retry"
-                            x-show="t.status === 'failed'"
-                            @click="retry(t)"
-                            :aria-label="alt(i) + '. Upload failed. Tap to retry.'">
-                        Upload failed. Tap to retry.
-                    </button>
-                    <input type="hidden" name="photo" :value="t.id" :disabled="!t.id || t.saved">
+                            class="photo-add"
+                            id="photo-add"
+                            @click="$refs.file.click()">+ Add</button>
                 </li>
-            </template>
-            <li x-show="tiles.length < max">
-                <button type="button"
-                        class="photo-add"
-                        id="photo-add"
-                        @click="$refs.file.click()">+ Add</button>
-            </li>
-        </ul>
-        <input type="file"
-               accept="image/*"
-               multiple
-               hidden
-               x-ref="file"
-               @change="pick($event)">
-        <p class="field__error" x-show="error" x-text="error"></p>
-        <p class="sr-only" aria-live="polite" x-text="status"></p>
-    </div>
+            </ul>
+            <input type="file"
+                   accept="image/*"
+                   multiple
+                   hidden
+                   x-ref="file"
+                   @change="pick($event)">
+            <p class="field__error" x-show="error" x-text="error"></p>
+            <p class="sr-only" aria-live="polite" x-text="status"></p>
+        </div>
+    {% endif %}
     <div class="action-bar item-bar">
         {% if remove_url %}
             <button class="btn btn--ghost btn--danger"

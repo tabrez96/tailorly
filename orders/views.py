@@ -42,7 +42,7 @@ from orders.detail import (
     queue_rank,
     status_steps,
 )
-from orders.forms import ItemForm, PaymentForm, PlaceForm
+from orders.forms import ItemForm, OrderEditForm, PaymentForm, PlaceForm
 from orders.items import (
     TYPE_WORDS,
     item_products,
@@ -478,13 +478,20 @@ def _order_context(request, order) -> dict:
     saved = {
         s.product_id: s for s in MeasurementSet.objects.filter(customer=order.customer)
     }
-    items = order.items.select_related("product").prefetch_related("photos")
+    items = list(order.items.select_related("product").prefetch_related("photos"))
     label, tone = STATUS_CHIPS[order.status]
     return {
         "title": f"Order #{order.number}",
         "tab": "orders",
         "subpage": True,
         "back_url": reverse("orders"),
+        "edit_url": reverse("order_edit", args=[order.pk])
+        if owner
+        and (
+            order.status != Order.DELIVERED
+            or any(i.type == Product.CUSTOM for i in items)
+        )
+        else "",
         "is_owner": owner,
         "customer_url": reverse("customer", args=[order.customer.pk]) if owner else "",
         "status_chip": {"label": label, "tone": tone},
@@ -939,13 +946,157 @@ def item_edit(request, pk, item_pk):
     return _item_page(request, order, item)
 
 
+ONE_ITEM = (
+    "An order needs at least one item. Add another item before removing this one."
+)
+
+
+def _placed_or_404(pk) -> Order:
+    return get_object_or_404(
+        Order.objects.select_related("customer").exclude(status=Order.DRAFT), pk=pk
+    )
+
+
+def _editable_or_404(pk) -> Order:
+    """A placed order whose items can still change (not Delivered)."""
+    return get_object_or_404(
+        Order.objects.select_related("customer").exclude(
+            status__in=[Order.DRAFT, Order.DELIVERED]
+        ),
+        pk=pk,
+    )
+
+
+def _toast_only(message) -> HttpResponse:
+    """Stay on the page and show a toast (nothing is swapped)."""
+    response = HttpResponse()
+    response["HX-Reswap"] = "none"
+    response["HX-Trigger"] = json.dumps({"toast": {"message": message}})
+    return response
+
+
+@owner_required
+def order_edit(request, pk):
+    order = _placed_or_404(pk)
+    form = OrderEditForm(
+        request.POST if request.method == "POST" else None,
+        order=order,
+        initial={"due_date": order.due_date},
+    )
+    status = 200
+    if request.method == "POST":
+        if form.is_valid():
+            if "due_date" in form.fields:
+                order.due_date = form.cleaned_data["due_date"]
+                order.save(update_fields=["due_date", "updated_at"])
+            path = reverse("order", args=[order.pk])
+            if request.headers.get("HX-Request"):
+                return page_location(path, f"Order #{order.number} saved")
+            return _redirect_303(path)
+        status = 422
+    locked = order.status == Order.DELIVERED
+    rows = []
+    for n, i in enumerate(order.items.prefetch_related("photos"), 1):
+        pics = list(i.photos.all())
+        rows.append(
+            {
+                "number": n,
+                "name": i.name,
+                "custom": i.type == Product.CUSTOM,
+                "summary": item_summary(i),
+                "price": i.price,
+                "usual": i.usual_price,
+                "edit_url": ""
+                if locked
+                else reverse("order_edit_item", args=[order.pk, i.pk]),
+                "photo": reverse("item_photo_thumb", args=[pics[0].pk])
+                if pics
+                else None,
+                "photo_count": len(pics),
+            }
+        )
+    return render_page(
+        request,
+        "orders/order_edit.html",
+        {
+            "title": f"Edit order #{order.number}",
+            "overline": order.customer.name,
+            "tab": "orders",
+            "subpage": True,
+            "back_url": reverse("order", args=[order.pk]),
+            "back_direct": True,
+            "form": form,
+            "locked": locked,
+            "rows": rows,
+            "add_url": ""
+            if locked
+            else reverse("order_edit_item_add", args=[order.pk]),
+            "free": order.is_free,
+            "total": order.billed_total(),
+            "item_count": len(rows),
+            "error_text": error_summary_text(len(form.errors), "save this order")
+            if form.is_bound and form.errors
+            else "",
+        },
+        status=status,
+    )
+
+
+@owner_required
+def order_edit_item_add(request, pk):
+    return _item_page(request, _editable_or_404(pk))
+
+
+@owner_required
+def order_edit_item(request, pk, item_pk):
+    order = _editable_or_404(pk)
+    item = get_object_or_404(
+        OrderItem.objects.select_related("product"), pk=item_pk, order=order
+    )
+    return _item_page(request, order, item)
+
+
+@owner_required
+@require_POST
+def order_edit_item_remove(request, pk, item_pk):
+    order = _editable_or_404(pk)
+    with transaction.atomic():
+        # Lock the order so two tabs can't each remove one of the last two items.
+        locked = Order.objects.select_for_update(of=("self",)).get(pk=order.pk)
+        # Delivery may have committed since the order was first loaded.
+        if locked.status == Order.DELIVERED:
+            raise Http404
+        item = get_object_or_404(OrderItem, pk=item_pk, order=order)
+        if order.items.count() <= 1:
+            if request.headers.get("HX-Request"):
+                return _toast_only(ONE_ITEM)
+            return _redirect_303(reverse("order_edit_item", args=[order.pk, item.pk]))
+        name = item.name
+        item.delete()
+    path = reverse("order_edit", args=[order.pk])
+    if request.headers.get("HX-Request"):
+        return page_location(path, f"{name} removed")
+    return _redirect_303(path)
+
+
 def _item_page(request, order, item=None):
-    draft_path = reverse("order_draft", args=[order.pk])
+    placed = order.status != Order.DRAFT
+    back_path = (
+        reverse("order_edit", args=[order.pk])
+        if placed
+        else reverse("order_draft", args=[order.pk])
+    )
     data = request.POST if request.method == "POST" else request.GET
-    photo_ids = data.getlist("photo")
+    photo_ids = [] if placed else data.getlist("photo")
     keep_pk = item.product_id if item else None
     # First GET of the edit page: nothing from the form yet, so show the item.
     fresh = item is not None and "product" not in data
+    # A placed item keeps its garment: only price, options and notes change.
+    lock_product = placed and item is not None and bool(item.product_id)
+    if lock_product:
+        data = data.copy()
+        data["type"] = item.type
+        data["product"] = str(item.product_id)
     type_ = item.type if fresh else resolve_type(data.get("type"))
     raw = data.get("product", "")
     if fresh:
@@ -965,7 +1116,7 @@ def _item_page(request, order, item=None):
     status = 200
     if request.method == "POST":
         form = ItemForm(
-            request.POST,
+            data,
             type_=type_,
             product=product,
             options=options,
@@ -975,6 +1126,15 @@ def _item_page(request, order, item=None):
             chosen = form.cleaned_data["product"]
             notes = form.cleaned_data["notes"].strip()
             with transaction.atomic():
+                # Delivery may have committed since the order was first loaded.
+                if (
+                    placed
+                    and Order.objects.select_for_update(of=("self",))
+                    .get(pk=order.pk)
+                    .status
+                    == Order.DELIVERED
+                ):
+                    raise Http404
                 if item is None:
                     item = OrderItem.from_product(
                         order,
@@ -992,9 +1152,11 @@ def _item_page(request, order, item=None):
                         notes=notes,
                     )
                     toast = f"{item.name} saved"
-                attach_photos(item, photo_ids)
+                if not placed:
+                    attach_photos(item, photo_ids)
             if (
-                request.POST.get("next") == "measurements"
+                not placed
+                and request.POST.get("next") == "measurements"
                 and item.type == Product.CUSTOM
             ):
                 path, toast = (
@@ -1002,7 +1164,7 @@ def _item_page(request, order, item=None):
                     None,
                 )
             else:
-                path = draft_path
+                path = back_path
             if request.headers.get("HX-Request"):
                 return page_location(path, toast)
             return _redirect_303(path)
@@ -1052,7 +1214,9 @@ def _item_page(request, order, item=None):
     if item is None:
         labels = {
             "title": "Add item",
-            "overline": f"New order · {name}" if name else "New order",
+            "overline": f"Order #{order.number}"
+            if placed
+            else (f"New order · {name}" if name else "New order"),
             "submit_label": "Add to order",
             "leave_text": "Leave without adding this item? Your changes will be lost.",
             "remove_url": "",
@@ -1061,10 +1225,14 @@ def _item_page(request, order, item=None):
         ids = list(order.items.values_list("pk", flat=True))
         labels = {
             "title": item.name,
-            "overline": f"New order · Item {ids.index(item.pk) + 1} of {len(ids)}",
+            "overline": (f"Order #{order.number}" if placed else "New order")
+            + f" · Item {ids.index(item.pk) + 1} of {len(ids)}",
             "submit_label": "Save item",
             "leave_text": "Leave without saving this item? Your changes will be lost.",
-            "remove_url": reverse("order_item_remove", args=[order.pk, item.pk]),
+            "remove_url": reverse(
+                "order_edit_item_remove" if placed else "order_item_remove",
+                args=[order.pk, item.pk],
+            ),
         }
     saved_photos = list(item.photos.all()) if item else []
     saved_pks = {p.pk for p in saved_photos}
@@ -1083,9 +1251,11 @@ def _item_page(request, order, item=None):
         "orders/item_add.html",
         {
             **labels,
+            "placed": placed,
+            "lock_product": lock_product,
             "tab": "orders",
             "subpage": True,
-            "back_url": draft_path,
+            "back_url": back_path,
             "action": request.path,
             "form": form,
             "product": product,

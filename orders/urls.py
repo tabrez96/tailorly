@@ -41,6 +41,22 @@ urlpatterns = [
     path("orders/<int:pk>/payments/new/", views.payment_sheet, name="order_payment"),
     path("orders/<int:pk>/ready/", views.order_ready, name="order_ready"),
     path("orders/<int:pk>/deliver/", views.order_deliver, name="order_deliver"),
+    path("orders/<int:pk>/edit/", views.order_edit, name="order_edit"),
+    path(
+        "orders/<int:pk>/edit/items/new/",
+        views.order_edit_item_add,
+        name="order_edit_item_add",
+    ),
+    path(
+        "orders/<int:pk>/edit/items/<int:item_pk>/",
+        views.order_edit_item,
+        name="order_edit_item",
+    ),
+    path(
+        "orders/<int:pk>/edit/items/<int:item_pk>/remove/",
+        views.order_edit_item_remove,
+        name="order_edit_item_remove",
+    ),
     path(
         "orders/<int:pk>/items/<int:item_pk>/measurements/",
         views.item_measurements_sheet,

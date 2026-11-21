@@ -126,6 +126,33 @@ class ItemForm(forms.Form):
         ]
 
 
+class OrderEditForm(forms.Form):
+    """The due date of a placed order; items are edited on their own pages."""
+
+    due_date = forms.DateField(
+        label="Due date",
+        required=False,
+        input_formats=["%Y-%m-%d"],
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+    )
+
+    def __init__(self, *args, order, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.order = order
+        self.custom = order.items.filter(type=Product.CUSTOM).exists()
+        if not self.custom:
+            del self.fields["due_date"]  # ready-made sales have no due date
+
+    def clean_due_date(self):
+        due = self.cleaned_data["due_date"]
+        if due is None:
+            raise forms.ValidationError("Choose a due date.")
+        # An overdue order may keep its date; a new date can't be in the past.
+        if due != self.order.due_date and due < timezone.localdate():
+            raise forms.ValidationError("Choose today or a later date.")
+        return due
+
+
 class PlaceForm(forms.Form):
     """Who pays, making it and payment: all Create order needs besides the items."""
 
