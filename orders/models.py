@@ -415,8 +415,20 @@ class MaterialLine(models.Model):
         return self.name
 
     @classmethod
-    def from_product(cls, product, quantity, *, item=None, rework=None) -> MaterialLine:
-        """Copy the material; reworks are never billed."""
+    def from_product(
+        cls,
+        product,
+        quantity,
+        *,
+        item=None,
+        rework=None,
+        cost_price=None,
+        selling_price=None,
+    ) -> MaterialLine:
+        """Copy the material (per-unit prices from the product unless given).
+
+        Reworks are never billed.
+        """
         return cls.objects.create(
             item=item,
             rework=rework,
@@ -424,8 +436,10 @@ class MaterialLine(models.Model):
             name=product.name,
             unit=product.unit,
             quantity=quantity,
-            cost_price=product.cost_price,
-            selling_price=product.selling_price,
+            cost_price=product.cost_price if cost_price is None else cost_price,
+            selling_price=(
+                product.selling_price if selling_price is None else selling_price
+            ),
             on_bill=product.billed_by_default and rework is None,
         )
 

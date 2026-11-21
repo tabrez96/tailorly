@@ -1,3 +1,4 @@
+import json
 from datetime import date
 from decimal import Decimal
 
@@ -33,6 +34,7 @@ from customers.forms import CustomerForm
 from customers.listing import add_initial, parse_query, search_filter
 from customers.measurements import CM, INCHES, clean_rows, merge_fields, tiles
 from customers.models import Customer, MeasurementSet
+from orders import finishing
 from orders.access import can_see_order
 from orders.detail import (
     assigned_line,
@@ -494,6 +496,14 @@ def _order_context(request, order) -> dict:
             _item_card(order, item, number, saved.get(item.product_id), owner)
             for number, item in enumerate(items, start=1)
         ],
+        "ready_url": reverse("order_ready", args=[order.pk]),
+        "deliver_url": reverse("order_deliver", args=[order.pk]),
+        "bar": finishing.bar(
+            order,
+            order.status == Order.READY and bool(finishing.pending_questions(order)),
+        )
+        if owner
+        else None,
         **_invoice_context(order),
     }
 
@@ -743,6 +753,176 @@ def payment_sheet(request, pk):
         {"form": form, "order": order, "subline": subline},
         status=status,
     )
+
+
+def _order_refreshed(request, order, toast) -> HttpResponse:
+    """Refresh the page content in place, close the sheet and show a toast."""
+    if not request.headers.get("HX-Request"):
+        return _redirect_303(reverse("order", args=[order.pk]))
+    order = Order.objects.select_related("customer", "assignee").get(pk=order.pk)
+    response = render(
+        request,
+        "shell/page.html",
+        {
+            **_order_context(request, order),
+            "page_template": "orders/order.html",
+            "partial": False,
+        },
+    )
+    response["HX-Retarget"] = "#page"
+    response["HX-Reswap"] = "innerHTML"
+    response["HX-Trigger"] = json.dumps(
+        {"sheet:close": True, "toast": {"message": toast}}
+    )
+    return response
+
+
+def _finish_sheet(
+    request,
+    order,
+    mode,
+    questions,
+    rows=None,
+    *,
+    error_count=0,
+    confirm="",
+    action="",
+    status=200,
+) -> HttpResponse:
+    if questions:
+        subline = (
+            f"#{order.number} has {finishing.things(len(questions))} to fill in first."
+        )
+    elif mode == "ready":
+        subline = (
+            f"Mark #{order.number} ready for "
+            f"{first_name(order.customer.name)} to collect?"
+        )
+    else:
+        subline = f"Mark #{order.number} delivered?"
+    words = f"mark this order {'ready' if mode == 'ready' else 'delivered'}"
+    response = render(
+        request,
+        "orders/finish_sheet.html",
+        {
+            "order": order,
+            "mode": mode,
+            "action_url": reverse(f"order_{mode}", args=[order.pk]),
+            "rows": rows
+            if rows is not None
+            else [finishing.question_row(q) for q in questions],
+            "subline": subline,
+            "error_text": error_summary_text(error_count, words) if error_count else "",
+            "confirm": confirm,
+            "action": action,
+        },
+        status=status,
+    )
+    return response
+
+
+def _ready_order_or_404(pk) -> Order:
+    return get_object_or_404(
+        Order.objects.select_related("customer").exclude(status=Order.DRAFT), pk=pk
+    )
+
+
+@owner_required
+def order_ready(request, pk):
+    order = _ready_order_or_404(pk)
+    if request.method != "POST":
+        if order.status not in (Order.OPEN, Order.IN_PROGRESS):
+            return _order_refreshed(
+                request,
+                order,
+                f"This order is already {order.get_status_display().lower()}.",
+            )
+        return _finish_sheet(
+            request, order, "ready", finishing.pending_questions(order)
+        )
+    action = request.POST.get("action")  # "save" | "skip" | None (no questions)
+    try:
+        with transaction.atomic():
+            order = (
+                Order.objects.select_for_update(of=("self",))
+                .select_related("customer")
+                .get(pk=order.pk)
+            )
+            if order.status not in (Order.OPEN, Order.IN_PROGRESS):
+                order.mark_ready()  # raises OrderError before any answer is checked
+            questions = finishing.pending_questions(order)
+            if questions and action == "save":
+                rows, errors = finishing.save_answers(questions, request.POST)
+                if errors:
+                    return _finish_sheet(
+                        request,
+                        order,
+                        "ready",
+                        questions,
+                        rows,
+                        error_count=errors,
+                        status=422,
+                    )
+            order.mark_ready()  # raises OrderError unless Open or In progress
+    except OrderError as e:
+        return _order_refreshed(request, order, str(e))
+    return _order_refreshed(request, order, f"Order #{order.number} is ready")
+
+
+@owner_required
+def order_deliver(request, pk):
+    order = _ready_order_or_404(pk)
+    if request.method != "POST":
+        if order.status != Order.READY:
+            message = (
+                "Mark this order ready first."
+                if order.status in (Order.OPEN, Order.IN_PROGRESS)
+                else f"This order is already {order.get_status_display().lower()}."
+            )
+            return _order_refreshed(request, order, message)
+        return _finish_sheet(
+            request, order, "deliver", finishing.pending_questions(order)
+        )
+    action = request.POST.get("action", "")
+    try:
+        with transaction.atomic():
+            order = (
+                Order.objects.select_for_update(of=("self",))
+                .select_related("customer")
+                .get(pk=order.pk)
+            )
+            if order.status != Order.READY:
+                order.mark_delivered()  # raises OrderError with the model's message
+            questions = finishing.pending_questions(order)
+            rows = None
+            if questions and action == "save":
+                rows, errors = finishing.save_answers(questions, request.POST)
+                if errors:
+                    return _finish_sheet(
+                        request,
+                        order,
+                        "deliver",
+                        questions,
+                        rows,
+                        error_count=errors,
+                        status=422,
+                    )
+            confirm = finishing.deliver_confirm(order)  # billed materials change it
+            if confirm and request.POST.get("confirmed") != "1":
+                transaction.set_rollback(True)
+                return _finish_sheet(
+                    request,
+                    order,
+                    "deliver",
+                    questions,
+                    rows,
+                    confirm=confirm,
+                    action=action,
+                )
+            order.mark_delivered()
+    except OrderError as e:
+        return _order_refreshed(request, order, str(e))
+    return _order_refreshed(request, order, f"Order #{order.number} delivered")
 
 
 @owner_required
