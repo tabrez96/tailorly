@@ -2,8 +2,9 @@ from urllib.parse import urlencode
 
 from django.db.models import Count, Prefetch, Q
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from accounts.decorators import owner_required
@@ -167,12 +168,23 @@ def product_sheet(request: HttpRequest, pk: int | None = None) -> HttpResponse:
     material = kind == Product.SECONDARY
     form_class = MaterialForm if material else ProductForm
     kwargs = {"materials": _materials(instance)} if form_class is ProductForm else {}
+    return_to = data.get("return_to", "")
+    if not (
+        return_to.startswith("/orders/")
+        and url_has_allowed_host_and_scheme(
+            return_to, allowed_hosts={request.get_host()}
+        )
+    ):
+        return_to = ""
     status = 200
     if request.method == "POST":
         form = form_class(request.POST, instance=instance, **kwargs)
         if form.is_valid():
             product = form.save()
             verb = "saved" if instance else "added"
+            if instance is None and material and return_to:
+                joiner = "&" if "?" in return_to else "?"
+                return redirect(f"{return_to}{joiner}material={product.pk}")
             return sheet_saved_location(
                 _list_path(product.kind), f"{product.name} {verb}"
             )
@@ -190,6 +202,7 @@ def product_sheet(request: HttpRequest, pk: int | None = None) -> HttpResponse:
         "product": instance,
         "action": request.path,
         "subtitle": _subtitle(instance),
+        "return_to": return_to,
     }
     return render(request, template, context, status=status)
 

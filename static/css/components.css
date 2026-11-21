@@ -1934,3 +1934,59 @@ body[data-subpage="1"] .nav {
   color: var(--bad);
   font: 700 15px/1.4 var(--font);
 }
+.material-for {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  margin: 0 0 var(--s3);
+  padding: var(--s2) var(--s3);
+  border-radius: 14px;
+  background: var(--pri-l);
+}
+.material-for .row-text {
+  flex: 1;
+}
+.material-for__num {
+  margin-right: var(--s1);
+  color: var(--pri);
+  font-size: 12px;
+}
+.material-more {
+  display: flex;
+  justify-content: space-between;
+  margin: 0 0 var(--s3);
+}
+.material-more__new {
+  margin-left: auto;
+}
+.item-materials__list {
+  margin: 0 0 var(--s2);
+  padding: 0;
+  list-style: none;
+}
+.item-materials__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  width: 100%;
+  padding: var(--s3) 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.item-materials__text {
+  display: grid;
+  min-width: 0;
+}
+.order-invoice__sub {
+  padding-left: var(--s4);
+}
+.order-invoice__rule {
+  margin: var(--s2) 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
