@@ -1,0 +1,36 @@
+{% load ui %}
+<div id="{{ block.id }}" class="item-materials">
+    <div class="item-card__label-row">
+        {% if block.heading %}
+            <h2 class="t-section">Materials</h2>
+        {% else %}
+            <p class="item-card__label">Materials</p>
+        {% endif %}
+        {% if block.cost %}<span class="t-small muted">Cost {{ block.cost }}</span>{% endif %}
+    </div>
+    {% if block.rows %}
+        <ul class="item-materials__list">
+            {% for row in block.rows %}
+                <li>
+                    {% if row.edit_url %}
+                        <button type="button"
+                                class="item-materials__row"
+                                hx-get="{{ row.edit_url }}"
+                                hx-target="#sheet">{% include "orders/_material_row.html" %}</button>
+                    {% else %}
+                        <div class="item-materials__row">{% include "orders/_material_row.html" %}</div>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p class="empty-line">No materials for this item.</p>
+    {% endif %}
+    {% if block.add_url %}
+        <button type="button"
+                class="link-btn"
+                id="material-add-{{ block.id }}"
+                hx-get="{{ block.add_url }}"
+                hx-target="#sheet">+ Add material</button>
+    {% endif %}
+</div>

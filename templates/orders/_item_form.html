@@ -131,8 +131,21 @@
             <p class="t-small muted">Ready-made items have no measurements, options or estimate, and don't go to anyone's queue.</p>
         </div>
     {% endif %}
-    <h2 class="t-section">Materials</h2>
-    <p class="empty-line">No materials for this item.</p>
+    {% if materials %}
+        {% include "orders/_item_materials.html" with block=materials %}
+        {% if open_material %}
+            <div hx-get="{{ materials.add_url }}" hx-trigger="load" hx-target="#sheet"></div>
+        {% endif %}
+    {% else %}
+        <h2 class="t-section">Materials</h2>
+        <p class="empty-line">No materials for this item.</p>
+        <button class="link-btn"
+                type="submit"
+                name="next"
+                value="material"
+                :disabled="uploading"
+                id="material-add-new">+ Add material</button>
+    {% endif %}
     {% field form.notes %}
     {% if not placed %}
         {{ photos_data|json_script:"item-photos-data" }}

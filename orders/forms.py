@@ -5,7 +5,7 @@ from catalog.models import Product, ProductOption
 from core.formats import format_duration
 from orders.items import item_products, material_hint, price_hint, price_message
 from orders.making import parse_duration, usual_minutes
-from orders.models import Order, Payment
+from orders.models import Order, OrderItem, Payment
 from staff.attendance import parse_decimal
 from staff.models import Employee
 
@@ -290,3 +290,54 @@ class PaymentForm(forms.Form):
         if date > timezone.localdate():
             raise forms.ValidationError("Pick today or an earlier date.")
         return date
+
+
+class MaterialLineForm(forms.Form):
+    """Validation and errors for the add/edit material sheet (inputs are hand-made)."""
+
+    item = forms.ModelChoiceField(
+        OrderItem.objects.none(), widget=forms.RadioSelect, empty_label=None
+    )
+    material = forms.ModelChoiceField(
+        Product.objects.none(),
+        required=False,
+        error_messages={
+            "required": "Choose a material.",
+            "invalid_choice": "Choose a material.",
+        },
+    )
+    qty = forms.CharField(required=False)
+    cost = forms.CharField(required=False)
+    sell = forms.CharField(required=False)
+    on_bill = forms.BooleanField(required=False)
+    bought_on = forms.DateField(
+        label="Bought on",
+        required=False,
+        input_formats=["%Y-%m-%d"],
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+    )
+
+    def __init__(self, *args, order, adding: bool, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["item"].queryset = order.items.all()
+        self.fields["material"].queryset = Product.objects.filter(
+            kind=Product.SECONDARY, active=True
+        )
+        self.fields["material"].required = adding
+        self.amounts = None
+
+    def clean(self):
+        from orders import finishing  # finishing imports this module
+
+        cd = super().clean()
+        answer, errors = finishing.clean_answer(
+            cd.get("qty", ""),
+            cd.get("cost", ""),
+            cd.get("sell", ""),
+            cost_optional=True,
+        )
+        for field, message in errors.items():
+            self.add_error(field, message)
+        if answer:
+            self.amounts = answer
+        return cd

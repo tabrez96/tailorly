@@ -16,6 +16,7 @@ from django.http import (
 from django.shortcuts import get_object_or_404, render
 from django.urls import NoReverseMatch, reverse
 from django.utils import timezone
+from django.utils.http import urlencode
 from django.views.decorators.http import require_POST
 
 from accounts.decorators import owner_required
@@ -42,7 +43,14 @@ from orders.detail import (
     queue_rank,
     status_steps,
 )
-from orders.forms import ItemForm, OrderEditForm, PaymentForm, PlaceForm
+from orders.finishing import per_unit, total_for
+from orders.forms import (
+    ItemForm,
+    MaterialLineForm,
+    OrderEditForm,
+    PaymentForm,
+    PlaceForm,
+)
 from orders.items import (
     TYPE_WORDS,
     item_products,
@@ -66,7 +74,23 @@ from orders.listing import (
 )
 from orders.listing import search_filter as order_search_filter
 from orders.making import ordinal, queue_place
-from orders.models import ItemPhoto, Order, OrderError, OrderItem, Payment
+from orders.materials import (
+    bill_lines,
+    cost_total,
+    format_qty,
+    line_row,
+    material_choices,
+    options_to_add,
+    qty_label,
+)
+from orders.models import (
+    ItemPhoto,
+    MaterialLine,
+    Order,
+    OrderError,
+    OrderItem,
+    Payment,
+)
 from orders.photos import (
     MAX_BYTES,
     MAX_PHOTOS,
@@ -478,7 +502,9 @@ def _order_context(request, order) -> dict:
     saved = {
         s.product_id: s for s in MeasurementSet.objects.filter(customer=order.customer)
     }
-    items = list(order.items.select_related("product").prefetch_related("photos"))
+    items = list(
+        order.items.select_related("product").prefetch_related("photos", "materials")
+    )
     label, tone = STATUS_CHIPS[order.status]
     return {
         "title": f"Order #{order.number}",
@@ -562,6 +588,7 @@ def _item_card(order, item, number, saved_set, owner=False) -> dict:
         "summary": measurement_summary(item_tiles),
         "copied_text": copied,
         "notes": item.notes,
+        "materials": _materials_block(item, "order", editable=owner),
         "measure_url": reverse(
             "order_item_measurements_sheet", args=[order.pk, item.pk]
         )
@@ -603,7 +630,7 @@ def _render_item_card(request, item) -> HttpResponse:
     ).first()
     fresh = (
         OrderItem.objects.select_related("product")
-        .prefetch_related("photos")
+        .prefetch_related("photos", "materials")
         .get(pk=item.pk)
     )
     card = _item_card(order, fresh, ids.index(item.pk) + 1, saved_set, owner=True)
@@ -712,6 +739,9 @@ def _invoice_context(order) -> dict:
     return {
         "order": order,
         "invoice": invoice,
+        "lines": bill_lines(order.items.prefetch_related("materials"))
+        if invoice
+        else [],
         "payments": list(order.payments.all()) if invoice else [],
         "payment_url": reverse("order_payment", args=[order.pk]),
     }
@@ -1079,6 +1109,249 @@ def order_edit_item_remove(request, pk, item_pk):
     return _redirect_303(path)
 
 
+def _materials_block(item, on, editable=True, heading=False) -> dict:
+    """The context for the materials list of one item (S04 card, S20)."""
+    query = f"?on={on}"
+    lines = list(item.materials.all())
+    costs = [c for c in (cost_total(m) for m in lines) if c is not None]
+    return {
+        "id": f"item-{item.pk}-materials",
+        "heading": heading,
+        "rows": [
+            line_row(m)
+            | {
+                "edit_url": reverse(
+                    "order_item_material", args=[item.order_id, item.pk, m.pk]
+                )
+                + query
+                if editable
+                else ""
+            }
+            for m in lines
+        ],
+        "cost": format_inr(sum(costs, Decimal(0))) if costs else "",
+        "add_url": reverse("order_item_material_add", args=[item.order_id, item.pk])
+        + query
+        if editable
+        else "",
+    }
+
+
+def _material_products():
+    return (
+        Product.objects.filter(kind=Product.SECONDARY, active=True)
+        .annotate(uses=Count("material_lines"))
+        .order_by("-uses", "name")
+    )
+
+
+def _material_item_or_404(pk, item_pk) -> OrderItem:
+    return get_object_or_404(
+        OrderItem.objects.select_related("order__customer", "product"),
+        pk=item_pk,
+        order_id=pk,
+    )
+
+
+def _material_on(data) -> str:
+    return "page" if data.get("on") == "page" else "order"
+
+
+def _material_done(request, item, on, toast) -> HttpResponse:
+    if on == "page":
+        fresh = OrderItem.objects.prefetch_related("materials").get(pk=item.pk)
+        return sheet_saved_swap(
+            render(
+                request,
+                "orders/_item_materials.html",
+                {"block": _materials_block(fresh, "page", heading=True)},
+            ),
+            toast,
+            f"#item-{item.pk}-materials",
+        )
+    return _order_refreshed(request, item.order, toast)
+
+
+def _material_state(request, form, line, products, picked) -> dict:
+    """What the sheet's Alpine component starts with."""
+    post = request.method == "POST"
+    if line is not None:
+        state = {
+            "materials": [],
+            "picked": line.product_id,
+            "unit": line.unit,
+            "unitCost": None if line.cost_price is None else str(line.cost_price),
+            "unitSell": str(line.selling_price),
+            "qty": format_qty(line.quantity),
+            "cost": price_input(cost_total(line))
+            if line.cost_price is not None
+            else "",
+            "sell": price_input(total_for(line.selling_price, line.quantity)),
+            "onBill": line.on_bill,
+        }
+    else:
+        state = {
+            "materials": material_choices(products),
+            "picked": picked.pk if picked else None,
+            "unit": picked.unit if picked else "",
+            "unitCost": str(picked.cost_price) if picked else None,
+            "unitSell": str(picked.selling_price) if picked else None,
+            "qty": "1",
+            "cost": price_input(total_for(picked.cost_price, Decimal(1)))
+            if picked
+            else "",
+            "sell": price_input(total_for(picked.selling_price, Decimal(1)))
+            if picked
+            else "",
+            "onBill": picked.billed_by_default if picked else False,
+        }
+    if post:
+        state["qty"] = request.POST.get("qty", "")
+        state["cost"] = request.POST.get("cost", "")
+        state["sell"] = request.POST.get("sell", "")
+        state["onBill"] = "on_bill" in request.POST
+    return state
+
+
+def _material_sheet(request, item, form, on, line=None, status=200):
+    order = item.order
+    adding = line is None
+    ids = list(order.items.values_list("pk", flat=True))
+    names = dict(order.items.values_list("pk", "name"))
+    first = item.photos.order_by("position", "pk").first()
+    products = list(_material_products()) if adding else []
+    picked = None
+    if adding:
+        raw = request.POST.get("material") or request.GET.get("material", "")
+        picked = next((p for p in products if str(p.pk) == raw), None)
+    unit = line.unit if line else (picked.unit if picked else "")
+    customer = order.customer
+    here = reverse("order_item_material_add", args=[order.pk, item.pk])
+    posted = request.POST.get("item", "")
+    selected = int(posted) if posted.isdecimal() and int(posted) in ids else item.pk
+    verb = "add" if adding else "save"
+    return render(
+        request,
+        "orders/material_sheet.html",
+        {
+            "title": "Add material" if adding else "Edit material",
+            "submit_label": "Add" if adding else "Save",
+            "action": request.path,
+            "on": on,
+            "form": form,
+            "item": item,
+            "line": line,
+            "thumb": reverse("item_photo_thumb", args=[first.pk]) if first else None,
+            "number": ids.index(item.pk) + 1,
+            "items": [
+                {"pk": pk, "number": n, "name": names[pk]}
+                for n, pk in enumerate(ids, start=1)
+            ]
+            if adding and on == "order" and len(ids) > 1
+            else [],
+            "selected": selected,
+            "state": _material_state(request, form, line, products, picked)
+            | {"changing": selected != item.pk},
+            "qty_label": qty_label(unit),
+            "bill_label": f"Add to {first_name(customer.name)}\u2019s bill"
+            if customer
+            else "Add to the customer\u2019s bill",
+            "item_word": item.name.lower(),
+            "remove_url": ""
+            if adding
+            else reverse(
+                "order_item_material_remove", args=[order.pk, item.pk, line.pk]
+            )
+            + f"?on={on}",
+            "new_material_url": reverse("product_add")
+            + "?"
+            + urlencode({"kind": "secondary", "return_to": f"{here}?on={on}"}),
+            "error_text": error_summary_text(len(form.errors), f"{verb} this material")
+            if form.errors
+            else "",
+        },
+        status=status,
+    )
+
+
+@owner_required
+def material_add(request, pk, item_pk):
+    item = _material_item_or_404(pk, item_pk)
+    data = request.POST if request.method == "POST" else request.GET
+    on = _material_on(data)
+    form = MaterialLineForm(
+        request.POST or None,
+        initial={"item": item.pk, "bought_on": timezone.localdate()},
+        order=item.order,
+        adding=True,
+    )
+    if request.method == "POST" and form.is_valid():
+        cd = form.cleaned_data
+        qty, cost, sell = form.amounts
+        with transaction.atomic():
+            MaterialLine.from_product(
+                cd["material"],
+                qty,
+                item=cd["item"],
+                cost_price=per_unit(cost, qty) if cost is not None else None,
+                cost_unknown=cost is None,
+                selling_price=per_unit(sell, qty),
+                on_bill=cd["on_bill"],
+                bought_on=cd["bought_on"],
+            )
+        return _material_done(
+            request, cd["item"], on, f"{cd['material'].name} added to {cd['item'].name}"
+        )
+    return _material_sheet(
+        request, item, form, on, status=422 if request.method == "POST" else 200
+    )
+
+
+@owner_required
+def material_edit(request, pk, item_pk, line_pk):
+    item = _material_item_or_404(pk, item_pk)
+    line = get_object_or_404(MaterialLine, pk=line_pk, item=item)
+    data = request.POST if request.method == "POST" else request.GET
+    on = _material_on(data)
+    form = MaterialLineForm(
+        request.POST or None,
+        initial={"item": item.pk, "bought_on": line.bought_on},
+        order=item.order,
+        adding=False,
+    )
+    if request.method == "POST" and form.is_valid():
+        cd = form.cleaned_data
+        qty, cost, sell = form.amounts
+        line.quantity = qty
+        line.cost_price = per_unit(cost, qty) if cost is not None else None
+        line.selling_price = per_unit(sell, qty)
+        line.on_bill = cd["on_bill"]
+        line.bought_on = cd["bought_on"]
+        line.save(
+            update_fields=[
+                "quantity",
+                "cost_price",
+                "selling_price",
+                "on_bill",
+                "bought_on",
+            ]
+        )
+        return _material_done(request, item, on, f"{line.name} saved")
+    return _material_sheet(
+        request, item, form, on, line, status=422 if request.method == "POST" else 200
+    )
+
+
+@owner_required
+@require_POST
+def material_remove(request, pk, item_pk, line_pk):
+    item = _material_item_or_404(pk, item_pk)
+    line = get_object_or_404(MaterialLine, pk=line_pk, item=item)
+    name = line.name
+    line.delete()
+    return _material_done(request, item, _material_on(request.GET), f"{name} removed")
+
+
 def _item_page(request, order, item=None):
     placed = order.status != Order.DRAFT
     back_path = (
@@ -1135,6 +1408,10 @@ def _item_page(request, order, item=None):
                     == Order.DELIVERED
                 ):
                     raise Http404
+                # Answers saved before this edit: lines they made stay removed.
+                before = (
+                    list(item.options) if item and item.product_id == chosen.pk else []
+                )
                 if item is None:
                     item = OrderItem.from_product(
                         order,
@@ -1154,6 +1431,10 @@ def _item_page(request, order, item=None):
                     toast = f"{item.name} saved"
                 if not placed:
                     attach_photos(item, photo_ids)
+                have = {m.product_id for m in item.materials.all()}
+                have |= {o.material_id for o in options_to_add(options, before, set())}
+                for o in options_to_add(options, item.options, have):
+                    MaterialLine.from_product(o.material, Decimal(1), item=item)
             if (
                 not placed
                 and request.POST.get("next") == "measurements"
@@ -1161,6 +1442,15 @@ def _item_page(request, order, item=None):
             ):
                 path, toast = (
                     reverse("order_item_measurements", args=[order.pk, item.pk]),
+                    None,
+                )
+            elif request.POST.get("next") == "material":
+                path, toast = (
+                    reverse(
+                        "order_edit_item" if placed else "order_item_edit",
+                        args=[order.pk, item.pk],
+                    )
+                    + "?material=1",
                     None,
                 )
             else:
@@ -1269,6 +1559,8 @@ def _item_page(request, order, item=None):
             "from_set": from_set,
             "first_name": first_name(name) if name else "",
             "products_url": reverse("products"),
+            "materials": _materials_block(item, "page", heading=True) if item else None,
+            "open_material": item is not None and request.GET.get("material") == "1",
             "price_value": form["price"].value() or "",
             "photos_data": {
                 "photos": photos,

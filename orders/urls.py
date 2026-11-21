@@ -58,6 +58,21 @@ urlpatterns = [
         name="order_edit_item_remove",
     ),
     path(
+        "orders/<int:pk>/items/<int:item_pk>/materials/new/",
+        views.material_add,
+        name="order_item_material_add",
+    ),
+    path(
+        "orders/<int:pk>/items/<int:item_pk>/materials/<int:line_pk>/",
+        views.material_edit,
+        name="order_item_material",
+    ),
+    path(
+        "orders/<int:pk>/items/<int:item_pk>/materials/<int:line_pk>/remove/",
+        views.material_remove,
+        name="order_item_material_remove",
+    ),
+    path(
         "orders/<int:pk>/items/<int:item_pk>/measurements/",
         views.item_measurements_sheet,
         name="order_item_measurements_sheet",

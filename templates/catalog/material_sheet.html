@@ -12,6 +12,7 @@
           x-data="{ unit: '{{ form.unit.value|default:'m' }}' }"
           @change="if ($event.target.name === 'unit') unit = $event.target.value">
         {% csrf_token %}
+        {% if return_to %}<input type="hidden" name="return_to" value="{{ return_to }}">{% endif %}
         {% error_summary form "save this material" %}
         {% field form.name %}
         <div hx-get="{{ action }}"
