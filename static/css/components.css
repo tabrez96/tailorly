@@ -1990,3 +1990,22 @@ body[data-subpage="1"] .nav {
   border: 0;
   border-top: 1px solid var(--line);
 }
+
+.pay-summary .order-invoice__send-note {
+  display: block;
+  text-align: center;
+  margin: 0 0 var(--s2);
+  padding: 0;
+  border: 0;
+}
+.order-invoice__fallback {
+  display: flex;
+  gap: var(--s3);
+  align-items: center;
+  margin-top: var(--s3);
+}
+.pay-summary .order-invoice__fallback p {
+  display: block;
+  padding: 0;
+  border: 0;
+}

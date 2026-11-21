@@ -3,6 +3,7 @@ from decimal import Decimal
 
 import pytest
 from django.contrib.auth.models import User
+from django.test import Client
 from django.utils import timezone
 
 from accounts.roles import EMPLOYEE, add_to_role
@@ -251,3 +252,95 @@ def test_payment_sheet_draft_is_404(owner_client, customer):
 def test_record_payment_bad_amount(owner_client, customer, amount):
     order = make_order(customer, 1)
     assert pay(owner_client, order, amount=amount).status_code == 422
+
+
+def send_url(order):
+    return f"/orders/{order.pk}/invoice/send/"
+
+
+def test_send_invoice_on_ready_and_delivered_only(owner_client, customer):
+    for number, status, free, shown in (
+        (1, "ready", False, True),
+        (2, "delivered", False, True),
+        (3, "open", False, False),
+        (4, "delivered", True, False),
+    ):
+        order = make_order(customer, number, status=status, free=free)
+        body = owner_client.get(url(order)).content.decode()
+        assert ("Send invoice" in body) is shown
+
+
+def test_send_invoice_note_last_sent(owner_client, customer):
+    order = make_order(customer, 1, status="ready")
+    body = owner_client.get(url(order)).content.decode()
+    assert "Opens WhatsApp with the invoice and balance" in body
+    when = timezone.make_aware(timezone.datetime(2026, 11, 7, 12, 0))
+    Order.objects.filter(pk=order.pk).update(invoice_last_sent_at=when)
+    body = owner_client.get(url(order)).content.decode()
+    assert "Last sent Sat 7 Nov" in body
+
+
+def test_send_invoice_disabled_without_phone(owner_client, customer):
+    customer.phone = ""
+    customer.save()
+    order = make_order(customer, 1, status="ready")
+    body = owner_client.get(url(order)).content.decode()
+    assert "Add a phone number on S07 first." in body
+    button = body.split('id="send-invoice-btn"')[1].split(">")[0]
+    assert "disabled" in button
+
+
+def test_send_invoice_button_carries_wa_url(owner_client, customer):
+    order = make_order(customer, 1, status="ready")
+    body = owner_client.get(url(order)).content.decode()
+    button = body.split('id="send-invoice-btn"')[1].split(">")[0]
+    assert 'data-wa-url="https://wa.me/919000000011?text=' in button
+    assert 'hx-swap="none"' in button
+
+
+def test_send_invoice_view_records_for_htmx(owner_client, customer):
+    order = make_order(customer, 1, status="ready")
+    response = owner_client.post(send_url(order), HTTP_HX_REQUEST="true")
+    assert response.status_code == 204
+    assert "HX-Redirect" not in response
+    order.refresh_from_db()
+    assert order.invoice_last_sent_at is not None
+
+
+def test_send_invoice_view_redirects_without_htmx(owner_client, customer):
+    order = make_order(customer, 1, status="ready")
+    response = owner_client.post(send_url(order))
+    assert response.status_code == 303
+    assert response["Location"].startswith("https://wa.me/919000000011?text=")
+
+
+def test_send_invoice_view_refuses_open_and_free(owner_client, customer):
+    for number, status, free in ((1, "open", False), (2, "delivered", True)):
+        order = make_order(customer, number, status=status, free=free)
+        response = owner_client.post(send_url(order), HTTP_HX_REQUEST="true")
+        assert "HX-Redirect" not in response
+        assert "Only ready and delivered" in response["HX-Trigger"]
+        order.refresh_from_db()
+        assert order.invoice_last_sent_at is None
+
+
+def test_send_invoice_view_refuses_without_phone(owner_client, customer):
+    customer.phone = ""
+    customer.save()
+    order = make_order(customer, 1, status="ready")
+    response = owner_client.post(send_url(order), HTTP_HX_REQUEST="true")
+    assert "Add a phone number" in response["HX-Trigger"]
+
+
+def test_send_invoice_requires_owner(customer, employee_user):
+    user, employee = employee_user
+    add_to_role(user, EMPLOYEE)
+    order = make_order(customer, 1, status="ready")
+    order.assignee = employee
+    order.save()
+    client = Client()
+    client.force_login(user)
+    response = client.post(send_url(order), HTTP_HX_REQUEST="true")
+    assert response.status_code in (302, 403, 404)
+    order.refresh_from_db()
+    assert order.invoice_last_sent_at is None

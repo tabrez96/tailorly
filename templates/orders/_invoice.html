@@ -45,5 +45,32 @@
                     hx-get="{{ payment_url }}"
                     hx-target="#sheet">Record payment</button>
         {% endif %}
+        {% if is_owner and send %}
+            <div x-data="invoiceSend"
+                 @visibilitychange.document="cancel()"
+                 @pagehide.window="cancel()">
+                <button class="btn btn--tonal btn--block"
+                        type="button"
+                        id="send-invoice-btn"
+                        aria-describedby="send-invoice-note"
+                        hx-post="{{ send.url }}"
+                        hx-swap="none"
+                        data-wa-url="{{ send.wa_url }}"
+                        @click="send()"
+                        {% if send.disabled %}disabled{% endif %}>
+                    {% include "components/icon.html" with name="chat" %}
+                    Send invoice
+                </button>
+                <p class="order-invoice__send-note t-small muted" id="send-invoice-note">{{ send.note }}</p>
+                {{ send.text|json_script:"invoice-text" }}
+                <div class="order-invoice__fallback"
+                     x-show="fallback"
+                     x-cloak
+                     role="alert">
+                    <p class="t-small">WhatsApp isn't available here. Copy the invoice text instead?</p>
+                    <button class="btn btn--tonal" type="button" @click="copy()">Copy text</button>
+                </div>
+            </div>
+        {% endif %}
     </div>
 </section>

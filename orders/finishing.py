@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
 
 from catalog.models import Product, ProductOption
+from core.formats import format_phone
 from core.money import format_inr
 from orders.forms import PRICE_INVALID
 from orders.items import price_input
@@ -12,6 +13,7 @@ from staff.attendance import first_name, parse_decimal
 
 QTY_INVALID = "Enter a quantity above zero, like 0.8."
 CENT = Decimal("0.01")
+SEND_NO_PHONE = "Add a phone number on S07 first."
 WORDS = ("one", "two", "three", "four", "five", "six", "seven", "eight", "nine")
 
 
@@ -164,6 +166,22 @@ def deliver_confirm(order: Order) -> str:
         f"{first_name(order.customer.name)} still owes "
         f"{format_inr(invoice.balance)}. Mark delivered anyway?"
     )
+
+
+def send_row(order: Order, checked: bool = False) -> dict | None:
+    """The Send invoice on WhatsApp row of the Mark ready sheet; None on free orders."""
+    inv = order.invoice()
+    if inv is None:
+        return None
+    phone = order.customer.phone
+    if not phone:
+        return {"disabled": True, "checked": False, "hint": SEND_NO_PHONE}
+    balance = "Paid" if inv.paid else f"balance {format_inr(inv.balance)}"
+    return {
+        "disabled": False,
+        "checked": checked,
+        "hint": f"{order.customer.name} · {format_phone(phone)} · {balance}",
+    }
 
 
 def bar(order: Order, pending: bool) -> dict:

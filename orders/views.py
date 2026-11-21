@@ -2,6 +2,7 @@ import json
 from datetime import date
 from decimal import Decimal
 
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.db.models import Count, Q
@@ -36,6 +37,7 @@ from customers.listing import add_initial, parse_query, search_filter
 from customers.measurements import CM, INCHES, clean_rows, merge_fields, tiles
 from customers.models import Customer, MeasurementSet
 from orders import finishing
+from orders import invoice as invoice_mod
 from orders.access import can_see_order
 from orders.detail import (
     assigned_line,
@@ -744,7 +746,44 @@ def _invoice_context(order) -> dict:
         else [],
         "payments": list(order.payments.all()) if invoice else [],
         "payment_url": reverse("order_payment", args=[order.pk]),
+        "send": _send_context(order) if invoice and order.can_send_invoice else None,
     }
+
+
+def _invoice_message(order) -> str:
+    return invoice_mod.whatsapp_text(
+        settings.SHOP_NAME,
+        order.number,
+        bill_lines(order.items.prefetch_related("materials")),
+        order.invoice(),
+    )
+
+
+def _send_context(order) -> dict:
+    if not order.customer.phone:
+        note = finishing.SEND_NO_PHONE
+    elif order.invoice_last_sent_at:
+        note = f"Last sent {format_day(order.invoice_last_sent_at)}"
+    else:
+        note = "Opens WhatsApp with the invoice and balance"
+    return {
+        "url": reverse("order_invoice_send", args=[order.pk]),
+        "disabled": not order.customer.phone,
+        "note": note,
+        "text": (text := _invoice_message(order)),
+        "wa_url": (
+            invoice_mod.whatsapp_url(order.customer.phone, text)
+            if order.customer.phone
+            else ""
+        ),
+    }
+
+
+def _whatsapp_redirect(request, url) -> HttpResponse:
+    """Leave for WhatsApp; the URL is external, so _redirect_303 can't be used."""
+    if request.headers.get("HX-Request"):
+        return HttpResponse(headers={"HX-Redirect": url})
+    return HttpResponseRedirect(url, status=303)
 
 
 @owner_required
@@ -825,6 +864,7 @@ def _finish_sheet(
     confirm="",
     action="",
     status=200,
+    send_checked=False,
 ) -> HttpResponse:
     if questions:
         subline = (
@@ -852,6 +892,9 @@ def _finish_sheet(
             "error_text": error_summary_text(error_count, words) if error_count else "",
             "confirm": confirm,
             "action": action,
+            "send": finishing.send_row(order, send_checked)
+            if mode == "ready"
+            else None,
         },
         status=status,
     )
@@ -878,6 +921,8 @@ def order_ready(request, pk):
             request, order, "ready", finishing.pending_questions(order)
         )
     action = request.POST.get("action")  # "save" | "skip" | None (no questions)
+    send = request.POST.get("send_invoice") == "1"
+    url = ""
     try:
         with transaction.atomic():
             order = (
@@ -899,11 +944,37 @@ def order_ready(request, pk):
                         rows,
                         error_count=errors,
                         status=422,
+                        send_checked=send,
                     )
             order.mark_ready()  # raises OrderError unless Open or In progress
+            if send and order.customer.phone and not order.is_free:
+                order.record_invoice_sent()
+                url = invoice_mod.whatsapp_url(
+                    order.customer.phone, _invoice_message(order)
+                )
     except OrderError as e:
         return _order_refreshed(request, order, str(e))
+    if url:
+        return _whatsapp_redirect(request, url)
     return _order_refreshed(request, order, f"Order #{order.number} is ready")
+
+
+@owner_required
+@require_POST
+def invoice_send(request, pk):
+    order = _ready_order_or_404(pk)
+    if not order.can_send_invoice:
+        return _order_refreshed(
+            request, order, "Only ready and delivered orders have an invoice to send."
+        )
+    if not order.customer.phone:
+        return _order_refreshed(request, order, finishing.SEND_NO_PHONE)
+    order.record_invoice_sent()
+    # The page opens WhatsApp itself (window.open), so htmx has nothing to swap.
+    if request.headers.get("HX-Request"):
+        return HttpResponse(status=204)
+    url = invoice_mod.whatsapp_url(order.customer.phone, _invoice_message(order))
+    return _whatsapp_redirect(request, url)
 
 
 @owner_required

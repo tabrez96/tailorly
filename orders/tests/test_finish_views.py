@@ -46,7 +46,7 @@ def test_ready_sheet_lists_when_done_questions(owner_client, customer, blouse, o
     assert "Item 1 · Blouse · Lining" in body
     assert "Length (m)" in body and "Skip for now" in body
     assert "has one thing to fill in first." in body
-    assert "WhatsApp" not in body
+    assert "Send invoice on WhatsApp" in body  # the row shows with questions too
 
 
 def test_ready_sheet_without_questions_just_confirms(owner_client, customer):
@@ -244,4 +244,79 @@ def test_employee_cannot_use_finish_urls(customer, employee_user):
     for url in (ready_url(order), deliver_url(order)):
         assert client.get(url, **HX).status_code in (302, 403, 404)
         assert client.post(url, **HX).status_code in (302, 403, 404)
+    assert refreshed(order) == Order.OPEN
+
+
+def send_order(customer, **kwargs):
+    return make_order(customer, 1, **kwargs)
+
+
+def test_ready_sheet_has_unticked_send_checkbox(owner_client, customer):
+    body = owner_client.get(ready_url(send_order(customer)), **HX).content.decode()
+    assert 'name="send_invoice"' in body
+    assert "checked" not in body.split('name="send_invoice"')[1].split(">")[0]
+    assert "Asha Rao · 90000 00011 · balance ₹1,000" in body
+
+
+def test_ready_sheet_send_disabled_without_phone(owner_client, customer):
+    customer.phone = ""
+    customer.save()
+    body = owner_client.get(ready_url(send_order(customer)), **HX).content.decode()
+    assert "disabled" in body.split('name="send_invoice"')[1].split(">")[0]
+    assert "Add a phone number on S07 first." in body
+
+
+def test_ready_sheet_free_order_has_no_send_checkbox(owner_client, customer):
+    order = send_order(customer, free=True)
+    body = owner_client.get(ready_url(order), **HX).content.decode()
+    assert "send_invoice" not in body
+
+
+def test_ready_without_phone_still_marks_ready(owner_client, customer):
+    customer.phone = ""
+    customer.save()
+    order = send_order(customer)
+    response = owner_client.post(ready_url(order), {"send_invoice": "1"}, **HX)
+    assert "HX-Redirect" not in response
+    assert refreshed(order) == Order.READY
+    assert order.invoice_last_sent_at is None
+
+
+def test_ready_ticked_redirects_to_whatsapp(owner_client, customer):
+    order = send_order(customer)
+    response = owner_client.post(ready_url(order), {"send_invoice": "1"}, **HX)
+    assert response["HX-Redirect"].startswith("https://wa.me/919000000011?text=")
+    assert refreshed(order) == Order.READY
+    assert order.invoice_last_sent_at is not None
+
+
+def test_ready_ticked_without_htmx_redirects(owner_client, customer):
+    order = send_order(customer)
+    response = owner_client.post(ready_url(order), {"send_invoice": "1"})
+    assert response.status_code == 303
+    assert response["Location"].startswith("https://wa.me/919000000011?text=")
+
+
+def test_ready_unticked_does_not_send(owner_client, customer):
+    order = send_order(customer)
+    response = owner_client.post(ready_url(order), **HX)
+    assert "HX-Redirect" not in response
+    assert refreshed(order) == Order.READY
+    assert order.invoice_last_sent_at is None
+
+
+def test_ready_ticked_on_free_order_is_ignored(owner_client, customer):
+    order = send_order(customer, free=True)
+    response = owner_client.post(ready_url(order), {"send_invoice": "1"}, **HX)
+    assert "HX-Redirect" not in response
+    assert refreshed(order) == Order.READY
+
+
+def test_ready_send_ticked_kept_on_422(owner_client, customer, blouse, option):
+    order = blouse_order(customer, blouse)
+    data = {"action": "save", "send_invoice": "1", **answers(order, qty="0")}
+    response = owner_client.post(ready_url(order), data, **HX)
+    assert response.status_code == 422
+    tick = response.content.decode().split('name="send_invoice"')[1].split(">")[0]
+    assert "checked" in tick
     assert refreshed(order) == Order.OPEN

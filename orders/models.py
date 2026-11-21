@@ -1,5 +1,6 @@
 from django.db import models, transaction
 from django.db.models import Max, Q
+from django.utils import timezone
 
 from catalog.models import Product
 from customers.measurements import merge_fields
@@ -169,6 +170,14 @@ class Order(models.Model):
     def billed_total(self):
         """What the items bill, even on a free order (its usual billed amount)."""
         return invoice.build(self._invoice_items(), []).total
+
+    @property
+    def can_send_invoice(self) -> bool:
+        return not self.is_free and self.status in (self.READY, self.DELIVERED)
+
+    def record_invoice_sent(self) -> None:
+        self.invoice_last_sent_at = timezone.now()
+        self.save(update_fields=["invoice_last_sent_at", "updated_at"])
 
     def invoice(self) -> invoice.Invoice | None:
         if self.is_free:

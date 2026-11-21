@@ -54,3 +54,61 @@ def test_no_payments_means_not_paid():
 def test_free_order_has_no_invoice():
     assert build([Item(D("100"))], [], free=True) is None
     assert isinstance(build([], []), invoice.Invoice)
+
+
+LINES = [
+    {
+        "number": 1,
+        "name": "Blouse",
+        "price": D("1800"),
+        "materials": [{"label": "Lining · 1 m", "amount": D("150")}],
+    },
+    {"number": 2, "name": "Petticoat", "price": D("600"), "materials": []},
+]
+
+
+def text(total="2550", received="0", shop="Asha Tailors", number=7, lines=LINES):
+    inv = invoice.Invoice(D(total), D(received), D(total) - D(received))
+    return invoice.whatsapp_text(shop, number, lines, inv)
+
+
+def test_whatsapp_text_with_billed_materials():
+    assert text().split("\n")[:8] == [
+        "Asha Tailors",
+        "Invoice for order #7",
+        "",
+        "1. Blouse: ₹1,800",
+        "   + Lining · 1 m: ₹150",
+        "2. Petticoat: ₹600",
+        "",
+        "Total: ₹2,550",
+    ]
+
+
+def test_whatsapp_text_part_payment():
+    body = text(received="1000")
+    assert "Received: ₹1,000" in body and "Balance: ₹1,550" in body
+    assert "Paid" not in body
+
+
+def test_whatsapp_text_paid():
+    body = text(received="2550")
+    assert body.endswith("\nPaid") and "Balance" not in body
+
+
+def test_whatsapp_text_indian_grouping():
+    assert "Total: ₹1,42,600" in text(total="142600")
+
+
+def test_whatsapp_text_blank_shop_name():
+    assert text(shop="  ").split("\n")[0] == "Invoice for order #7"
+
+
+def test_whatsapp_url_encodes():
+    from urllib.parse import unquote
+
+    message = "Total: ₹1\n#7 & more"
+    url = invoice.whatsapp_url("9845022110", message)
+    assert url.startswith("https://wa.me/919845022110?text=")
+    assert "%0A" in url and "%23" in url and "%E2%82%B9" in url and "&" not in url[30:]
+    assert unquote(url.split("?text=")[1]) == message

@@ -381,3 +381,27 @@ def test_material_line_from_product_price_overrides(customer, blouse, lining):
         lining, D("1"), item=item, cost_price=D("0"), selling_price=D("120")
     )
     assert (custom.cost_price, custom.selling_price) == (D("0"), D("120"))
+
+
+@pytest.mark.parametrize(
+    ("status", "free", "expected"),
+    [
+        ("open", False, False),
+        ("in_progress", False, False),
+        ("ready", False, True),
+        ("delivered", False, True),
+        ("delivered", True, False),
+    ],
+)
+def test_can_send_invoice(customer, status, free, expected):
+    paid_by = Order.FREE if free else Order.CUSTOMER
+    order = Order(customer=customer, status=status, paid_by=paid_by)
+    assert order.can_send_invoice is expected
+
+
+def test_record_invoice_sent_sets_time(customer, blouse):
+    order = make_order(customer, blouse, status=Order.READY, number=1)
+    assert order.invoice_last_sent_at is None
+    order.record_invoice_sent()
+    order.refresh_from_db()
+    assert order.invoice_last_sent_at is not None

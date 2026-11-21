@@ -27,5 +27,5 @@ Status: **draft** (UX not approved yet), **approved**, **building** (a ticket fo
 | S17 | [Production Record](screens/S17-production-record/screen.html) (+2 states) · [spec](screens/S17-production-record/spec.md) | building |  | T-173, T-175, T-176 | 2026-11-17 |
 | S18 | [Settings](screens/S18-settings/screen.html) (+1 states) · [spec](screens/S18-settings/spec.md) | building |  | T-179, T-180, T-181 | 2026-11-17 |
 | S19 | [Item Detail](screens/S19-item-detail/screen.html) (+2 states) · [spec](screens/S19-item-detail/spec.md) | building |  | T-167, T-168, T-175 | 2026-11-17 |
-| S20 | [Add item](screens/S20-add-item/screen.html) (+4 states) · [spec](screens/S20-add-item/spec.md) | building | Add one garment to a new order, or change it, with its product, price, options, measurements, materials, notes and photos | T-164, T-165, T-168, T-190, T-191 | 2026-11-17 |
+| S20 | [Add item](screens/S20-add-item/screen.html) (+4 states) · [spec](screens/S20-add-item/spec.md) | built | Add one garment to a new order, or change it, with its product, price, options, measurements, materials, notes and photos | T-164, T-165, T-168, T-190, T-191 | 2026-11-17 |
 | S21 | [Ai Assistants](screens/S21-ai-assistants/screen.html) (+3 states) · [spec](screens/S21-ai-assistants/spec.md) | building |  | T-179, T-180, T-181 | 2026-11-17 |

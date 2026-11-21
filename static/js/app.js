@@ -105,11 +105,59 @@ function toast() {
   };
 }
 
+// Send invoice: open WhatsApp in a new tab so this page stays for Copy text. If
+// the tab is blocked, or the page is still in front 3 s later, WhatsApp didn't
+// open, so offer the text to copy.
+function invoiceSend() {
+  return {
+    fallback: false,
+    t: null,
+    send() {
+      const opened = window.open(this.$el.dataset.waUrl, "_blank");
+      if (!opened) {
+        this.fallback = true;
+        return;
+      }
+      opened.opener = null;
+      this.wait();
+    },
+    wait() {
+      this.cancel();
+      this.t = setTimeout(() => {
+        if (document.visibilityState === "visible") this.fallback = true;
+      }, 3000);
+    },
+    cancel() {
+      clearTimeout(this.t);
+    },
+    async copy() {
+      const text = JSON.parse(
+        document.getElementById("invoice-text").textContent,
+      );
+      try {
+        await navigator.clipboard.writeText(text);
+        window.dispatchEvent(
+          new CustomEvent("toast", {
+            detail: { message: "Invoice text copied" },
+          }),
+        );
+      } catch {
+        window.dispatchEvent(
+          new CustomEvent("toast", {
+            detail: { message: "Couldn't copy. Try again." },
+          }),
+        );
+      }
+    },
+  };
+}
+
 document.addEventListener("alpine:init", () => {
   Alpine.store("shell", { tab: document.body.dataset.tab || "", depth: 0 });
   Alpine.data("sheet", sheet);
   Alpine.data("hold", hold);
   Alpine.data("toast", toast);
+  Alpine.data("invoiceSend", invoiceSend);
 });
 
 // The hold link already navigated; the release click must not reach htmx, or

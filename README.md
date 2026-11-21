@@ -124,6 +124,8 @@ set -a; . ./.env; set +a
 uv run python manage.py migrate
 ```
 
+`SHOP_NAME` in `.env` is the first line of the invoice sent on WhatsApp. It moves to shop settings when that screen is built.
+
 ### Run
 
 ```

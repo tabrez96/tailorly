@@ -83,6 +83,22 @@
                 </div>
                 <p class="t-small muted">{{ row.note }}</p>
             {% endfor %}
+            {% if send %}
+                <div class="check-row{% if send.disabled %} check-row--disabled{% endif %}">
+                    <input class="check"
+                           type="checkbox"
+                           id="send-invoice"
+                           name="send_invoice"
+                           value="1"
+                           aria-describedby="send-invoice_hint"
+                           {% if send.checked %}checked{% endif %}
+                           {% if send.disabled %}disabled{% endif %}>
+                    <div class="row-text">
+                        <label class="row-text__label" for="send-invoice">Send invoice on WhatsApp</label>
+                        <span class="t-small muted" id="send-invoice_hint">{{ send.hint }}</span>
+                    </div>
+                </div>
+            {% endif %}
             <div class="sheet__actions">
                 {% if rows %}
                     <button class="btn btn--tonal" type="submit" name="action" value="skip">Skip for now</button>
