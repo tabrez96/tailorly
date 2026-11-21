@@ -1,0 +1,28 @@
+{% if bar and bar.action %}
+    <div class="action-bar" id="order-bar">
+        {% if bar.action == "ready" %}
+            <button class="btn btn--primary"
+                    id="mark-ready"
+                    type="button"
+                    hx-get="{{ ready_url }}"
+                    hx-target="#sheet">Mark ready</button>
+        {% elif bar.sheet %}
+            <button class="btn btn--primary"
+                    id="mark-delivered"
+                    type="button"
+                    hx-get="{{ deliver_url }}"
+                    hx-target="#sheet">Mark delivered</button>
+        {% else %}
+            <form method="post"
+                  action="{{ deliver_url }}"
+                  hx-post="{{ deliver_url }}"
+                  hx-target="#sheet"
+                  hx-sync="this:drop"
+                  {% if bar.confirm %}hx-confirm="{{ bar.confirm }}"{% endif %}>
+                {% csrf_token %}
+                {% if bar.confirm %}<input type="hidden" name="confirmed" value="1">{% endif %}
+                <button class="btn btn--primary" id="mark-delivered" type="submit">Mark delivered</button>
+            </form>
+        {% endif %}
+    </div>
+{% endif %}

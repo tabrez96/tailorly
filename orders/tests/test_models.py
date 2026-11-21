@@ -371,3 +371,13 @@ def test_choose_customer_on_placed_order_raises(customer, blouse):
     order.place()
     with pytest.raises(OrderError):
         order.choose_customer(customer)
+
+
+def test_material_line_from_product_price_overrides(customer, blouse, lining):
+    item = OrderItem.from_product(Order.objects.create(customer=customer), blouse)
+    plain = MaterialLine.from_product(lining, D("1"), item=item)
+    assert (plain.cost_price, plain.selling_price) == (D("60"), D("90"))
+    custom = MaterialLine.from_product(
+        lining, D("1"), item=item, cost_price=D("0"), selling_price=D("120")
+    )
+    assert (custom.cost_price, custom.selling_price) == (D("0"), D("120"))

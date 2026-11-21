@@ -1906,3 +1906,31 @@ body[data-subpage="1"] .nav {
 .order-invoice .btn {
   margin: var(--s3) 0;
 }
+.order-page {
+  padding-bottom: 96px; /* clears the fixed bottom bar */
+}
+.finish-q {
+  display: grid;
+  gap: var(--s1);
+  margin: 0 0 var(--s3);
+  padding: var(--s4);
+  border-radius: var(--r-card);
+  background: var(--sunk);
+}
+.finish-q p {
+  margin: 0;
+}
+.finish-q__title {
+  font-weight: 700;
+}
+.finish-q .field {
+  margin: 0;
+}
+.finish-confirm {
+  margin: 0 0 var(--s4);
+  padding: var(--s4);
+  border-radius: var(--r-field);
+  background: var(--bad-bg);
+  color: var(--bad);
+  font: 700 15px/1.4 var(--font);
+}

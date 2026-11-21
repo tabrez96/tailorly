@@ -1,0 +1,104 @@
+{% extends "components/sheet_content.html" %}
+{% load ui %}
+{% block sheet_title %}
+    {% if mode == "ready" %}Mark ready{% else %}Mark delivered{% endif %}
+{% endblock %}
+{% block sheet_body %}
+    <p class="muted t-small">{{ subline }}</p>
+    <form method="post"
+          novalidate
+          hx-post="{{ action_url }}"
+          hx-target="#sheet"
+          hx-sync="this:drop">
+        {% csrf_token %}
+        {% if error_text %}
+            {% include "components/error_summary.html" with text=error_text %}
+        {% endif %}
+        {% if confirm %}
+            {% if action == "save" %}
+                {% for row in rows %}
+                    <input type="hidden" name="qty_{{ row.key }}" value="{{ row.qty }}">
+                    <input type="hidden" name="cost_{{ row.key }}" value="{{ row.cost }}">
+                    <input type="hidden" name="sell_{{ row.key }}" value="{{ row.sell }}">
+                {% endfor %}
+            {% endif %}
+            <input type="hidden" name="action" value="{{ action }}">
+            <input type="hidden" name="confirmed" value="1">
+            <p class="finish-confirm" role="alert">{{ confirm }}</p>
+            <div class="sheet__actions">
+                <button class="btn btn--tonal"
+                        type="button"
+                        x-data
+                        @click="$dispatch('sheet:close')">Cancel</button>
+                <button class="btn btn--primary" type="submit">Mark delivered anyway</button>
+            </div>
+        {% else %}
+            {% for row in rows %}
+                <div class="finish-q"
+                     x-data="{ unitCost: {{ row.unit_cost|stringformat:'s' }}, unitSell: {{ row.unit_sell|stringformat:'s' }}, cost: '{{ row.cost|escapejs }}', sell: '{{ row.sell|escapejs }}',
+                               fill(q) { const n = parseFloat(String(q).replace(/[₹,\s]/g, '')); if (n > 0) { this.cost = String(Math.round(n * this.unitCost * 100) / 100); this.sell = String(Math.round(n * this.unitSell * 100) / 100) } } }">
+                    <p class="finish-q__title">{{ row.title }}</p>
+                    <p class="t-small muted">{{ row.sub }}</p>
+                    <div class="measure-grid measure-grid--3">
+                        <div class="field{% if row.qty_error %} field--error{% endif %}">
+                            <label class="field__label" for="fq-qty-{{ row.key }}">{{ row.qty_label }}</label>
+                            <input class="field__input"
+                                   id="fq-qty-{{ row.key }}"
+                                   name="qty_{{ row.key }}"
+                                   value="{{ row.qty }}"
+                                   inputmode="decimal"
+                                   autocomplete="off"
+                                   @input="fill($event.target.value)"
+                                   {% if row.qty_error %}aria-invalid="true" aria-describedby="fq-qty-{{ row.key }}_error"{% endif %}>
+                            {% if row.qty_error %}<p class="field__error"
+                                                     id="fq-qty-{{ row.key }}_error">{{ row.qty_error }}</p>{% endif %}
+                        </div>
+                        <div class="field{% if row.cost_error %} field--error{% endif %}">
+                            <label class="field__label" for="fq-cost-{{ row.key }}">Cost price (₹)</label>
+                            <input class="field__input"
+                                   id="fq-cost-{{ row.key }}"
+                                   name="cost_{{ row.key }}"
+                                   x-model="cost"
+                                   value="{{ row.cost }}"
+                                   inputmode="decimal"
+                                   autocomplete="off"
+                                   {% if row.cost_error %}aria-invalid="true" aria-describedby="fq-cost-{{ row.key }}_error"{% endif %}>
+                            {% if row.cost_error %}<p class="field__error"
+                                                      id="fq-cost-{{ row.key }}_error">{{ row.cost_error }}</p>{% endif %}
+                        </div>
+                        <div class="field{% if row.sell_error %} field--error{% endif %}">
+                            <label class="field__label" for="fq-sell-{{ row.key }}">Selling price (₹)</label>
+                            <input class="field__input"
+                                   id="fq-sell-{{ row.key }}"
+                                   name="sell_{{ row.key }}"
+                                   x-model="sell"
+                                   value="{{ row.sell }}"
+                                   inputmode="decimal"
+                                   autocomplete="off"
+                                   {% if row.sell_error %}aria-invalid="true" aria-describedby="fq-sell-{{ row.key }}_error"{% endif %}>
+                            {% if row.sell_error %}<p class="field__error"
+                                                      id="fq-sell-{{ row.key }}_error">{{ row.sell_error }}</p>{% endif %}
+                        </div>
+                    </div>
+                </div>
+                <p class="t-small muted">{{ row.note }}</p>
+            {% endfor %}
+            <div class="sheet__actions">
+                {% if rows %}
+                    <button class="btn btn--tonal" type="submit" name="action" value="skip">Skip for now</button>
+                    <button class="btn btn--primary" type="submit" name="action" value="save">
+                        Save and mark {% if mode == "ready" %}ready{% else %}delivered{% endif %}
+                    </button>
+                {% else %}
+                    <button class="btn btn--tonal"
+                            type="button"
+                            x-data
+                            @click="$dispatch('sheet:close')">Cancel</button>
+                    <button class="btn btn--primary" type="submit">
+                        Mark {% if mode == "ready" %}ready{% else %}delivered{% endif %}
+                    </button>
+                {% endif %}
+            </div>
+        {% endif %}
+    </form>
+{% endblock %}

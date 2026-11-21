@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from catalog.models import Product
+from catalog.models import Product, ProductOption
 from customers.models import Customer
 from orders.models import Order, OrderItem
 from orders.tests.conftest import make_employee, make_order
@@ -162,3 +162,64 @@ def test_add_photo_on_card_and_retry(live_server, signed_in, shop):
     retry.first.click()
     page.wait_for_function("document.querySelectorAll('.photos a[href]').length === 2")
     assert shop.items.get().photos.count() == 2
+
+
+@pytest.fixture
+def finishing_shop(shop, blouse):
+    ProductOption.objects.filter(product=blouse).update(
+        asked_when=ProductOption.WHEN_DONE
+    )
+    item = shop.items.get()
+    item.product = blouse
+    item.options = [{"name": "Lining", "answer": "Yes"}]
+    item.save()
+    return shop
+
+
+def test_mark_ready_with_options_in_place(
+    live_server, signed_in, browser, finishing_shop
+):
+    context, page = signed_in("owner")
+    url = live_server.url + f"/orders/{finishing_shop.pk}/"
+    page.goto(url)
+    page.evaluate("window.__marker = 1")
+    page.click("#mark-ready")
+    qty = page.locator("input[name^=qty_]")
+    qty.wait_for()
+    qty.fill("0.8")
+    assert page.locator("input[name^=cost_]").input_value() == "48"
+    assert page.locator("input[name^=sell_]").input_value() == "72"
+    settle(page)
+    page.screenshot(path=ARTIFACTS / "S04-ready-options.png")
+
+    dark = browser.new_context(
+        viewport={"width": 390, "height": 844}, color_scheme="dark"
+    )
+    dark.add_cookies(context.cookies())
+    dark_page = dark.new_page()
+    dark_page.goto(url)
+    dark_page.click("#mark-ready")
+    dark_page.locator("input[name^=qty_]").wait_for()
+    settle(dark_page)
+    dark_page.screenshot(path=ARTIFACTS / "S04-ready-options-dark.png")
+    dark.close()
+
+    page.get_by_role("button", name="Save and mark ready").click()
+    page.locator("#mark-delivered").wait_for()
+    assert page.locator(".order-head__chips").get_by_text("Ready").count() == 1
+    assert page.url == url
+    assert page.evaluate("window.__marker") == 1
+    assert finishing_shop.items.get().materials.count() == 1
+
+
+def test_mark_delivered_confirm(live_server, signed_in, shop):
+    shop.status = Order.READY
+    shop.save()
+    _, page = signed_in("owner")
+    page.goto(live_server.url + f"/orders/{shop.pk}/")
+    page.once("dialog", lambda d: d.accept())
+    page.click("#mark-delivered")
+    page.locator("#mark-delivered").wait_for(state="detached")
+    assert page.locator(".order-head__chips").get_by_text("Delivered").count() == 1
+    shop.refresh_from_db()
+    assert shop.status == Order.DELIVERED
