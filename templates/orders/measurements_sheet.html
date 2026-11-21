@@ -1,0 +1,65 @@
+{% extends "components/sheet_content.html" %}
+{% load ui %}
+{% block sheet_header %}
+    <div class="sheet-head">
+        {% thumb item.name thumb size="sm" %}
+        <div>
+            <h2 class="t-sheet sheet__title" id="sheet-title">{{ item.name }} measurements</h2>
+            <p class="t-small muted">{{ subline }}</p>
+        </div>
+    </div>
+{% endblock %}
+{% block sheet_body %}
+    <form method="post"
+          novalidate
+          hx-post="{{ action }}"
+          hx-target="#sheet"
+          hx-sync="this:drop">
+        {% csrf_token %}
+        {% if error_text %}
+            {% include "components/error_summary.html" with text=error_text %}
+        {% endif %}
+        {% if rows %}
+            <div class="measure-grid measure-grid--3">
+                {% for r in rows %}
+                    <div class="field{% if r.error %} field--error{% endif %}">
+                        <label class="field__label" for="ms-{{ forloop.counter }}">{{ r.name }}</label>
+                        <input type="hidden" name="field" value="{{ r.name }}">
+                        <input class="field__input"
+                               id="ms-{{ forloop.counter }}"
+                               name="value"
+                               value="{{ r.value }}"
+                               inputmode="decimal"
+                               autocomplete="off"
+                               placeholder="Optional"
+                               {% if r.error %}aria-invalid="true" aria-describedby="ms-{{ forloop.counter }}_error"{% endif %}>
+                        {% if r.error %}<p class="field__error"
+                                           id="ms-{{ forloop.counter }}_error">{{ r.error }}</p>{% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="muted">No measurement fields for this garment.</p>
+        {% endif %}
+        {% if also_label %}
+            <div class="check-row">
+                <input class="check"
+                       type="checkbox"
+                       id="also-update"
+                       name="also_update"
+                       value="1"
+                       {% if also_checked %}checked{% endif %}>
+                <div class="row-text">
+                    <label class="row-text__label" for="also-update">{{ also_label }}</label>
+                </div>
+            </div>
+        {% endif %}
+        <div class="sheet__actions">
+            <button class="btn btn--tonal"
+                    type="button"
+                    x-data
+                    @click="$dispatch('sheet:close')">Cancel</button>
+            <button class="btn btn--primary" type="submit">Save</button>
+        </div>
+    </form>
+{% endblock %}

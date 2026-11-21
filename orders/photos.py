@@ -8,6 +8,7 @@ from orders.models import ItemPhoto
 FULL, THUMB = 1600, 200
 NOT_A_PHOTO = "Choose a photo (JPEG or PNG)."
 TOO_BIG = "Choose a photo under 20 MB."
+TOO_MANY = "An item can have up to 3 photos."
 MAX_PHOTOS = 3
 MAX_BYTES = 20 * 1024 * 1024
 

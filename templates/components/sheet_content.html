@@ -1,5 +1,7 @@
 <span class="sheet__handle" aria-hidden="true" data-sheet-handle></span>
-<h2 class="t-sheet sheet__title" id="sheet-title">
-    {% block sheet_title %}{% endblock %}
-</h2>
+{% block sheet_header %}
+    <h2 class="t-sheet sheet__title" id="sheet-title">
+        {% block sheet_title %}{% endblock %}
+    </h2>
+{% endblock %}
 {% block sheet_body %}{% endblock %}
