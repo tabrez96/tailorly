@@ -1,0 +1,90 @@
+{% load ui formats %}
+<div class="draft-page" id="order-edit">
+    {% include "components/header.html" with title=title back_url=back_url back_direct=back_direct overline=overline %}
+    {% include "components/error_summary.html" with text=error_text %}
+    <h2 class="t-section">
+        Items <span class="muted">({{ item_count }})</span>
+    </h2>
+    <ul class="card list">
+        {% for row in rows %}
+            <li class="list__row">
+                {% thumb row.name src=row.photo count=row.photo_count %}
+                <div class="list__main">
+                    <p class="draft-page__name">
+                        <span class="draft-page__num tabular">{{ row.number }}</span>
+                        {% if row.edit_url %}
+                            <a class="draft-page__open"
+                               href="{{ row.edit_url }}"
+                               hx-get="{{ row.edit_url }}"
+                               hx-target="#page"
+                               hx-sync="#page:replace"
+                               hx-push-url="true">{{ row.name }}</a>
+                        {% else %}
+                            {{ row.name }}
+                        {% endif %}
+                        {% include "components/chip.html" with label=row.custom|yesno:"Custom,Ready-made" tone="grey" %}
+                    </p>
+                    <p class="t-small muted">{{ row.summary }}</p>
+                </div>
+                <div class="draft-page__price">
+                    <p class="tabular">
+                        {% if free %}
+                            {{ row.usual|inr }} <span class="t-small muted">usual</span>
+                        {% else %}
+                            {{ row.price|inr }}
+                        {% endif %}
+                    </p>
+                </div>
+                {% if row.edit_url %}
+                    {% include "components/icon.html" with name="chevron-right" %}
+                {% endif %}
+            </li>
+        {% endfor %}
+    </ul>
+    {% if add_url %}
+        <a class="btn btn--tonal btn--block"
+           id="add-item"
+           href="{{ add_url }}"
+           hx-get="{{ add_url }}"
+           hx-target="#page"
+           hx-sync="#page:replace"
+           hx-push-url="true">+ Add item</a>
+        <p class="t-small muted draft-page__hint">Tap an item to change its price, options or notes.</p>
+    {% else %}
+        <p class="t-small muted">Items can't change on a delivered order.</p>
+    {% endif %}
+    <form id="order-edit-form"
+          method="post"
+          action="{{ request.path }}"
+          novalidate
+          hx-post="{{ request.path }}"
+          hx-target="#order-edit"
+          hx-select="#order-edit"
+          hx-swap="outerHTML"
+          hx-sync="this:drop"
+          hx-disable="find button[type=submit]">
+        {% csrf_token %}
+        {% if form.due_date %}
+            {% field form.due_date %}
+        {% endif %}
+        <div class="action-bar item-bar draft-bar">
+            <div>
+                <p class="t-small muted">
+                    {% if free %}
+                        Free, not charged
+                    {% else %}
+                        Total, {{ item_count }} item{{ item_count|pluralize }}
+                    {% endif %}
+                </p>
+                <p class="item-bar__total tabular">
+                    {% if free %}
+                        ₹0
+                    {% else %}
+                        {{ total|inr }}
+                    {% endif %}
+                </p>
+            </div>
+            <button type="submit" class="btn btn--primary" id="order-edit-save">Save</button>
+        </div>
+    </form>
+</div>

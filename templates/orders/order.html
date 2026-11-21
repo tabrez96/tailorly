@@ -1,6 +1,10 @@
 {% load formats %}
 <div class="order-page">
-    {% include "components/header.html" with title=title back_url=back_url %}
+    {% if edit_url %}
+        {% include "components/header.html" with title=title back_url=back_url action_label="Edit" action_url=edit_url %}
+    {% else %}
+        {% include "components/header.html" with title=title back_url=back_url %}
+    {% endif %}
     <div class="card order-head">
         <div class="order-head__top">
             <div>
