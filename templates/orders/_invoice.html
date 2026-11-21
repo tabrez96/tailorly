@@ -2,6 +2,19 @@
 <section id="order-invoice" class="order-invoice">
     <h2 class="t-section">Invoice</h2>
     <div class="card pay-summary">
+        {% if lines %}
+            {% for l in lines %}
+                <p>
+                    <span>{{ l.number }} {{ l.name }}</span><span class="tabular">{{ l.price|inr }}</span>
+                </p>
+                {% for m in l.materials %}
+                    <p class="order-invoice__sub t-small muted">
+                        <span>{{ m.label }}</span><span class="tabular">{{ m.amount|inr }}</span>
+                    </p>
+                {% endfor %}
+            {% endfor %}
+            <hr class="order-invoice__rule">
+        {% endif %}
         <p>
             <span>Total</span><span class="tabular">{{ invoice.total|inr }}</span>
         </p>

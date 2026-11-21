@@ -326,3 +326,35 @@ def test_inactive_material_still_allowed_for_its_product(owner_client, demo_cata
     assert response.status_code == 204
     state = editor_json(owner_client.get(f"/products/{pk('Kurta')}/").content.decode())
     assert "Padding cups" not in [m["name"] for m in state["materials"]]
+
+
+def test_new_material_return_to_redirects_back(owner_client):
+    form = {
+        "kind": "secondary",
+        "name": "Canvas",
+        "unit": "m",
+        "cost_price": "80",
+        "selling_price": "100",
+        "return_to": "/orders/1/items/2/materials/new/?on=order",
+    }
+    response = owner_client.post("/products/new/", form, HTTP_HX_REQUEST="true")
+    product = Product.objects.get(name="Canvas")
+    assert response.status_code == 302
+    assert response["Location"] == (
+        f"/orders/1/items/2/materials/new/?on=order&material={product.pk}"
+    )
+
+
+def test_new_material_off_site_return_to_is_ignored(owner_client):
+    form = {
+        "kind": "secondary",
+        "name": "Canvas",
+        "unit": "m",
+        "cost_price": "80",
+        "selling_price": "100",
+        "return_to": "//evil.example/orders/",
+    }
+    response = owner_client.post("/products/new/", form, HTTP_HX_REQUEST="true")
+    assert response.status_code == 204
+    assert "HX-Location" in response
+    assert "evil" not in response["HX-Location"]

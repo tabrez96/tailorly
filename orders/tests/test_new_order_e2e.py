@@ -93,7 +93,7 @@ def test_create_order_lands_on_order_page(live_server, signed_in, shop):
     assert page.evaluate("window.__marker") == 1
     page.get_by_text("Balance").wait_for()
     body = page.locator("#page").inner_text()
-    assert body.count("Blouse") == 2
+    assert page.locator(".item-card__name", has_text="Blouse").count() == 2
     assert "₹1,000" in body
     assert "₹1,400" in body
     assert Order.objects.get(pk=order.pk).assignee == ali

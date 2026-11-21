@@ -26,8 +26,13 @@ class Question:
         return f"{self.item.pk}_{self.option.pk}"
 
 
-def needs_answer(option: ProductOption, answers: list[dict], material_ids: set) -> bool:
-    if option.asked_when != ProductOption.WHEN_DONE or option.material_id is None:
+def needs_answer(
+    option: ProductOption,
+    answers: list[dict],
+    material_ids: set,
+    when: str = ProductOption.WHEN_DONE,
+) -> bool:
+    if option.asked_when != when or option.material_id is None:
         return False
     answer = next((a["answer"] for a in answers if a["name"] == option.name), "")
     if option.answer == ProductOption.YES_NO:
@@ -110,22 +115,24 @@ def _too_precise(value: Decimal) -> bool:
 
 
 def clean_answer(
-    qty_raw: str, cost_raw: str, sell_raw: str
-) -> tuple[tuple[Decimal, Decimal, Decimal] | None, dict]:
+    qty_raw: str, cost_raw: str, sell_raw: str, *, cost_optional: bool = False
+) -> tuple[tuple[Decimal, Decimal | None, Decimal] | None, dict]:
     qty, cost, sell = _number(qty_raw), _number(cost_raw), _number(sell_raw)
+    blank_cost = cost_optional and str(cost_raw).strip() == ""
+    prices = (("sell", sell),) if blank_cost else (("cost", cost), ("sell", sell))
     errors = {}
     if qty is None or qty <= 0 or _too_precise(qty) or qty >= 1_000_000:
         errors["qty"] = QTY_INVALID
-    for field, price in (("cost", cost), ("sell", sell)):
+    for field, price in prices:
         if price is None or price < 0 or _too_precise(price) or price >= 10**10:
             errors[field] = PRICE_INVALID
     if not errors:  # the saved per-unit price must fit the column too
-        for field, price in (("cost", cost), ("sell", sell)):
+        for field, price in prices:
             if per_unit(price, qty) >= 10**10:
                 errors[field] = PRICE_INVALID
     if errors:
         return None, errors
-    return (qty, cost, sell), {}
+    return (qty, None if blank_cost else cost, sell), {}
 
 
 def save_answers(questions: list[Question], data) -> tuple[list[dict], int]:
