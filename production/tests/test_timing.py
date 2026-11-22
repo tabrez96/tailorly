@@ -277,3 +277,154 @@ def test_panel_hero_includes_session_started_after_the_prefetch(
     hero = timing.panel(ali, now)["hero"]
     assert hero["state"] == "running"
     assert hero["started_at"] == now - timedelta(minutes=2)
+
+
+def _delivered(item):
+    item.status = OrderItem.FINISHED
+    item.finished_at = at(-2880)
+    item.save()
+    Order.objects.filter(pk=item.order_id).update(status="delivered")
+    return item
+
+
+def test_queue_key_orders_by_due_then_items_before_reworks(ali, make_item, make_rework):
+    from datetime import date
+
+    a = make_item(ali, due=date(2026, 11, 25))
+    b = make_item(ali, due=None)
+    c = make_item(ali, due=date(2026, 11, 25))
+    rework = make_rework(_delivered(make_item(ali)), ali, due=date(2026, 11, 25))
+    rows = [
+        timing._rework_row(rework, at(0)),
+        timing._row(b, at(0)),
+        timing._row(c, at(0)),
+        timing._row(a, at(0)),
+    ]
+    order = [r["key"] for r in sorted(rows, key=timing.queue_key)]
+    assert order[-1] == ("item", b.pk)
+    assert order.index(("item", a.pk)) < order.index(("item", c.pk))
+    same = timing._rework_row(make_rework(a, ali, due=date(2026, 11, 25)), at(0))
+    keys = sorted([same, timing._row(a, at(0))], key=timing.queue_key)
+    assert keys[0]["rework"] is None
+
+
+def test_open_rework_joins_up_next_by_due(ali, make_item, make_rework):
+    from datetime import date
+
+    early = make_item(ali, due=date(2026, 11, 22))
+    late = make_item(ali, due=date(2026, 11, 28))
+    rework = make_rework(_delivered(make_item(ali)), ali, due=date(2026, 11, 25))
+    rows = timing.panel(ali, at(0))["up_next"]
+    assert [r["key"] for r in rows] == [
+        ("item", early.pk),
+        ("rework", rework.pk),
+        ("item", late.pk),
+    ]
+    assert rows[1]["rework"] == rework
+
+
+def test_start_pause_resume_finish_rework(ali, make_item, make_rework):
+    rework = make_rework(_delivered(make_item(ali)), ali)
+    session = timing.start_rework(ali, rework, at(0))
+    assert session.rework == rework and session.item is None
+    timing.stop(ali, at(10))
+    assert timing.open_session(ali) is None
+    timing.start_rework(ali, rework, at(20))
+    assert rework.sessions.count() == 2
+    timing.finish_rework(ali, rework, at(30))
+    rework.refresh_from_db()
+    assert rework.finished_at == at(30)
+    assert timing.open_session(ali) is None
+
+
+def test_start_same_rework_twice_is_noop(ali, make_item, make_rework):
+    rework = make_rework(_delivered(make_item(ali)), ali)
+    first = timing.start_rework(ali, rework, at(0))
+    assert timing.start_rework(ali, rework, at(5)) == first
+    assert rework.sessions.count() == 1
+
+
+def test_switch_item_to_rework_and_back(ali, make_item, make_rework):
+    item = make_item(ali)
+    rework = make_rework(_delivered(make_item(ali)), ali)
+    timing.start_item(ali, item, at(0))
+    timing.start_rework(ali, rework, at(15))
+    assert item.sessions.get().ended_at == at(15)
+    assert TimeSession.objects.filter(ended_at__isnull=True).count() == 1
+    timing.start_item(ali, item, at(30))
+    assert rework.sessions.get().ended_at == at(30)
+    assert TimeSession.objects.filter(ended_at__isnull=True).count() == 1
+
+
+def test_rework_minutes_equal_sum_of_sessions(ali, make_item, make_rework):
+    rework = make_rework(_delivered(make_item(ali)), ali)
+    timing.start_rework(ali, rework, at(0))
+    timing.stop(ali, at(10))
+    timing.start_rework(ali, rework, at(20))
+    timing.stop(ali, at(45))
+    row = next(r for r in [timing._rework_row(timing.my_reworks(ali).get(), at(60))])
+    assert row["minutes"] == 35
+
+
+def test_finish_rework_leaves_item_untouched(ali, make_item, make_rework):
+    item = _delivered(make_item(ali, estimate=90))
+    rework = make_rework(item, ali)
+    timing.start_rework(ali, rework, at(0))
+    timing.finish_rework(ali, rework, at(10))
+    item.refresh_from_db()
+    assert item.status == OrderItem.FINISHED
+    assert item.finished_at == at(-2880)
+    assert item.estimate_minutes == 90
+    assert Order.objects.get(pk=item.order_id).status == "delivered"
+
+
+def test_start_rework_not_assigned_raises(ali, make_item, make_rework):
+    from staff.models import Employee
+
+    other = Employee.objects.create(name="Sam", phone="9000011118", daily_wage=800)
+    item = _delivered(make_item(ali))
+    theirs = make_rework(item, other)
+    with pytest.raises(timing.TimingError):
+        timing.start_rework(ali, theirs, at(0))
+    done = make_rework(item, ali, finished_at=at(-5))
+    with pytest.raises(timing.TimingError):
+        timing.start_rework(ali, done, at(0))
+    with pytest.raises(timing.TimingError):
+        timing.finish_rework(ali, done, at(0))
+
+
+def test_paused_rework_is_hero(ali, make_item, make_rework, started_day):
+    now = timezone.make_aware(datetime(2026, 11, 20, 12, 0))
+    started_day(ali, now.date())
+    rework = make_rework(_delivered(make_item(ali)), ali)
+    timing.start_rework(ali, rework, now - timedelta(minutes=10))
+    timing.stop(ali, now - timedelta(minutes=5))
+    hero = timing.panel(ali, now)["hero"]
+    assert hero["rework"] == rework
+    assert hero["state"] == "paused"
+
+
+def test_finished_today_includes_rework(ali, make_item, make_rework, started_day):
+    now = timezone.make_aware(datetime(2026, 11, 20, 12, 0))
+    started_day(ali, now.date())
+    item = make_item(ali)
+    timing.start_item(ali, item, now - timedelta(minutes=50))
+    timing.finish_item(ali, item, now - timedelta(minutes=40))
+    rework = make_rework(_delivered(make_item(ali)), ali)
+    timing.start_rework(ali, rework, now - timedelta(minutes=30))
+    timing.finish_rework(ali, rework, now - timedelta(minutes=5))
+    finished = timing.panel(ali, now)["finished"]
+    assert [r["key"] for r in finished] == [("item", item.pk), ("rework", rework.pk)]
+    assert finished[1]["minutes"] == 25
+
+
+def test_running_rework_reassigned_still_stoppable(ali, make_item, make_rework):
+    now = timezone.now()
+    rework = make_rework(_delivered(make_item(ali)), ali)
+    timing.start_rework(ali, rework, now)
+    rework.assignee = None
+    rework.save()
+    hero = timing.panel(ali, now)["hero"]
+    assert hero["rework"] == rework
+    assert hero["finishable"] is False
+    assert hero["state"] == "running"

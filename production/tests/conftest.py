@@ -86,3 +86,44 @@ def started_day(db):
         )
 
     return _start
+
+
+@pytest.fixture
+def media(settings, tmp_path):
+    settings.MEDIA_ROOT = tmp_path
+    return tmp_path
+
+
+def jpeg_upload(name="p.jpg"):
+    from io import BytesIO
+
+    from django.core.files.uploadedfile import SimpleUploadedFile
+    from PIL import Image
+
+    buffer = BytesIO()
+    Image.new("RGB", (40, 30), "tan").save(buffer, "JPEG")
+    return SimpleUploadedFile(name, buffer.getvalue(), content_type="image/jpeg")
+
+
+@pytest.fixture
+def add_photos(media):
+    from orders.photos import add_photo
+
+    def _add(item, count=3):
+        return [add_photo(item, jpeg_upload()) for _ in range(count)]
+
+    return _add
+
+
+@pytest.fixture
+def make_rework():
+    from orders.models import Rework
+
+    def _make(item, assignee, due=None, **kwargs):
+        kwargs.setdefault("reason", "fit")
+        kwargs.setdefault("note", "Loosen waist by 1 inch")
+        return Rework.objects.create(
+            item=item, assignee=assignee, due_date=due, **kwargs
+        )
+
+    return _make

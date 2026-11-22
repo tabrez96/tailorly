@@ -138,3 +138,82 @@ def test_offline_banner(signed_in, live_server, ali):
     expect(page.get_by_text("Offline. Your time will be saved")).to_be_visible()
     page.clock.run_for(2000)
     expect(timer).not_to_have_text(before)
+
+
+def add_photos(item, count):
+    from orders.photos import add_photo
+    from production.tests.conftest import jpeg_upload
+
+    for _ in range(count):
+        add_photo(item, jpeg_upload())
+
+
+def check_details_sheet(page, name):
+    page.get_by_role("button", name="Start Blouse").click()
+    page.get_by_text("Now working on").wait_for()
+    page.get_by_role("button", name="Details for Blouse, order 1").first.click()
+    dialog = page.locator("dialog#sheet")
+    expect(dialog).to_be_visible()
+    expect(dialog.get_by_text("1 of 3")).to_be_visible()
+    dialog.get_by_role("button", name="Show Blouse, photo 3 of 3").click()
+    expect(dialog.get_by_text("3 of 3")).to_be_visible()
+    page.screenshot(path=str(SHOTS / name))
+    dialog.get_by_role("button", name="Close").click()
+    expect(dialog).not_to_be_visible()
+    page.get_by_role("button", name="Details for Petticoat, order 2").click()
+    expect(dialog.get_by_role("heading", name="#2 · Petticoat")).to_be_visible()
+    dialog.get_by_role("button", name="Close").click()
+    page.get_by_role("button", name="Photos, measurements and notes").click()
+    expect(dialog.get_by_role("heading", name="#1 · Blouse")).to_be_visible()
+
+
+def test_item_details_sheet(signed_in, live_server, ali, media):
+    open_page(signed_in, live_server, ali, day=True)
+    add_photos(OrderItem.objects.get(name="Blouse"), 3)
+    ali.page.goto(live_server.url + "/my-work/")
+    check_details_sheet(ali.page, "S08-item-detail.png")
+
+
+def test_item_details_sheet_dark(signed_in, live_server, ali, media):
+    open_page(signed_in, live_server, ali, day=True)
+    add_photos(OrderItem.objects.get(name="Blouse"), 3)
+    ali.page.emulate_media(color_scheme="dark")
+    ali.page.goto(live_server.url + "/my-work/")
+    check_details_sheet(ali.page, "S08-item-detail-dark.png")
+
+
+def run_rework_flow(page, live_server, shot):
+    page.goto(live_server.url + "/my-work/")
+    page.get_by_role("button", name="Start rework Blouse").click()
+    expect(page.locator("#work-hero-title")).to_contain_text("Rework · Blouse")
+    expect(page.locator(".work-hero")).to_contain_text("Fit alteration")
+    page.screenshot(path=str(SHOTS / shot))
+    page.get_by_role("button", name="Switch Petticoat").click()
+    expect(page.locator("#work-hero-title")).to_contain_text("Petticoat")
+    page.get_by_role("button", name="Switch rework Blouse").click()
+    expect(page.locator("#work-hero-title")).to_contain_text("Rework · Blouse")
+    page.get_by_role("button", name="Finish item").click()
+    page.get_by_text("Finished today").wait_for()
+    expect(page.locator("ul.list").last).to_contain_text("Rework")
+
+
+@pytest.mark.parametrize(
+    "scheme,shot", [("light", "S08-rework.png"), ("dark", "S08-rework-dark.png")]
+)
+def test_time_a_rework(signed_in, live_server, ali, scheme, shot):
+    from orders.models import Rework
+
+    open_page(signed_in, live_server, ali, names=("Petticoat",), day=True)
+    done = add_item(ali, OrderItem.objects.get().order.customer, "Blouse", 2)
+    OrderItem.objects.filter(pk=done.pk).update(status="finished")
+    done.order.status = "delivered"
+    done.order.save()
+    Rework.objects.create(
+        item=done,
+        reason="fit",
+        note="Loosen waist by 1 inch",
+        assignee=ali,
+        due_date=timezone.localdate() + timedelta(days=3),
+    )
+    ali.page.emulate_media(color_scheme=scheme)
+    run_rework_flow(ali.page, live_server, shot)

@@ -1,9 +1,23 @@
 {% load formats ui %}
 <li class="list__row work-row">
-    {% thumb row.item.name row.thumb row.photo_count %}
+    {% if mode == "next" %}
+        <button type="button"
+                class="thumb-btn"
+                hx-get="{{ row.details_url }}"
+                hx-target="#sheet"
+                hx-swap="innerHTML"
+                aria-label="Details for {{ row.item.name }}, order {{ row.order.number }}">
+            {% thumb row.item.name row.thumb row.photo_count %}
+        </button>
+    {% else %}
+        {% thumb row.item.name row.thumb row.photo_count %}
+    {% endif %}
     <div class="list__main">
         <p class="t-body">
             <strong>{{ row.item.name }}</strong>
+            {% if row.rework %}
+                {% include "components/chip.html" with label="Rework" tone="warn" %}
+            {% endif %}
         </p>
         <p class="t-small muted">
             #{{ row.order.number }} · {{ row.customer.name }}
@@ -14,8 +28,8 @@
     {% if mode == "next" %}
         <button class="btn btn--tonal btn--sm"
                 type="button"
-                hx-post="{% url 'work_start' row.item.pk %}"
-                aria-label="{% if running %}Switch{% else %}Start{% endif %} {{ row.item.name }}, order {{ row.order.number }}"
+                hx-post="{{ row.start_url }}"
+                aria-label="{% if running %}Switch{% else %}Start{% endif %} {% if row.rework %}rework {% endif %}{{ row.item.name }}, order {{ row.order.number }}"
                 {% if not can_time %}disabled{% endif %}>
             {% if running %}
                 Switch

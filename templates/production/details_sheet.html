@@ -1,0 +1,65 @@
+{% extends "components/sheet_content.html" %}
+{% load formats ui %}
+{% block sheet_header %}{% endblock %}
+{% block sheet_body %}
+    {% if photos %}
+        <div class="detail-photos" x-data="{ i: 0 }">
+            <span class="thumb thumb--lg">
+                <img class="thumb__img"
+                     x-ref="big"
+                     src="{{ photos.0.full }}"
+                     alt="{{ photos.0.alt }}">
+                {% if photos|length > 1 %}
+                    <span class="thumb__badge"
+                          x-text="(i + 1) + ' of {{ photos|length }}'">1 of {{ photos|length }}</span>
+                {% endif %}
+            </span>
+            {% if photos|length > 1 %}
+                <ul class="detail-photos__row">
+                    {% for p in photos %}
+                        <li>
+                            <button type="button"
+                                    class="thumb thumb--sm"
+                                    :aria-pressed="(i === {{ forloop.counter0 }}).toString()"
+                                    aria-label="Show {{ p.alt }}"
+                                    @click="i = {{ forloop.counter0 }}; $refs.big.src = '{{ p.full|escapejs }}'; $refs.big.alt = '{{ p.alt|escapejs }}'">
+                                <img class="thumb__img" src="{{ p.thumb }}" alt="" loading="lazy">
+                            </button>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        </div>
+    {% else %}
+        {% thumb item.name None size="lg" %}
+    {% endif %}
+    <h2 class="t-sheet sheet__title" id="sheet-title">{{ title }}</h2>
+    <p class="t-small muted">
+        {% if rework %}#{{ order.number }} ·{% endif %}
+        {{ customer.name }}
+        {% if due %}· due {{ due|day }}{% endif %}
+    </p>
+    {% if rework %}
+        <p>{% include "components/chip.html" with label=rework.get_reason_display tone="warn" %}</p>
+        {% if rework.note %}
+            <p class="item-card__label">What to do</p>
+            <p class="item-card__notes">{{ rework.note }}</p>
+        {% endif %}
+    {% endif %}
+    {% if tiles %}
+        <p class="item-card__label">
+            Measurements <span class="muted">(inches)</span>
+        </p>
+        {% include "components/measure_tiles.html" with tiles=tiles %}
+    {% endif %}
+    {% if notes %}
+        <p class="item-card__label">Notes</p>
+        <p class="item-card__notes">{{ notes }}</p>
+    {% endif %}
+    <div class="sheet__actions sheet__actions--single">
+        <button class="btn btn--primary"
+                type="button"
+                x-data
+                @click="$dispatch('sheet:close')">Close</button>
+    </div>
+{% endblock %}

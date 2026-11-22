@@ -161,3 +161,131 @@ def test_no_money_or_estimates_on_employee_pages(ali, make_item, started_day):
         # Numbers are checked in visible text only: tokens in attributes are random.
         text = re.sub(r"<[^>]*>", " ", html)
         assert not re.search(r"\b(1450|137)\b", text)
+
+
+MONEY_WORDS = ["₹", "estimate", "balance", "cost", "gain", "profit"]
+MONEY_NUMBERS = ["1,450", "1450", "7,315", "7315", "8,642", "8642"]
+
+
+def assert_no_money(html, where=""):
+    low = html.lower()
+    for word in MONEY_WORDS:
+        assert word.lower() not in low, (where, word)
+    for number in MONEY_NUMBERS:
+        assert not re.search(rf"(?<![\w.,]){re.escape(number)}(?![\w,]|\.\d)", html), (
+            where,
+            number,
+        )
+
+
+def delivered_rework(make_item, make_rework, ali, **kwargs):
+    item = make_item(ali, estimate=90)
+    OrderItem.objects.filter(pk=item.pk).update(status="finished")
+    item.order.status = "delivered"
+    item.order.save()
+    return make_rework(item, ali, **kwargs)
+
+
+def rework_url(rework, action):
+    return f"/my-work/reworks/{rework.pk}/{action}/"
+
+
+def test_rework_start_and_finish_views(ali, make_item, make_rework, started_day):
+    started_day(ali)
+    rework = delivered_rework(make_item, make_rework, ali)
+    assert post(ali.client, rework_url(rework, "start")).status_code == 200
+    assert timing.open_session(ali).rework == rework
+    response = post(ali.client, rework_url(rework, "finish"))
+    assert response.status_code == 200
+    assert (
+        "Rework · Blouse finished"
+        in json.loads(response["HX-Trigger"])["toast"]["message"]
+    )
+    rework.refresh_from_db()
+    assert rework.finished_at is not None
+
+
+def test_rework_start_other_employee_404(ali, make_item, make_rework, started_day):
+    from staff.models import Employee
+
+    started_day(ali)
+    other = Employee.objects.create(name="Sam", phone="9000011118", daily_wage=800)
+    rework = delivered_rework(make_item, make_rework, other)
+    assert post(ali.client, rework_url(rework, "start")).status_code == 404
+    assert post(ali.client, rework_url(rework, "finish")).status_code == 404
+
+
+def test_rework_start_before_day_toast(ali, make_item, make_rework):
+    rework = delivered_rework(make_item, make_rework, ali)
+    response = post(ali.client, rework_url(rework, "start"))
+    assert (
+        json.loads(response["HX-Trigger"])["toast"]["message"]
+        == "Start your day first."
+    )
+    response = post(ali.client, rework_url(rework, "finish"))
+    assert (
+        json.loads(response["HX-Trigger"])["toast"]["message"]
+        == "Start your day first."
+    )
+    assert TimeSession.objects.count() == 0
+
+
+def test_finished_rework_start_404(ali, make_item, make_rework, started_day):
+    started_day(ali)
+    rework = delivered_rework(make_item, make_rework, ali)
+    timing.start_rework(ali, rework, timezone.now())
+    timing.finish_rework(ali, rework, timezone.now())
+    assert post(ali.client, rework_url(rework, "start")).status_code == 404
+
+
+def test_hero_rework_html(ali, make_item, make_rework, started_day):
+    started_day(ali)
+    rework = delivered_rework(make_item, make_rework, ali)
+    html = post(ali.client, rework_url(rework, "start")).content.decode()
+    assert "Rework · Blouse" in html
+    assert "Fit alteration" in html
+    assert "Loosen waist by 1 inch" in html
+    assert "Photos, measurements and notes" in html
+    assert f"/my-work/reworks/{rework.pk}/details/" in html
+
+
+def test_hint_text(ali, make_item, started_day):
+    started_day(ali)
+    make_item(ali)
+    make_item(ali, name="Suit")
+    html = ali.client.get("/my-work/").content.decode()
+    assert "Tap a photo for details. Switching pauses what you" in html
+
+
+def test_rows_have_rework_chip(ali, make_item, make_rework, started_day):
+    started_day(ali)
+    queued = delivered_rework(make_item, make_rework, ali)
+    done = delivered_rework(make_item, make_rework, ali)
+    html = ali.client.get("/my-work/").content.decode()
+    assert html.count("Rework") >= 2
+    timing.start_rework(ali, done, timezone.now())
+    timing.finish_rework(ali, done, timezone.now())
+    html = ali.client.get("/my-work/").content.decode()
+    assert "Finished today" in html
+    finished_part = html.split("Finished today")[1]
+    assert "Rework" in finished_part
+    assert queued.pk
+
+
+def test_no_money_in_my_work_html(ali, make_item, make_rework, started_day):
+    from orders.models import MaterialLine
+
+    started_day(ali)
+    make_item(ali, estimate=90)
+    rework = delivered_rework(make_item, make_rework, ali)
+    MaterialLine.objects.create(
+        rework=rework,
+        name="Lining",
+        unit="m",
+        quantity=1,
+        cost_price=7315,
+        selling_price=8642,
+    )
+    post(ali.client, rework_url(rework, "start"))
+    html = ali.client.get("/my-work/").content.decode()
+    assert_no_money(html)
