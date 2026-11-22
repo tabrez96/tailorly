@@ -104,6 +104,7 @@ from orders.photos import (
     stage_photo,
     staged_photos,
 )
+from production.assign import assignable
 from staff.attendance import first_name, initials
 from staff.models import Employee
 
@@ -521,6 +522,9 @@ def _order_context(request, order) -> dict:
         )
         else "",
         "is_owner": owner,
+        "assign_url": reverse("assign_sheet", args=[order.pk]) + "?from=order"
+        if owner and assignable(order)
+        else "",
         "customer_url": reverse("customer", args=[order.customer.pk]) if owner else "",
         "status_chip": {"label": label, "tone": tone},
         "steps": status_steps(order.status),

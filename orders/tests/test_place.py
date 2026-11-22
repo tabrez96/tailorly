@@ -179,6 +179,15 @@ def test_draft_defaults_only_active_employee(owner_client, customer, blouse):
     assert '<option value="" selected>Not assigned yet</option>' in body
 
 
+def test_draft_hint_and_estimates_under_assign_to(owner_client, customer, blouse):
+    order, _ = draft_with(customer, blouse)
+    body = owner_client.get(f"/orders/drafts/{order.pk}/").content.decode()
+    assign = body.index("id_assignee")
+    hint = body.index('id="queue-hint"', assign)
+    link = body.index('href="/production/plan/"', hint)
+    assert link < body.index("Your estimate to make it", link)
+
+
 def test_making_hidden_for_ready_made_only(owner_client, customer, kurta, blouse):
     order, _ = draft_with(customer, kurta)
     page = f"/orders/drafts/{order.pk}/"

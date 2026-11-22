@@ -4,7 +4,7 @@ import pytest
 
 from catalog.models import Product
 from orders.models import OrderItem
-from production.estimates import average_minutes, usual_minutes
+from production.estimates import average_minutes, usual, usual_minutes
 from production.models import TimeSession
 
 T0 = datetime(2026, 11, 10, 9, 0, tzinfo=UTC)
@@ -46,3 +46,14 @@ def test_usual_minutes_from_db(ali, make_item):
     finish(ali, make_item, 120, 2)
     assert usual_minutes(product) == 90
     assert usual_minutes(None) == 120
+
+
+@pytest.mark.django_db
+def test_usual_counts_samples(ali, make_item):
+    product = Product.objects.get()
+    assert usual(None) == (120, 0)
+    for n, minutes in enumerate([60, 90]):
+        finish(ali, make_item, minutes, n)
+    assert usual(product) == (120, 0)
+    finish(ali, make_item, 120, 2)
+    assert usual(product) == (90, 3)

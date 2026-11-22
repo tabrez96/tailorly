@@ -19,10 +19,15 @@ def average_minutes(logged: list[int]) -> int:
 
 
 def usual_minutes(product) -> int:
+    return usual(product)[0]
+
+
+def usual(product) -> tuple[int, int]:
+    """(minutes, how many logged times they average); 0 samples means the fallback."""
     from production.timing import session_seconds  # timing imports this module
 
     if product is None:
-        return USUAL_MINUTES
+        return USUAL_MINUTES, 0
     items = (
         OrderItem.objects.filter(product=product, status=OrderItem.FINISHED)
         .order_by(F("finished_at").desc(nulls_last=True), "-id")
@@ -37,4 +42,5 @@ def usual_minutes(product) -> int:
         // 60
         for item in items
     ]
-    return average_minutes(logged)
+    samples = len([m for m in logged if m > 0][:SAMPLE])
+    return average_minutes(logged), samples if samples >= MIN_FINISHED else 0

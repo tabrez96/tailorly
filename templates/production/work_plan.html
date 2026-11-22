@@ -1,4 +1,4 @@
-{% include "components/header.html" with title=title overline=overline back_url=back_url back_direct=False action_label=unassigned|yesno:"Assign," %}
+{% include "components/header.html" with title=title overline=overline back_url=back_url back_direct=False action_label=unassigned|yesno:"Assign," action_sheet=assign_next_url action_id="plan-assign" %}
 {% if empty %}
     <div class="empty">
         <div class="icon-tile icon-tile--lg">{% include "components/icon.html" with name="camera" %}</div>
@@ -47,4 +47,10 @@
             <p class="muted empty-line">Nothing in {{ section.first }}'s queue yet. Assign an order above.</p>
         {% endif %}
     {% endfor %}
+{% endif %}
+{% if open_assign %}
+    <div hidden
+         hx-get="{{ open_assign }}"
+         hx-trigger="load"
+         hx-target="#sheet"></div>
 {% endif %}

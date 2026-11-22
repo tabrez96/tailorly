@@ -8,7 +8,7 @@ Status: **draft** (UX not approved yet), **approved**, **building** (a ticket fo
 
 | ID | Screen | Status | Purpose | Tickets | Updated |
 | --- | --- | --- | --- | --- | --- |
-| S01 | [Sign in](screens/S01-sign-in/screen.html) (+2 states) · [spec](screens/S01-sign-in/spec.md) | building | Sign in as the owner or the employee | T-160, T-207 | 2026-11-17 |
+| S01 | [Sign in](screens/S01-sign-in/screen.html) (+2 states) · [spec](screens/S01-sign-in/spec.md) | built | Sign in as the owner or the employee | T-160, T-207 | 2026-11-17 |
 | S02 | [Today](screens/S02-today/screen.html) (+3 states) · [spec](screens/S02-today/spec.md) | building |  | T-179 | 2026-11-17 |
 | S03 | [Orders](screens/S03-orders/screen.html) (+2 states) · [spec](screens/S03-orders/spec.md) | building | Find any order and see its status and balance | T-166, T-173, T-197 | 2026-11-17 |
 | S04 | [Order Detail](screens/S04-order-detail/screen.html) (+10 states) · [spec](screens/S04-order-detail/spec.md) | building |  | T-166, T-167, T-168, T-169, T-173, T-175, T-176, T-177, T-178, T-190, T-197, T-198, T-199, T-200, T-203 | 2026-11-17 |

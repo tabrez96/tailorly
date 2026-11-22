@@ -45,7 +45,11 @@
                 <p class="t-small muted">Assigned to</p>
                 <p class="assign-row__line">{% if assigned %}{{ assigned.line }}{% else %}Not assigned{% endif %}</p>
             </div>
-            {% if is_owner %}<button class="btn btn--tonal" type="button" disabled>Change</button>{% endif %}
+            {% if assign_url %}<button class="btn btn--tonal"
+                                       type="button"
+                                       id="assign-change"
+                                       hx-get="{{ assign_url }}"
+                                       hx-target="#sheet">Change</button>{% endif %}
         </div>
     </div>
     <h2 class="t-section">
