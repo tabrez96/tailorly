@@ -1,6 +1,6 @@
 """Timing items on S08: pure helpers plus the session writes."""
 
-from datetime import datetime
+from datetime import date, datetime
 
 from django.db import transaction
 from django.db.models import F
@@ -9,7 +9,7 @@ from django.utils import timezone
 
 from catalog.models import Product
 from orders.making import usual_minutes
-from orders.models import Order, OrderItem
+from orders.models import Order, OrderItem, Rework
 from production.models import TimeSession
 from staff.attendance import day_card
 from staff.models import DayRecord, Employee
@@ -133,6 +133,15 @@ def _boundary(employee, now) -> datetime:
     return max(now, last.ended_at or last.started_at)
 
 
+def _close_for_switch(employee, now) -> datetime:
+    """Close any open session; return when the next one starts."""
+    at = _boundary(employee, now)
+    closed = stop(employee, at)
+    if closed is not None:
+        at = max(at, closed.ended_at)
+    return at
+
+
 def start_item(employee, item, now) -> TimeSession:
     """Start, Resume and Switch: close any open session and open one on `item`."""
     with transaction.atomic():
@@ -143,10 +152,7 @@ def start_item(employee, item, now) -> TimeSession:
         item = _locked_item(item)
         if not _workable(employee, item):
             raise TimingError("This item is no longer on your list.")
-        at = _boundary(employee, now)
-        closed = stop(employee, at)
-        if closed is not None:
-            at = max(at, closed.ended_at)
+        at = _close_for_switch(employee, now)
         _begin(item)
         return TimeSession.objects.create(employee=employee, item=item, started_at=at)
 
@@ -164,6 +170,55 @@ def finish_item(employee, item, now) -> None:
         item.status = OrderItem.FINISHED
         item.finished_at = now
         item.save(update_fields=["status", "finished_at"])
+
+
+def my_reworks(employee):
+    return (
+        Rework.objects.filter(assignee=employee, finished_at__isnull=True)
+        .select_related("item__order__customer")
+        .prefetch_related("item__photos", "sessions")
+    )
+
+
+def _locked_rework(rework) -> Rework:
+    return (
+        Rework.objects.select_for_update(of=("self",))
+        .select_related("item__order")
+        .get(pk=rework.pk)
+    )
+
+
+def _rework_workable(employee, rework) -> bool:
+    return rework.assignee_id == employee.pk and rework.finished_at is None
+
+
+def start_rework(employee, rework, now) -> TimeSession:
+    """Start, Resume and Switch for a rework; never touches the item."""
+    with transaction.atomic():
+        _lock(employee)
+        current = open_session(employee)
+        if current is not None and current.rework_id == rework.pk:
+            return current
+        rework = _locked_rework(rework)
+        if not _rework_workable(employee, rework):
+            raise TimingError("This rework is no longer on your list.")
+        at = _close_for_switch(employee, now)
+        return TimeSession.objects.create(
+            employee=employee, rework=rework, started_at=at
+        )
+
+
+def finish_rework(employee, rework, now) -> None:
+    with transaction.atomic():
+        _lock(employee)
+        rework = _locked_rework(rework)
+        if not _rework_workable(employee, rework):
+            raise TimingError("This rework is no longer on your list.")
+        current = open_session(employee)
+        if current is not None and current.rework_id == rework.pk:
+            stop(employee, now)
+        rework.finished_at = now
+        rework.save(update_fields=["finished_at"])
 
 
 def close_stale(employee, now) -> None:
@@ -190,88 +245,159 @@ def _row(item, now) -> dict:
     thumb, count = _thumb(item)
     sessions = list(item.sessions.all())
     return {
+        "key": ("item", item.pk),
         "item": item,
+        "rework": None,
         "order": item.order,
         "customer": item.order.customer,
         "due": item.order.due_date,
         "thumb": thumb,
         "photo_count": count,
+        "sessions": sessions,
         "minutes": _logged(sessions, now) // 60,
         "started": item.status == OrderItem.IN_PROGRESS,
+        "finished_at": item.finished_at,
+        "start_url": reverse("work_start", args=[item.pk]),
+        "finish_url": reverse("work_finish", args=[item.pk]),
+        "details_url": reverse("work_item_details", args=[item.pk]),
     }
 
 
-def _hero(row, sessions, state, now, finishable) -> dict:
-    running = next((s for s in sessions if s.ended_at is None), None)
+def _rework_row(rework, now) -> dict:
+    item = rework.item
+    thumb, count = _thumb(item)
+    sessions = list(rework.sessions.all())
+    return {
+        "key": ("rework", rework.pk),
+        "item": item,
+        "rework": rework,
+        "order": item.order,
+        "customer": item.order.customer,
+        "due": rework.due_date,
+        "thumb": thumb,
+        "photo_count": count,
+        "sessions": sessions,
+        "minutes": _logged(sessions, now) // 60,
+        "started": bool(sessions),
+        "finished_at": rework.finished_at,
+        "start_url": reverse("work_rework_start", args=[rework.pk]),
+        "finish_url": reverse("work_rework_finish", args=[rework.pk]),
+        "details_url": reverse("work_rework_details", args=[rework.pk]),
+    }
+
+
+def queue_key(row) -> tuple:
+    """Up next: by due date (none last), then order number, items before reworks."""
+    due = row["due"]
+    return (
+        due is None,
+        due or date.min,
+        row["order"].number,
+        row["rework"] is not None,
+        row["item"].position,
+        row["key"][1],
+    )
+
+
+def _hero(row, state, now, finishable, running) -> dict:
+    sessions = list(row["sessions"])
+    if running is not None and running not in sessions:
+        sessions.append(running)
+    open_ = next((s for s in sessions if s.ended_at is None), None)
     return {
         **row,
         "state": state,
         "finishable": finishable,
         "seconds": logged_seconds(sessions, now),
         "closed_seconds": logged_seconds([s for s in sessions if s.ended_at], now),
-        "started_at": running.started_at if running else None,
+        "started_at": open_.started_at if open_ else None,
     }
+
+
+def _session_key(session) -> tuple:
+    if session.item_id:
+        return ("item", session.item_id)
+    return ("rework", session.rework_id)
+
+
+def _session_row(session, now) -> dict:
+    if session.item_id:
+        item = (
+            OrderItem.objects.select_related("order__customer")
+            .prefetch_related("photos", "sessions")
+            .get(pk=session.item_id)
+        )
+        return _row(item, now)
+    rework = (
+        Rework.objects.select_related("item__order__customer")
+        .prefetch_related("item__photos", "sessions")
+        .get(pk=session.rework_id)
+    )
+    return _rework_row(rework, now)
 
 
 def panel(employee, now) -> dict:
     day = day_card(employee, now)
     can_time = day["state"] == "started"
-    items = list(my_items(employee))
+    queue = sorted(
+        [_row(i, now) for i in my_items(employee)]
+        + [_rework_row(r, now) for r in my_reworks(employee)],
+        key=queue_key,
+    )
+    by_key = {r["key"]: r for r in queue}
     current = open_session(employee)
     running = (
         current if current is not None and _stale_cutoff(current, now) is None else None
     )
-    hero_item, state = None, None
-    if running is not None and running.item_id:
-        # The order may have left My work mid-timer; the timer must stay stoppable.
-        hero_item = next((i for i in items if i.pk == running.item_id), None)
-        hero_item = hero_item or (
-            OrderItem.objects.select_related("order__customer")
-            .prefetch_related("photos", "sessions")
-            .get(pk=running.item_id)
-        )
+    hero_row, state = None, None
+    if running is not None:
+        # The work may have left My work mid-timer; the timer must stay stoppable.
+        hero_row = by_key.get(_session_key(running)) or _session_row(running, now)
         state = "running"
-    elif running is None and can_time:
+    elif can_time:
         last = (
             TimeSession.objects.filter(
-                employee=employee,
-                item__isnull=False,
-                ended_at__date=timezone.localdate(now),
+                employee=employee, ended_at__date=timezone.localdate(now)
             )
             .order_by("-ended_at", "-id")
             .first()
         )
         if last is not None:
-            hero_item = next((i for i in items if i.pk == last.item_id), None)
+            hero_row = by_key.get(_session_key(last))
             state = "paused"
-    hero = None
-    if hero_item is not None:
-        sessions = list(hero_item.sessions.all())
-        if running is not None and running not in sessions:
-            sessions.append(running)
-        hero = _hero(
-            _row(hero_item, now),
-            sessions,
-            state,
-            now,
-            hero_item in items,
-        )
-    finished = (
+    hero = (
+        _hero(hero_row, state, now, hero_row["key"] in by_key, running)
+        if hero_row is not None
+        else None
+    )
+    today = timezone.localdate(now)
+    finished_items = (
         OrderItem.objects.filter(
             order__assignee=employee,
             status=OrderItem.FINISHED,
-            finished_at__date=timezone.localdate(now),
+            finished_at__date=today,
         )
         .select_related("order__customer")
         .prefetch_related("photos", "sessions")
-        .order_by("finished_at")
+    )
+    finished_reworks = (
+        Rework.objects.filter(assignee=employee, finished_at__date=today)
+        .select_related("item__order__customer")
+        .prefetch_related("item__photos", "sessions")
+    )
+    finished = sorted(
+        [_row(i, now) for i in finished_items]
+        + [_rework_row(r, now) for r in finished_reworks],
+        key=lambda r: r["finished_at"],
     )
     return {
         "day": day,
         "can_time": can_time,
         "running": running is not None,
         "hero": hero,
-        "up_next": [_row(i, now) for i in items if i != hero_item],
-        "finished": [_row(i, now) for i in finished],
+        "up_next": [
+            r for r in queue if hero_row is None or r["key"] != hero_row["key"]
+        ],
+        "finished": finished,
         "now": now,
     }

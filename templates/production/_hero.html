@@ -9,14 +9,34 @@
                     Paused
                 {% endif %}
             </p>
-            <h2 id="work-hero-title" class="t-sheet">#{{ hero.order.number }} · {{ hero.item.name }}</h2>
+            <h2 id="work-hero-title" class="t-sheet">
+                {% if hero.rework %}
+                    Rework · {{ hero.item.name }}
+                {% else %}
+                    #{{ hero.order.number }} · {{ hero.item.name }}
+                {% endif %}
+            </h2>
             <p class="t-small muted">
+                {% if hero.rework %}#{{ hero.order.number }} ·{% endif %}
                 {{ hero.customer.name }}
                 {% if hero.due %}· due {{ hero.due|day }}{% endif %}
             </p>
         </div>
-        {% thumb hero.item.name hero.thumb hero.photo_count size="md" %}
+        <button type="button"
+                class="thumb-btn"
+                hx-get="{{ hero.details_url }}"
+                hx-target="#sheet"
+                hx-swap="innerHTML"
+                aria-label="Details for {{ hero.item.name }}, order {{ hero.order.number }}">
+            {% thumb hero.item.name hero.thumb hero.photo_count size="md" %}
+        </button>
     </div>
+    {% if hero.rework %}
+        <p class="work-hero__chips">
+            {% include "components/chip.html" with label=hero.rework.get_reason_display tone="grey" %}
+        </p>
+        {% if hero.rework.note %}<p class="work-hero__note">{{ hero.rework.note }}</p>{% endif %}
+    {% endif %}
     <div x-data="workTimer"
          data-base="{{ hero.closed_seconds }}"
          data-started="{{ hero.started_at.isoformat|default:'' }}"
@@ -30,14 +50,17 @@
                     type="button"
                     hx-post="{% url 'work_pause' %}">Pause</button>
         {% else %}
-            <button class="btn btn--accent"
-                    type="button"
-                    hx-post="{% url 'work_start' hero.item.pk %}">Resume</button>
+            <button class="btn btn--accent" type="button" hx-post="{{ hero.start_url }}">Resume</button>
         {% endif %}
         {% if hero.finishable %}
             <button class="btn btn--on-hero"
                     type="button"
-                    hx-post="{% url 'work_finish' hero.item.pk %}">Finish item</button>
+                    hx-post="{{ hero.finish_url }}">Finish item</button>
         {% endif %}
     </div>
+    <button type="button"
+            class="link-btn work-hero__link"
+            hx-get="{{ hero.details_url }}"
+            hx-target="#sheet"
+            hx-swap="innerHTML">Photos, measurements and notes</button>
 </section>

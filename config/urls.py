@@ -18,6 +18,26 @@ urlpatterns = [
         production_views.work_finish,
         name="work_finish",
     ),
+    path(
+        "my-work/items/<int:pk>/details/",
+        production_views.item_details,
+        name="work_item_details",
+    ),
+    path(
+        "my-work/reworks/<int:pk>/start/",
+        production_views.rework_start,
+        name="work_rework_start",
+    ),
+    path(
+        "my-work/reworks/<int:pk>/finish/",
+        production_views.rework_finish,
+        name="work_rework_finish",
+    ),
+    path(
+        "my-work/reworks/<int:pk>/details/",
+        production_views.rework_details,
+        name="work_rework_details",
+    ),
     path("my-work/pause/", production_views.work_pause, name="work_pause"),
     path("my-work/day/start/", staff_views.start_my_day, name="start_my_day"),
     path("my-work/day/end/", staff_views.end_my_day, name="end_my_day"),

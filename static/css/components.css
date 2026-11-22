@@ -1141,6 +1141,56 @@ body[data-subpage="1"] .nav {
 .work-row {
   min-height: 60px;
 }
+.thumb-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  border-radius: var(--r-field);
+  cursor: pointer;
+}
+.work-hero__chips {
+  margin: var(--s2) 0 0;
+}
+.work-hero .chip {
+  background: var(--hero-btn);
+  color: var(--on-hero);
+}
+.work-hero__note {
+  margin: var(--s3) 0 0;
+  padding: var(--s3);
+  border-radius: var(--r-field);
+  background: var(--hero-btn);
+}
+.work-hero .work-hero__link {
+  margin-top: var(--s3);
+  padding: 0;
+  color: var(--on-hero);
+  text-decoration: underline;
+}
+.detail-photos {
+  display: grid;
+  gap: var(--s2);
+  margin-bottom: var(--s4);
+}
+.detail-photos__row {
+  display: flex;
+  gap: var(--s2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.detail-photos__row .thumb {
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+}
+.detail-photos__row [aria-pressed="true"] {
+  outline: 2px solid var(--pri);
+  outline-offset: 2px;
+}
+.sheet__actions--single {
+  grid-template-columns: 1fr;
+}
 .work-row__time {
   font-weight: 600;
 }
