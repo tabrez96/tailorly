@@ -32,6 +32,8 @@
   --hero: linear-gradient(135deg, #a23a74 0%, #7a2856 50%, #561a3c 100%);
   --on-hero: #ffffff;
   --hero-muted: #f4dcea;
+  --hero-btn: rgba(255, 255, 255, 0.16);
+  --hero-btn-edge: rgba(255, 255, 255, 0.35);
   --acc: #f2b84b;
   --on-acc: #1c1b1a;
   --bg: #f6f2ed;
@@ -84,6 +86,8 @@
   --hero: linear-gradient(135deg, #6a2950 0%, #4a1d38 50%, #311426 100%);
   --on-hero: #ffffff;
   --hero-muted: #e8c6d9;
+  --hero-btn: rgba(255, 255, 255, 0.16);
+  --hero-btn-edge: rgba(255, 255, 255, 0.35);
   --acc: #f2b84b;
   --on-acc: #1c1b1a;
   --bg: #141012;
@@ -120,6 +124,8 @@
     --hero: linear-gradient(135deg, #6a2950 0%, #4a1d38 50%, #311426 100%);
     --on-hero: #ffffff;
     --hero-muted: #e8c6d9;
+    --hero-btn: rgba(255, 255, 255, 0.16);
+    --hero-btn-edge: rgba(255, 255, 255, 0.35);
     --acc: #f2b84b;
     --on-acc: #1c1b1a;
     --bg: #141012;

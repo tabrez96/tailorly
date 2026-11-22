@@ -1,0 +1,29 @@
+{% load formats ui %}
+<li class="list__row work-row">
+    {% thumb row.item.name row.thumb row.photo_count %}
+    <div class="list__main">
+        <p class="t-body">
+            <strong>{{ row.item.name }}</strong>
+        </p>
+        <p class="t-small muted">
+            #{{ row.order.number }} · {{ row.customer.name }}
+            {% if row.due %}· due {{ row.due|day }}{% endif %}
+            {% if mode == "next" and row.started and row.minutes %}· paused at {{ row.minutes|duration }}{% endif %}
+        </p>
+    </div>
+    {% if mode == "next" %}
+        <button class="btn btn--tonal btn--sm"
+                type="button"
+                hx-post="{% url 'work_start' row.item.pk %}"
+                aria-label="{% if running %}Switch{% else %}Start{% endif %} {{ row.item.name }}, order {{ row.order.number }}"
+                {% if not can_time %}disabled{% endif %}>
+            {% if running %}
+                Switch
+            {% else %}
+                Start
+            {% endif %}
+        </button>
+    {% else %}
+        <span class="t-body tabular work-row__time">{{ row.minutes|duration }}</span>
+    {% endif %}
+</li>

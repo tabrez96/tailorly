@@ -11,7 +11,8 @@ from django.views.decorators.http import require_POST
 from accounts.decorators import employee_required, owner_required
 from core.formats import format_day
 from core.pages import render_page, sheet_saved_swap
-from production.views import my_work
+from production.timing import close_stale, stop
+from production.views import panel_response
 from staff.attendance import (
     day_row,
     end_day,
@@ -261,7 +262,9 @@ def day_end(request, pk, day):
     employee = get_object_or_404(Employee, pk=pk)
     parsed = _past_day(day)
     if parsed == timezone.localdate():
-        end_day(employee, timezone.now(), by_owner=True)
+        now = timezone.now()
+        stop(employee, now)
+        end_day(employee, now, by_owner=True)
     ctx = _days_context(employee, week_start(parsed), timezone.localdate())
     ctx["oob"] = True
     return render(request, "staff/_days.html", ctx)
@@ -347,12 +350,18 @@ def _my_employee(request):
 @employee_required
 @require_POST
 def start_my_day(request):
-    start_day(_my_employee(request), timezone.now())
-    return my_work(request)
+    now = timezone.now()
+    employee = _my_employee(request)
+    close_stale(employee, now)
+    start_day(employee, now)
+    return panel_response(request, employee)
 
 
 @employee_required
 @require_POST
 def end_my_day(request):
-    end_day(_my_employee(request), timezone.now())
-    return my_work(request)
+    now = timezone.now()
+    employee = _my_employee(request)
+    stop(employee, now)
+    end_day(employee, now)
+    return panel_response(request, employee)

@@ -1,0 +1,43 @@
+{% load formats ui work %}
+<section class="hero work-hero" aria-labelledby="work-hero-title">
+    <div class="work-hero__head">
+        <div>
+            <p class="t-small muted">
+                {% if hero.state == "running" %}
+                    Now working on
+                {% else %}
+                    Paused
+                {% endif %}
+            </p>
+            <h2 id="work-hero-title" class="t-sheet">#{{ hero.order.number }} · {{ hero.item.name }}</h2>
+            <p class="t-small muted">
+                {{ hero.customer.name }}
+                {% if hero.due %}· due {{ hero.due|day }}{% endif %}
+            </p>
+        </div>
+        {% thumb hero.item.name hero.thumb hero.photo_count size="md" %}
+    </div>
+    <div x-data="workTimer"
+         data-base="{{ hero.closed_seconds }}"
+         data-started="{{ hero.started_at.isoformat|default:'' }}"
+         data-server-now="{{ now.isoformat }}">
+        <p class="work-hero__timer tabular" role="timer" x-text="text">{{ hero.seconds|timer }}</p>
+        <p class="sr-only" aria-live="polite" x-text="spoken"></p>
+    </div>
+    <div class="work-hero__actions">
+        {% if hero.state == "running" %}
+            <button class="btn btn--accent"
+                    type="button"
+                    hx-post="{% url 'work_pause' %}">Pause</button>
+        {% else %}
+            <button class="btn btn--accent"
+                    type="button"
+                    hx-post="{% url 'work_start' hero.item.pk %}">Resume</button>
+        {% endif %}
+        {% if hero.finishable %}
+            <button class="btn btn--on-hero"
+                    type="button"
+                    hx-post="{% url 'work_finish' hero.item.pk %}">Finish item</button>
+        {% endif %}
+    </div>
+</section>

@@ -6,7 +6,8 @@
         <button class="btn btn--accent btn--block"
                 type="button"
                 hx-post="{% url 'start_my_day' %}"
-                hx-target="#page">Start my day · {{ day.now|clock }}</button>
+                hx-target="#my-work"
+                hx-swap="outerHTML">Start my day · {{ day.now|clock }}</button>
     </div>
 {% elif day.state == "started" %}
     <div class="card day-card">
@@ -20,7 +21,8 @@
             <button class="btn btn--tonal"
                     type="button"
                     hx-post="{% url 'end_my_day' %}"
-                    hx-target="#page">End my day</button>
+                    hx-target="#my-work"
+                    hx-swap="outerHTML">End my day</button>
         </div>
     </div>
 {% else %}

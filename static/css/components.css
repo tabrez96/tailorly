@@ -1094,6 +1094,66 @@ body[data-subpage="1"] .nav {
   gap: var(--s3);
 }
 
+/* S08 My work: hero timer, work rows, offline banner */
+.work-hero {
+  margin-bottom: var(--s5);
+}
+.work-hero__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+.work-hero__head p,
+.work-hero__head h2,
+.work-row .list__main p {
+  margin: 0;
+}
+.work-hero__head > div {
+  display: grid;
+  gap: var(--s1);
+}
+.work-hero__timer {
+  margin: var(--s3) 0;
+  font: 800 52px/1 var(--font);
+}
+.work-hero__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s3);
+}
+.btn--on-hero {
+  background: var(--hero-btn);
+  color: var(--on-hero);
+  border: 1px solid var(--hero-btn-edge);
+}
+.work-hero ~ .t-section,
+.day-card ~ .t-section {
+  margin-top: var(--s5);
+  padding: 0 var(--s1);
+}
+.work-sub {
+  margin: 0 var(--s1) var(--s3);
+}
+.work-hint {
+  margin: var(--s3) 0 var(--s5);
+}
+.work-row {
+  min-height: 60px;
+}
+.work-row__time {
+  font-weight: 600;
+}
+.banner {
+  padding: var(--s3);
+  margin-bottom: var(--s4);
+  border-radius: var(--r-field);
+}
+.banner--warn {
+  color: var(--warn);
+  background: var(--warn-bg);
+}
+
 [x-cloak] {
   display: none !important;
 }

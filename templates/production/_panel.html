@@ -1,0 +1,40 @@
+<div id="my-work"
+     hx-target:inherited="#my-work"
+     hx-swap:inherited="outerHTML">
+    <p class="banner banner--warn"
+       x-data="offlineBanner"
+       x-show="offline"
+       x-cloak
+       role="status">Offline. Your time will be saved when you're back online.</p>
+    {% if day %}
+        {% include "staff/_day_card.html" %}
+    {% endif %}
+    {% if hero %}
+        {% include "production/_hero.html" %}
+    {% endif %}
+    {% if up_next %}
+        <h2 class="t-section">Up next</h2>
+        <p class="t-small muted work-sub">By due date, earliest first.</p>
+        <ul class="list">
+            {% for row in up_next %}
+                {% include "production/_work_row.html" with mode="next" %}
+            {% endfor %}
+        </ul>
+        {% if can_time %}
+            <p class="t-small muted work-hint">Switching pauses what you're working on now.</p>
+        {% elif day.state == "not_started" %}
+            <p class="t-small muted work-hint">Start your day first, then you can start an item.</p>
+        {% endif %}
+    {% endif %}
+    {% if finished %}
+        <h2 class="t-section">Finished today</h2>
+        <ul class="list">
+            {% for row in finished %}
+                {% include "production/_work_row.html" with mode="done" %}
+            {% endfor %}
+        </ul>
+    {% endif %}
+    {% if day and not hero and not up_next and not finished %}
+        {% include "components/empty_state.html" with icon="stopwatch" title="Nothing assigned to you right now." %}
+    {% endif %}
+</div>
