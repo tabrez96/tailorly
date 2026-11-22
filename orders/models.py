@@ -223,6 +223,8 @@ class OrderItem(models.Model):
     status = models.CharField(max_length=12, choices=STATUSES, default=NOT_STARTED)
     finished_at = models.DateTimeField(null=True, blank=True)
     estimate_minutes = models.PositiveIntegerField(null=True, blank=True)
+    # Owner's place for it in the queue (1 = first); null follows the suggestion.
+    queue_rank = models.PositiveSmallIntegerField(null=True, blank=True)
     position = models.PositiveSmallIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -347,6 +349,8 @@ class Rework(models.Model):
         related_name="reworks",
     )
     estimate_minutes = models.PositiveIntegerField(default=45)
+    # Owner's place for it in the queue (1 = first); null follows the suggestion.
+    queue_rank = models.PositiveSmallIntegerField(null=True, blank=True)
     due_date = models.DateField(null=True, blank=True)
     finished_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

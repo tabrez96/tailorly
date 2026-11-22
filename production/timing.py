@@ -1,6 +1,6 @@
 """Timing items on S08: pure helpers plus the session writes."""
 
-from datetime import date, datetime
+from datetime import datetime
 
 from django.db import transaction
 from django.db.models import F
@@ -8,9 +8,10 @@ from django.urls import reverse
 from django.utils import timezone
 
 from catalog.models import Product
-from orders.making import usual_minutes
 from orders.models import Order, OrderItem, Rework
+from production.estimates import usual_minutes
 from production.models import TimeSession
+from production.queue import ordered
 from staff.attendance import day_card
 from staff.models import DayRecord, Employee
 
@@ -51,7 +52,7 @@ def my_items(employee):
             type=Product.CUSTOM,
         )
         .exclude(status=OrderItem.FINISHED)
-        .select_related("order__customer")
+        .select_related("order__customer", "product")
         .prefetch_related("photos", "sessions")
         .order_by(
             F("order__due_date").asc(nulls_last=True), "order__number", "position", "id"
@@ -175,7 +176,7 @@ def finish_item(employee, item, now) -> None:
 def my_reworks(employee):
     return (
         Rework.objects.filter(assignee=employee, finished_at__isnull=True)
-        .select_related("item__order__customer")
+        .select_related("item__order__customer", "item__product")
         .prefetch_related("item__photos", "sessions")
     )
 
@@ -244,6 +245,8 @@ def _thumb(item) -> tuple[str | None, int]:
 def _row(item, now) -> dict:
     thumb, count = _thumb(item)
     sessions = list(item.sessions.all())
+    minutes = _logged(sessions, now) // 60
+    estimate = item.estimate_minutes or usual_minutes(item.product)
     return {
         "key": ("item", item.pk),
         "item": item,
@@ -254,8 +257,11 @@ def _row(item, now) -> dict:
         "thumb": thumb,
         "photo_count": count,
         "sessions": sessions,
-        "minutes": _logged(sessions, now) // 60,
+        "minutes": minutes,
+        "estimate": estimate,
+        "need": max(estimate - minutes, 0),
         "started": item.status == OrderItem.IN_PROGRESS,
+        "moved_to": item.queue_rank,
         "finished_at": item.finished_at,
         "start_url": reverse("work_start", args=[item.pk]),
         "finish_url": reverse("work_finish", args=[item.pk]),
@@ -267,6 +273,8 @@ def _rework_row(rework, now) -> dict:
     item = rework.item
     thumb, count = _thumb(item)
     sessions = list(rework.sessions.all())
+    minutes = _logged(sessions, now) // 60
+    estimate = rework.estimate_minutes
     return {
         "key": ("rework", rework.pk),
         "item": item,
@@ -277,8 +285,11 @@ def _rework_row(rework, now) -> dict:
         "thumb": thumb,
         "photo_count": count,
         "sessions": sessions,
-        "minutes": _logged(sessions, now) // 60,
+        "minutes": minutes,
+        "estimate": estimate,
+        "need": max(estimate - minutes, 0),
         "started": bool(sessions),
+        "moved_to": rework.queue_rank,
         "finished_at": rework.finished_at,
         "start_url": reverse("work_rework_start", args=[rework.pk]),
         "finish_url": reverse("work_rework_finish", args=[rework.pk]),
@@ -286,16 +297,11 @@ def _rework_row(rework, now) -> dict:
     }
 
 
-def queue_key(row) -> tuple:
-    """Up next: by due date (none last), then order number, items before reworks."""
-    due = row["due"]
-    return (
-        due is None,
-        due or date.min,
-        row["order"].number,
-        row["rework"] is not None,
-        row["item"].position,
-        row["key"][1],
+def queue_rows(employee, now) -> list[dict]:
+    """The employee's open work in queue order; S08 Up next and S16 both show this."""
+    return ordered(
+        [_row(i, now) for i in my_items(employee)]
+        + [_rework_row(r, now) for r in my_reworks(employee)]
     )
 
 
@@ -339,11 +345,7 @@ def _session_row(session, now) -> dict:
 def panel(employee, now) -> dict:
     day = day_card(employee, now)
     can_time = day["state"] == "started"
-    queue = sorted(
-        [_row(i, now) for i in my_items(employee)]
-        + [_rework_row(r, now) for r in my_reworks(employee)],
-        key=queue_key,
-    )
+    queue = queue_rows(employee, now)
     by_key = {r["key"]: r for r in queue}
     current = open_session(employee)
     running = (

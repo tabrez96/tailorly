@@ -1,0 +1,50 @@
+{% include "components/header.html" with title=title overline=overline back_url=back_url back_direct=False action_label=unassigned|yesno:"Assign," %}
+{% if empty %}
+    <div class="empty">
+        <div class="icon-tile icon-tile--lg">{% include "components/icon.html" with name="camera" %}</div>
+        <h2 class="t-sheet empty__title">Nothing to plan</h2>
+        <p class="muted empty__text">Every garment is finished. New orders land here, already sorted by due date.</p>
+        <a class="btn btn--accent"
+           href="{% url 'order_new' %}"
+           hx-get="{% url 'order_new' %}"
+           hx-target="#page"
+           hx-sync="#page:replace"
+           hx-push-url="true">New order</a>
+    </div>
+{% else %}
+    {% if hero %}
+        {% include "production/_plan_hero.html" %}
+    {% endif %}
+    {% if unassigned %}
+        <div class="plan-section__head">
+            <h2 class="t-section">
+                Not assigned <span class="muted t-small">({{ unassigned|length }})</span>
+            </h2>
+        </div>
+        <ul class="list">
+            {% for row in unassigned %}
+                {% include "production/_unassigned_row.html" %}
+            {% endfor %}
+        </ul>
+    {% endif %}
+    {% for section in sections %}
+        <div class="plan-section__head">
+            <h2 class="t-section">
+                {{ section.first }}'s queue <span class="muted t-small">({{ section.count }})</span>
+            </h2>
+            {% if section.rows %}<span class="t-small muted">{{ section.hours }}</span>{% endif %}
+        </div>
+        {% if section.rows %}
+            <p class="t-small muted plan-note">
+                Started work first, then by due date and how long each garment usually takes. {{ section.first }} sees this order in My work.
+            </p>
+            <ol class="list queue">
+                {% for row in section.rows %}
+                    {% include "components/queue_row.html" with row=row total=section.count readonly=True %}
+                {% endfor %}
+            </ol>
+        {% else %}
+            <p class="muted empty-line">Nothing in {{ section.first }}'s queue yet. Assign an order above.</p>
+        {% endif %}
+    {% endfor %}
+{% endif %}

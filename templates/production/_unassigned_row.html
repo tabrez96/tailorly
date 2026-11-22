@@ -1,0 +1,18 @@
+{% load ui %}
+<li class="list__row">
+    {% thumb row.garment row.thumb row.photo_count "sm" %}
+    <div class="list__main">
+        <p class="t-body">
+            <strong>{{ row.garment }}</strong> <span class="muted">{{ row.number }}</span>
+        </p>
+        <p class="t-small muted">
+            {{ row.customer.name }} ·
+            {% if row.free %}
+                {% include "components/chip.html" with tone="warn" label="Free" %}
+                ·
+            {% endif %}
+            {{ row.due }}
+        </p>
+    </div>
+    <button class="btn btn--tonal btn--sm" type="button">Assign</button>
+</li>
