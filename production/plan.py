@@ -1,12 +1,11 @@
 """The S16 Work plan page: queues, the next suggestion and waiting orders."""
 
-from django.db.models import F
 from django.urls import reverse
 from django.utils import timezone
 
 from catalog.models import Product
 from core.formats import format_day, format_duration
-from orders.models import Order
+from production.assign import waiting_orders
 from production.queue import (
     due_soon,
     due_text,
@@ -72,17 +71,7 @@ def _hero(sections, today) -> dict | None:
 
 
 def _unassigned() -> list[dict]:
-    orders = (
-        Order.objects.filter(
-            assignee__isnull=True,
-            status__in=[Order.OPEN, Order.IN_PROGRESS],
-            items__type=Product.CUSTOM,
-        )
-        .distinct()
-        .select_related("customer")
-        .prefetch_related("items__photos")
-        .order_by(F("due_date").asc(nulls_last=True), "number")
-    )
+    orders = waiting_orders()
     rows = []
     for order in orders:
         items = [i for i in order.items.all() if i.type == Product.CUSTOM]
@@ -100,6 +89,8 @@ def _unassigned() -> list[dict]:
                 if order.due_date
                 else "no due date",
                 "free": order.is_free,
+                "pk": order.pk,
+                "assign_url": reverse("assign_sheet", args=[order.pk]),
             }
         )
     return rows
@@ -110,7 +101,9 @@ def plan_context(now) -> dict:
     employees = Employee.objects.filter(active=True).order_by("name", "id")
     sections = [_section(e, now, today) for e in employees]
     unassigned = _unassigned()
+    first = waiting_orders().first()
     return {
+        "assign_next_url": reverse("assign_sheet", args=[first.pk]) if first else "",
         "hero": _hero(sections, today),
         "unassigned": unassigned,
         "sections": sections,

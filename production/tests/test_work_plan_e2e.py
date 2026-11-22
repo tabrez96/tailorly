@@ -96,3 +96,27 @@ def test_work_plan_empty_and_dark(signed_in, live_server, browser):
     expect(page.get_by_text("Suggested next for Ali")).to_be_visible()
     page.screenshot(path=str(SHOTS / "S16-work-plan-dark.png"), full_page=True)
     dark.close()
+
+
+def test_assign_sheet_flow(signed_in, live_server):
+    context, page = signed_in("owner")
+    seed()
+    page.goto(live_server.url + "/production/plan/")
+    page.locator("li", has_text="Anarkali").get_by_role("button", name="Assign").click()
+    expect(page.get_by_text("Who makes it")).to_be_visible()
+    expect(page.get_by_text("Assign Anarkali")).to_be_visible()
+    page.screenshot(path=str(SHOTS / "S16-work-plan-assign.png"))
+    page.locator("#sheet").get_by_text("Next up", exact=True).click()
+    expect(page.locator("#assign-place-next")).to_be_checked()
+    page.get_by_role("button", name="Assign to Ali").click()
+    expect(page.get_by_text("#7 assigned to Ali")).to_be_visible()
+    queue = page.locator(".queue li")
+    expect(queue.nth(1)).to_contain_text("Anarkali")
+
+
+def test_hold_production_opens_assign_sheet(signed_in, live_server):
+    context, page = signed_in("owner")
+    seed()
+    page.goto(live_server.url + "/production/plan/?assign=next")
+    expect(page.get_by_text("Assign Anarkali")).to_be_visible()
+    expect(page.get_by_text("Who makes it")).to_be_visible()

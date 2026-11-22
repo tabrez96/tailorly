@@ -8,8 +8,18 @@ from django.views.decorators.http import require_GET, require_POST
 
 from accounts.decorators import employee_required, owner_required
 from core.formats import format_day
-from core.pages import render_page
-from orders.models import OrderItem, Rework
+from core.pages import render_page, sheet_saved_location
+from orders.models import Order, OrderItem, Rework
+from production.assign import (
+    NEXT,
+    SUGGESTED,
+    AssignError,
+    _items,
+    assign,
+    assignable,
+    read_estimates,
+    sheet_context,
+)
 from production.details import details_context
 from production.plan import plan_context
 from production.timing import (
@@ -23,7 +33,8 @@ from production.timing import (
     start_rework,
     stop,
 )
-from staff.attendance import day_card
+from staff.attendance import day_card, first_name
+from staff.models import Employee
 
 NOT_STARTED = "Start your day first."
 
@@ -188,6 +199,13 @@ def work_plan(request):
         back_url = reverse("production")
     except NoReverseMatch:  # the Production tab page isn't built yet
         back_url = reverse("today")
+    context = plan_context(timezone.now())
+    open_assign = ""
+    if request.GET.get("assign") == "next" and context["assign_next_url"]:
+        open_assign = context["assign_next_url"]
+        employee = request.GET.get("employee", "")
+        if employee.isdigit():
+            open_assign += f"?employee={employee}"
     return render_page(
         request,
         "production/work_plan.html",
@@ -197,6 +215,51 @@ def work_plan(request):
             "tab": "production",
             "subpage": True,
             "back_url": back_url,
-            **plan_context(timezone.now()),
+            "open_assign": open_assign,
+            **context,
         },
+    )
+
+
+@owner_required
+def assign_sheet(request, pk):
+    order = get_object_or_404(
+        Order.objects.select_related("customer", "assignee"), pk=pk
+    )
+    if not assignable(order):
+        raise Http404
+    data = request.POST if request.method == "POST" else request.GET
+    back = "order" if data.get("from") == "order" else "plan"
+    now = timezone.now()
+    if request.method != "POST":
+        return render(
+            request,
+            "production/assign_sheet.html",
+            sheet_context(order, data, now, back=back),
+        )
+    employee = Employee.objects.filter(
+        active=True, pk=data["employee"] if data.get("employee", "").isdigit() else 0
+    ).first()
+    place = data.get("place") if data.get("place") in (SUGGESTED, NEXT) else SUGGESTED
+    estimates, errors = read_estimates(_items(order), data)
+    error = "" if employee else "Choose who makes it."
+    if employee and not errors:
+        try:
+            assign(order, employee, estimates, place, now)
+        except AssignError as exc:
+            error = str(exc)
+        else:
+            path = (
+                reverse("order", args=[order.pk])
+                if back == "order"
+                else reverse("work_plan")
+            )
+            return sheet_saved_location(
+                path, f"#{order.number} assigned to {first_name(employee.name)}"
+            )
+    return render(
+        request,
+        "production/assign_sheet.html",
+        sheet_context(order, data, now, back=back, errors=errors, error=error),
+        status=422,
     )

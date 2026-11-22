@@ -2149,3 +2149,15 @@ body[data-subpage="1"] .nav {
 .plan-hero > p {
   margin-bottom: 0;
 }
+
+/* Assign sheet */
+.assign-sheet .radio-rows,
+.assign-sheet .estimate-row {
+  margin-bottom: var(--s3);
+}
+.assign-sheet__hint {
+  margin: 0 0 var(--s4);
+}
+.assign-sheet__fixed {
+  margin: 0 0 var(--s2);
+}

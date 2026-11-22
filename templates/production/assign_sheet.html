@@ -1,0 +1,106 @@
+{% extends "components/sheet_content.html" %}
+{% block sheet_header %}
+    <h2 class="t-sheet sheet__title" id="sheet-title">{{ title }}</h2>
+    <p class="t-small muted">{{ sub }}</p>
+{% endblock %}
+{% block sheet_body %}
+    <form class="assign-sheet"
+          method="post"
+          novalidate
+          hx-post="{{ sheet_url }}"
+          hx-target="#sheet">
+        {% csrf_token %}
+        <input type="hidden" name="from" value="{{ back }}">
+        {% if error %}<p class="field__error" role="alert">{{ error }}</p>{% endif %}
+        {% if no_items %}
+        {% elif no_employees %}
+            <p class="muted">Add an employee in Settings first.</p>
+        {% else %}
+            <fieldset class="radio-rows">
+                <legend class="field__label">Who makes it</legend>
+                {% for m in makers %}
+                    <div class="radio-row">
+                        <input class="radio"
+                               type="radio"
+                               name="employee"
+                               id="assign-maker-{{ m.pk }}"
+                               value="{{ m.pk }}"
+                               {% if m.checked %}checked{% endif %}
+                               hx-get="{{ sheet_url }}"
+                               hx-trigger="change"
+                               hx-include="closest form"
+                               hx-target="#sheet">
+                        <span class="avatar">{{ m.initials }}</span>
+                        <div class="row-text">
+                            <label class="row-text__label" for="assign-maker-{{ m.pk }}">{{ m.name }}</label>
+                            <span class="t-small muted">{{ m.line }}</span>
+                        </div>
+                    </div>
+                {% endfor %}
+            </fieldset>
+            {% if estimates|length == 1 and not estimates.0.fixed %}
+                <label class="field__label" for="assign-estimate-{{ estimates.0.pk }}">Your estimate to make it</label>
+            {% else %}
+                <p class="field__label">Your estimate to make it</p>
+            {% endif %}
+            {% for e in estimates %}
+                {% if e.fixed %}
+                    <p class="assign-sheet__fixed">
+                        {% if e.label %}<strong>{{ e.label }}</strong> ·{% endif %}
+                        {{ e.fixed_text }}
+                    </p>
+                {% else %}
+                    <div class="estimate-row{% if e.error %} field--error{% endif %}">
+                        {% if e.label %}<label class="field__label"
+                                               for="assign-estimate-{{ e.pk }}">{{ e.label }}</label>{% endif %}
+                        <input class="field__input"
+                               type="text"
+                               inputmode="text"
+                               autocomplete="off"
+                               id="assign-estimate-{{ e.pk }}"
+                               name="estimate_{{ e.pk }}"
+                               value="{{ e.value }}"
+                               aria-describedby="assign-estimate-{{ e.pk }}-hint{% if e.error %} assign-estimate-{{ e.pk }}-error{% endif %}"
+                               {% if e.error %}aria-invalid="true"{% endif %}
+                               hx-get="{{ sheet_url }}"
+                               hx-trigger="change"
+                               hx-include="closest form"
+                               hx-target="#sheet">
+                    </div>
+                    {% if e.error %}<p class="field__error"
+                                       id="assign-estimate-{{ e.pk }}-error">{{ e.error }}</p>{% endif %}
+                {% endif %}
+                <p class="t-small muted assign-sheet__hint"
+                   id="assign-estimate-{{ e.pk }}-hint">{{ e.hint }}</p>
+            {% endfor %}
+            <fieldset class="radio-rows">
+                <legend class="field__label">Place in queue</legend>
+                <div class="radio-row">
+                    <input class="radio"
+                           type="radio"
+                           name="place"
+                           id="assign-place-suggested"
+                           value="suggested"
+                           {% if place == "suggested" %}checked{% endif %}>
+                    <div class="row-text">
+                        <label class="row-text__label" for="assign-place-suggested">{{ suggested_title }}</label>
+                        <span class="t-small muted">{{ suggested_sub }}</span>
+                    </div>
+                </div>
+                <div class="radio-row">
+                    <input class="radio"
+                           type="radio"
+                           name="place"
+                           id="assign-place-next"
+                           value="next"
+                           {% if place == "next" %}checked{% endif %}>
+                    <div class="row-text">
+                        <label class="row-text__label" for="assign-place-next">Next up</label>
+                        <span class="t-small muted">{{ next_sub }}</span>
+                    </div>
+                </div>
+            </fieldset>
+            <button class="btn btn--primary btn--block" type="submit">{{ submit_label }}</button>
+        {% endif %}
+    </form>
+{% endblock %}

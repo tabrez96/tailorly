@@ -14,5 +14,9 @@
             {{ row.due }}
         </p>
     </div>
-    <button class="btn btn--tonal btn--sm" type="button">Assign</button>
+    <button class="btn btn--tonal btn--sm"
+            type="button"
+            id="assign-{{ row.pk }}"
+            hx-get="{{ row.assign_url }}"
+            hx-target="#sheet">Assign</button>
 </li>

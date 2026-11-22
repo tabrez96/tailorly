@@ -12,6 +12,11 @@ urlpatterns = [
     path("my-work/", production_views.my_work, name="my_work"),
     path("production/plan/", production_views.work_plan, name="work_plan"),
     path(
+        "production/plan/assign/<int:pk>/",
+        production_views.assign_sheet,
+        name="assign_sheet",
+    ),
+    path(
         "my-work/items/<int:pk>/start/", production_views.work_start, name="work_start"
     ),
     path(
