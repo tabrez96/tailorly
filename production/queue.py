@@ -55,6 +55,33 @@ def clear_moves(rows) -> list:
     return [{**r, "moved_to": None} for r in rows]
 
 
+def move(rows, key, to: int) -> list:
+    """Move `key` to 1-based place `to` in the shown order, setting `moved_to`.
+
+    The moved row and every row the owner moved before are pinned at their new places;
+    the rest stay unpinned, so `ordered()` of the result gives exactly the new order.
+    """
+    current = ordered(rows)
+    row = next((r for r in current if r["key"] == key), None)
+    if row is None:
+        raise KeyError(key)
+    to = max(1, min(to, len(current)))
+    rest = [r for r in current if r["key"] != key]
+    rest.insert(to - 1, row)
+    return [
+        {**r, "moved_to": i if (r["key"] == key or r["moved_to"]) else None}
+        for i, r in enumerate(rest, start=1)
+    ]
+
+
+def moved_count(rows) -> int:
+    return sum(1 for r in rows if r["moved_to"])
+
+
+def moved_text(n: int) -> str:
+    return "You moved 1 item." if n == 1 else f"You moved {n} items."
+
+
 def late_keys(rows, today: date) -> set:
     """Keys that miss their due date even in the best order (DAY_MINUTES a day)."""
     late, total, kept = set(), 0, []

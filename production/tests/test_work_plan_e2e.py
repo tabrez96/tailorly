@@ -9,6 +9,8 @@ from playwright.sync_api import expect
 
 from customers.models import Customer
 from orders.models import Order, OrderItem
+from production.plan import clear_queue
+from production.timing import queue_rows
 from staff.models import Employee
 
 pytestmark = pytest.mark.e2e
@@ -120,3 +122,89 @@ def test_hold_production_opens_assign_sheet(signed_in, live_server):
     page.goto(live_server.url + "/production/plan/?assign=next")
     expect(page.get_by_text("Assign Anarkali")).to_be_visible()
     expect(page.get_by_text("Who makes it")).to_be_visible()
+
+
+def queue_keys(employee):
+    return [r["key"] for r in queue_rows(employee, timezone.now())]
+
+
+def kurta_handle(page):
+    return page.locator(".queue li", has_text="Kurta").locator(".qrow__handle")
+
+
+def test_reorder_keyboard(signed_in, live_server):
+    context, page = signed_in("owner")
+    seed()
+    page.goto(live_server.url + "/production/plan/")
+    kurta_handle(page).focus()
+    page.keyboard.press("Enter")
+    expect(page.locator(".move-bar")).to_contain_text("Kurta, 4th of 6")
+    page.screenshot(path=str(SHOTS / "S16-work-plan-reorder.png"))
+    page.get_by_role("button", name="↓ Down").click()
+    expect(page.locator(".plan-queue [aria-live=polite]")).to_have_text(
+        "Kurta moved to position 5 of 6."
+    )
+    expect(page.locator(".move-bar")).to_contain_text("Kurta, 5th of 6")
+    page.get_by_role("button", name="↑ Up").click()
+    expect(page.locator(".plan-queue [aria-live=polite]")).to_have_text(
+        "Kurta moved to position 4 of 6."
+    )
+    page.get_by_role("button", name="Done").click()
+    expect(page.get_by_text("You moved 2 items.")).to_be_visible()
+    expect(page.locator(".queue li", has_text="Kurta")).to_contain_text("Moved by you")
+    page.get_by_role("button", name="Back to suggested").click()
+    expect(page.get_by_text("Moved by you")).to_have_count(0)
+    expect(page.get_by_text("You moved")).to_have_count(0)
+
+
+def test_drag_and_keyboard_save_the_same_order(signed_in, live_server):
+    context, page = signed_in("owner")
+    seed()
+    ali = Employee.objects.get(name="Ali Khan")
+    pins = list(
+        OrderItem.objects.filter(queue_rank__isnull=False).values_list(
+            "pk", "queue_rank"
+        )
+    )
+    page.goto(live_server.url + "/production/plan/")
+    kurta_handle(page).scroll_into_view_if_needed()
+    page.locator(".queue li", has_text="Lehenga").scroll_into_view_if_needed()
+    handle = kurta_handle(page).bounding_box()
+    target = page.locator(".queue li", has_text="Lehenga").bounding_box()
+    page.mouse.move(handle["x"] + 22, handle["y"] + 22)
+    page.mouse.down()
+    page.mouse.move(
+        target["x"] + target["width"] / 2,
+        target["y"] + target["height"] / 2 + 10,
+        steps=10,
+    )
+    page.mouse.up()
+    expect(page.locator(".plan-queue [aria-live=polite]")).to_have_text(
+        "Kurta moved to position 5 of 6."
+    )
+    dragged = queue_keys(ali)
+    clear_queue(ali, timezone.now())
+    for pk, rank in pins:
+        OrderItem.objects.filter(pk=pk).update(queue_rank=rank)
+    page.goto(live_server.url + "/production/plan/")
+    kurta_handle(page).focus()
+    page.keyboard.press("Enter")
+    page.get_by_role("button", name="↓ Down").click()
+    expect(page.locator(".plan-queue [aria-live=polite]")).to_have_text(
+        "Kurta moved to position 5 of 6."
+    )
+    assert queue_keys(ali) == dragged
+
+
+def test_failed_save_snaps_back(signed_in, live_server):
+    context, page = signed_in("owner")
+    seed()
+    page.goto(live_server.url + "/production/plan/")
+    page.route("**/queue/*/move/", lambda r: r.abort())
+    kurta_handle(page).focus()
+    page.keyboard.press("Enter")
+    page.get_by_role("button", name="↓ Down").click()
+    expect(page.get_by_role("alert")).to_contain_text(
+        "Couldn't save the new order. Check your connection and try again."
+    )
+    expect(page.locator(".queue li").nth(3)).to_contain_text("Kurta")

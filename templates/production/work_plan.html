@@ -12,9 +12,11 @@
            hx-push-url="true">New order</a>
     </div>
 {% else %}
-    {% if hero %}
-        {% include "production/_plan_hero.html" %}
-    {% endif %}
+    <div id="plan-hero">
+        {% if hero %}
+            {% include "production/_plan_hero.html" %}
+        {% endif %}
+    </div>
     {% if unassigned %}
         <div class="plan-section__head">
             <h2 class="t-section">
@@ -28,24 +30,7 @@
         </ul>
     {% endif %}
     {% for section in sections %}
-        <div class="plan-section__head">
-            <h2 class="t-section">
-                {{ section.first }}'s queue <span class="muted t-small">({{ section.count }})</span>
-            </h2>
-            {% if section.rows %}<span class="t-small muted">{{ section.hours }}</span>{% endif %}
-        </div>
-        {% if section.rows %}
-            <p class="t-small muted plan-note">
-                Started work first, then by due date and how long each garment usually takes. {{ section.first }} sees this order in My work.
-            </p>
-            <ol class="list queue">
-                {% for row in section.rows %}
-                    {% include "components/queue_row.html" with row=row total=section.count readonly=True %}
-                {% endfor %}
-            </ol>
-        {% else %}
-            <p class="muted empty-line">Nothing in {{ section.first }}'s queue yet. Assign an order above.</p>
-        {% endif %}
+        {% include "production/_queue_section.html" %}
     {% endfor %}
 {% endif %}
 {% if open_assign %}

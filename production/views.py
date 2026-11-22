@@ -1,6 +1,6 @@
 import json
 
-from django.http import Http404
+from django.http import Http404, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, render
 from django.urls import NoReverseMatch, reverse
 from django.utils import timezone
@@ -21,7 +21,13 @@ from production.assign import (
     sheet_context,
 )
 from production.details import details_context
-from production.plan import plan_context
+from production.plan import (
+    clear_queue,
+    parse_key,
+    plan_context,
+    save_move,
+    section_context,
+)
 from production.timing import (
     TimingError,
     finish_item,
@@ -195,6 +201,10 @@ def rework_details(request, pk):
 @owner_required
 @require_GET
 def work_plan(request):
+    return _plan_page(request)
+
+
+def _plan_page(request):
     try:
         back_url = reverse("production")
     except NoReverseMatch:  # the Production tab page isn't built yet
@@ -263,3 +273,29 @@ def assign_sheet(request, pk):
         sheet_context(order, data, now, back=back, errors=errors, error=error),
         status=422,
     )
+
+
+@owner_required
+@require_POST
+def queue_move(request, pk):
+    employee = get_object_or_404(Employee, pk=pk, active=True)
+    key = parse_key(request.POST.get("key", ""))
+    to = request.POST.get("to", "")
+    if key is None or not to.isdigit():
+        return HttpResponseBadRequest()
+    now = timezone.now()
+    try:
+        save_move(employee, key, int(to), now)
+    except KeyError as error:
+        raise Http404 from error
+    return render(
+        request, "production/_queue_moved.html", section_context(employee, now)
+    )
+
+
+@owner_required
+@require_POST
+def queue_reset(request, pk):
+    employee = get_object_or_404(Employee, pk=pk, active=True)
+    clear_queue(employee, timezone.now())
+    return _plan_page(request)

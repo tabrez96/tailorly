@@ -1,0 +1,45 @@
+<section class="plan-queue"
+         x-data="queueReorder('{% url 'queue_move' section.employee.pk %}')"
+         @keydown.escape="done()">
+    <div class="plan-section__head">
+        <h2 class="t-section">
+            {{ section.first }}'s queue <span class="muted t-small">({{ section.count }})</span>
+        </h2>
+        {% if section.rows %}<span class="t-small muted">{{ section.hours }}</span>{% endif %}
+    </div>
+    {% if section.rows %}
+        <p class="t-small muted plan-note">
+            Started work first, then by due date and how long each garment usually takes. {{ section.first }} sees this order in My work. Drag ≡ to change it, or tap ≡ to move with buttons.
+        </p>
+        <div data-queue-body>{% include "production/_queue_body.html" %}</div>
+        <p class="banner banner--bad"
+           role="alert"
+           x-show="error"
+           x-text="error"
+           x-cloak></p>
+        <p class="sr-only" aria-live="polite" x-text="spoken"></p>
+        <div class="move-bar"
+             x-show="picked"
+             x-cloak
+             role="group"
+             aria-label="Move item">
+            <div class="move-bar__text">
+                <strong x-text="barTitle()"></strong>
+                <span class="t-small muted" x-text="barDue()"></span>
+            </div>
+            <button type="button"
+                    class="btn btn--tonal"
+                    x-ref="up"
+                    @click="step(-1)"
+                    :disabled="busy || position() === 1">↑ Up</button>
+            <button type="button"
+                    class="btn btn--tonal"
+                    x-ref="down"
+                    @click="step(1)"
+                    :disabled="busy || position() === total()">↓ Down</button>
+            <button type="button" class="btn btn--primary" @click="done()">Done</button>
+        </div>
+    {% else %}
+        <p class="muted empty-line">Nothing in {{ section.first }}'s queue yet. Assign an order above.</p>
+    {% endif %}
+</section>

@@ -1,11 +1,16 @@
 from datetime import date
 
+import pytest
+
 from production.queue import (
     clear_moves,
     due_soon,
     due_text,
     fit_text,
     late_keys,
+    move,
+    moved_count,
+    moved_text,
     ordered,
     reason,
     suggested,
@@ -143,3 +148,40 @@ def test_fit_text():
     assert fit_text(6, 0) == "All 6 items fit before their due dates."
     assert fit_text(3, 1).startswith("1 item won't make its due date.")
     assert fit_text(3, 2).startswith("2 items won't make their due dates.")
+
+
+def six():
+    return [row(pk, due=date(2026, 11, 22 + pk)) for pk in range(1, 7)]
+
+
+def test_move_pins_the_row():
+    rows = six()
+    rows[1]["moved_to"] = 2
+    rows = move(rows, ("item", 4), 5)
+    assert keys(ordered(rows)) == [1, 2, 3, 5, 4, 6]
+    assert keys(sorted(rows, key=lambda r: r["moved_to"] or 99)[:2]) in (
+        [2, 4],
+        [4, 2],
+    )
+
+
+def test_move_keeps_previous_moves_pinned():
+    rows = six()
+    rows[5]["moved_to"] = 1
+    rows = move(rows, ("item", 3), 2)
+    by_key = {r["key"][1]: r["moved_to"] for r in rows}
+    assert by_key == {1: None, 2: None, 3: 2, 4: None, 5: None, 6: 1}
+    assert keys(ordered(rows)) == [6, 3, 1, 2, 4, 5]
+
+
+def test_move_clamps_and_unknown_key():
+    assert keys(ordered(move(six(), ("item", 4), 0)))[0] == 4
+    assert keys(ordered(move(six(), ("item", 2), 99)))[-1] == 2
+    with pytest.raises(KeyError):
+        move(six(), ("item", 99), 1)
+
+
+def test_moved_count_and_text():
+    assert moved_count(move(six(), ("item", 4), 1)) == 1
+    assert moved_text(1) == "You moved 1 item."
+    assert moved_text(3) == "You moved 3 items."

@@ -1,5 +1,6 @@
 """The S16 Work plan page: queues, the next suggestion and waiting orders."""
 
+from django.db import transaction
 from django.urls import reverse
 from django.utils import timezone
 
@@ -11,6 +12,9 @@ from production.queue import (
     due_text,
     fit_text,
     late_keys,
+    move,
+    moved_count,
+    moved_text,
     reason,
     time_text,
 )
@@ -28,6 +32,7 @@ def _decorate(rows, today) -> tuple[list[dict], int]:
             {
                 **row,
                 "rank": rank,
+                "dom_key": f"{row['key'][0]}-{row['key'][1]}",
                 "garment": row["item"].name,
                 "photo": row["thumb"],
                 "order_label": f"#{row['order'].number}",
@@ -47,6 +52,7 @@ def _decorate(rows, today) -> tuple[list[dict], int]:
 def _section(employee, now, today) -> dict:
     rows, late = _decorate(queue_rows(employee, now), today)
     need = sum(r["need"] for r in rows)
+    moved = moved_count(rows)
     return {
         "employee": employee,
         "first": first_name(employee.name),
@@ -54,6 +60,8 @@ def _section(employee, now, today) -> dict:
         "count": len(rows),
         "hours": f"about {format_duration(need)} of work",
         "late": late,
+        "moved": moved,
+        "banner": moved_text(moved),
     }
 
 
@@ -109,3 +117,37 @@ def plan_context(now) -> dict:
         "sections": sections,
         "empty": not unassigned and not any(s["rows"] for s in sections),
     }
+
+
+def parse_key(text: str) -> tuple[str, int] | None:
+    kind, _, pk = text.partition("-")
+    return (kind, int(pk)) if kind in ("item", "rework") and pk.isdigit() else None
+
+
+def save_move(employee, key, to: int, now) -> None:
+    """Raises KeyError when `key` is not in this employee's open queue."""
+    with transaction.atomic():
+        Employee.objects.select_for_update().get(pk=employee.pk)
+        for row in move(queue_rows(employee, now), key, to):
+            obj = row["rework"] or row["item"]
+            if obj.queue_rank != row["moved_to"]:
+                obj.queue_rank = row["moved_to"]
+                obj.save(update_fields=["queue_rank"])
+
+
+def clear_queue(employee, now) -> None:
+    """Back to suggested: forget every owner move in this employee's queue."""
+    with transaction.atomic():
+        Employee.objects.select_for_update().get(pk=employee.pk)
+        for row in queue_rows(employee, now):
+            obj = row["rework"] or row["item"]
+            if obj.queue_rank is not None:
+                obj.queue_rank = None
+                obj.save(update_fields=["queue_rank"])
+
+
+def section_context(employee, now) -> dict:
+    """The hero and one employee's section, for the move response."""
+    ctx = plan_context(now)
+    section = next(s for s in ctx["sections"] if s["employee"].pk == employee.pk)
+    return {"hero": ctx["hero"], "section": section}
