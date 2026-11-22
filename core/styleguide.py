@@ -95,8 +95,8 @@ def _row(rank, garment, order, due, time_needed, tone, status, photo, count, **f
     return {
         "rank": rank,
         "garment": garment,
-        "order": order,
-        "due": due,
+        "order_label": order,
+        "due_label": due,
         "due_soon": flags.get("due_soon", False),
         "time_needed": time_needed,
         "tone": tone,

@@ -2119,3 +2119,33 @@ body[data-subpage="1"] .nav {
   padding: 0;
   border: 0;
 }
+
+/* S16 Work plan */
+.plan-section__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s2);
+  margin: var(--s6) 0 var(--s2);
+}
+.plan-note {
+  margin: 0 0 var(--s3);
+}
+.plan-hero > * + * {
+  margin-top: var(--s3);
+}
+.plan-hero__item {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+.plan-hero__item > div {
+  min-width: 0;
+}
+.plan-hero__item p,
+.plan-hero__item h2 {
+  margin: 0;
+}
+.plan-hero > p {
+  margin-bottom: 0;
+}

@@ -287,25 +287,20 @@ def _delivered(item):
     return item
 
 
-def test_queue_key_orders_by_due_then_items_before_reworks(ali, make_item, make_rework):
+def test_up_next_uses_queue_rule(ali, make_item):
     from datetime import date
 
-    a = make_item(ali, due=date(2026, 11, 25))
-    b = make_item(ali, due=None)
-    c = make_item(ali, due=date(2026, 11, 25))
-    rework = make_rework(_delivered(make_item(ali)), ali, due=date(2026, 11, 25))
-    rows = [
-        timing._rework_row(rework, at(0)),
-        timing._row(b, at(0)),
-        timing._row(c, at(0)),
-        timing._row(a, at(0)),
-    ]
-    order = [r["key"] for r in sorted(rows, key=timing.queue_key)]
-    assert order[-1] == ("item", b.pk)
-    assert order.index(("item", a.pk)) < order.index(("item", c.pk))
-    same = timing._rework_row(make_rework(a, ali, due=date(2026, 11, 25)), at(0))
-    keys = sorted([same, timing._row(a, at(0))], key=timing.queue_key)
-    assert keys[0]["rework"] is None
+    early = make_item(ali, due=date(2026, 11, 23))
+    late = make_item(ali, due=date(2026, 11, 28))
+    late.status = OrderItem.IN_PROGRESS
+    late.save()
+    third = make_item(ali, due=date(2026, 11, 30))
+    keys = [r["key"] for r in timing.panel(ali, at(0))["up_next"]]
+    assert keys == [("item", late.pk), ("item", early.pk), ("item", third.pk)]
+    third.queue_rank = 1
+    third.save()
+    keys = [r["key"] for r in timing.panel(ali, at(0))["up_next"]]
+    assert keys[0] == ("item", third.pk)
 
 
 def test_open_rework_joins_up_next_by_due(ali, make_item, make_rework):

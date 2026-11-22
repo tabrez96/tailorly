@@ -71,8 +71,8 @@ def test_measure_tiles():
 ROW = {
     "rank": 3,
     "garment": "Kurta",
-    "order": "ORD-1044",
-    "due": "Due Mon 16 Nov",
+    "order_label": "ORD-1044",
+    "due_label": "Due Mon 16 Nov",
     "due_soon": False,
     "time_needed": "about 2h",
     "tone": "warn",

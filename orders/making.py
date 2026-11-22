@@ -3,17 +3,12 @@
 import re
 from datetime import date
 
-USUAL_MINUTES = 120  # until the work-plan ticket averages the last 10 of each product
 MAX_MINUTES = 5999
 DURATION_INVALID = "Enter a time like 2h 30m."
 
 _HOURS_MINUTES = re.compile(r"^(?:(\d{1,2})\s*h)?\s*(?:(\d{1,3})\s*m)?$")
 _CLOCK = re.compile(r"^(\d{1,2}):(\d{2})$")
 _HOURS = re.compile(r"^(\d{1,2})$")
-
-
-def usual_minutes(product) -> int:
-    return USUAL_MINUTES
 
 
 def parse_duration(text: str) -> int | None:

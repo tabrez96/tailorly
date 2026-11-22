@@ -4,8 +4,9 @@ from django.utils import timezone
 from catalog.models import Product, ProductOption
 from core.formats import format_duration
 from orders.items import item_products, material_hint, price_hint, price_message
-from orders.making import parse_duration, usual_minutes
+from orders.making import parse_duration
 from orders.models import Order, OrderItem, Payment
+from production.estimates import usual_minutes
 from staff.attendance import parse_decimal
 from staff.models import Employee
 

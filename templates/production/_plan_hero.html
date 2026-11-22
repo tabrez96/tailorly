@@ -1,0 +1,12 @@
+{% load ui %}
+<section class="hero plan-hero" aria-labelledby="plan-hero-title">
+    <p class="t-small muted">Suggested next for {{ hero.first }}</p>
+    <div class="plan-hero__item">
+        {% thumb hero.row.garment hero.row.thumb hero.row.photo_count "md" %}
+        <div>
+            <h2 id="plan-hero-title" class="t-sheet">{{ hero.row.garment }}</h2>
+            <p class="t-small muted">{{ hero.row.order_label }} · {{ hero.row.customer.name }}</p>
+        </div>
+    </div>
+    <p class="t-body">{{ hero.reason }} {{ hero.fit }}</p>
+</section>

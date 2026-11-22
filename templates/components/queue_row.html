@@ -1,25 +1,43 @@
 {% load ui %}
 <li class="list__row qrow{% if row.picked %} qrow--picked{% endif %}">
     <span class="qrow__rank">{{ row.rank }}</span>
-    {% thumb row.garment row.photo row.photo_count "sm" %}
+    {% if row.order_url %}
+        <a href="{{ row.order_url }}"
+           hx-get="{{ row.order_url }}"
+           hx-target="#page"
+           hx-sync="#page:replace"
+           hx-push-url="true"
+           aria-label="Open order {{ row.order_label }}">{% thumb row.garment row.photo row.photo_count "sm" %}</a>
+    {% else %}
+        {% thumb row.garment row.photo row.photo_count "sm" %}
+    {% endif %}
     <div class="list__main">
         <p class="qrow__title">
-            <strong>{{ row.garment }}</strong> <span class="muted">{{ row.order }}</span>
+            <strong>{{ row.garment }}</strong> <span class="muted">{{ row.order_label }}</span>
         </p>
         <p class="t-small muted qrow__meta">
-            <span class="{% if row.due_soon %}qrow__due--soon{% endif %}">{{ row.due }}</span> · {{ row.time_needed }}
+            <span class="{% if row.due_soon %}qrow__due--soon{% endif %}">{{ row.due_label }}</span> · {{ row.time_needed }}
         </p>
+        {% if row.rework %}<p class="t-small muted qrow__meta">{{ row.rework.get_reason_display }}</p>{% endif %}
         <p class="qrow__chips">
             {% include "components/chip.html" with tone=row.tone label=row.status %}
+            {% if row.rework %}
+                {% include "components/chip.html" with tone="pri" label="Rework" %}
+            {% endif %}
             {% if row.moved %}
                 {% include "components/chip.html" with tone="grey" label="Moved by you" %}
             {% endif %}
+            {% if row.late %}
+                {% include "components/chip.html" with tone="bad" label="Late risk" %}
+            {% endif %}
         </p>
     </div>
-    <button class="qrow__handle"
-            type="button"
-            aria-label="Move {{ row.garment }}, {{ row.rank }} of {{ total }}"
-            aria-pressed="{% if row.picked %}true{% else %}false{% endif %}">
-        {% include "components/icon.html" with name="drag" %}
-    </button>
+    {% if not readonly %}
+        <button class="qrow__handle"
+                type="button"
+                aria-label="Move {{ row.garment }}, {{ row.rank }} of {{ total }}"
+                aria-pressed="{% if row.picked %}true{% else %}false{% endif %}">
+            {% include "components/icon.html" with name="drag" %}
+        </button>
+    {% endif %}
 </li>

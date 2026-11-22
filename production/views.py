@@ -2,14 +2,16 @@ import json
 
 from django.http import Http404
 from django.shortcuts import get_object_or_404, render
+from django.urls import NoReverseMatch, reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
-from accounts.decorators import employee_required
+from accounts.decorators import employee_required, owner_required
 from core.formats import format_day
 from core.pages import render_page
 from orders.models import OrderItem, Rework
 from production.details import details_context
+from production.plan import plan_context
 from production.timing import (
     TimingError,
     finish_item,
@@ -176,4 +178,25 @@ def rework_details(request, pk):
         request,
         "production/details_sheet.html",
         details_context(rework.item, rework),
+    )
+
+
+@owner_required
+@require_GET
+def work_plan(request):
+    try:
+        back_url = reverse("production")
+    except NoReverseMatch:  # the Production tab page isn't built yet
+        back_url = reverse("today")
+    return render_page(
+        request,
+        "production/work_plan.html",
+        {
+            "title": "Work plan",
+            "overline": "PRODUCTION",
+            "tab": "production",
+            "subpage": True,
+            "back_url": back_url,
+            **plan_context(timezone.now()),
+        },
     )
