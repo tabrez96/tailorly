@@ -1,0 +1,17 @@
+{% if section.moved %}
+    <div class="banner banner--pri qrow-banner">
+        <span>{{ section.banner }}</span>
+        <button type="button"
+                class="qrow-banner__reset"
+                hx-post="{% url 'queue_reset' section.employee.pk %}"
+                hx-target="#page"
+                hx-sync="#page:replace">Back to suggested</button>
+    </div>
+{% endif %}
+<ol class="list queue"
+    x-sort="dropped($item, $position)"
+    x-sort:config="{ handle: '.qrow__handle' }">
+    {% for row in section.rows %}
+        {% include "components/queue_row.html" with row=row total=section.count sortable=True %}
+    {% endfor %}
+</ol>

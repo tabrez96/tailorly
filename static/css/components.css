@@ -811,6 +811,7 @@ p.row-text__label::after {
   background: transparent;
   color: var(--muted);
   cursor: grab;
+  touch-action: none;
 }
 .qrow--picked {
   background: var(--pri-l);
@@ -1202,6 +1203,50 @@ body[data-subpage="1"] .nav {
 .banner--warn {
   color: var(--warn);
   background: var(--warn-bg);
+}
+.banner--pri {
+  color: var(--pri-d);
+  background: var(--pri-l);
+  font-weight: 600;
+}
+.banner--bad {
+  color: var(--bad);
+  background: var(--bad-bg);
+}
+.qrow-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--s3);
+}
+.qrow-banner__reset {
+  font: inherit;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--pri);
+  font-weight: 700;
+}
+.move-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 21;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s3) var(--s4) calc(var(--s3) + env(safe-area-inset-bottom));
+  background: var(--card);
+  border-radius: var(--r-field) var(--r-field) 0 0;
+  box-shadow: var(--shadow-float);
+}
+.move-bar__text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
 [x-cloak] {

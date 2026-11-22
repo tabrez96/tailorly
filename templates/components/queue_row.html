@@ -1,5 +1,6 @@
 {% load ui %}
-<li class="list__row qrow{% if row.picked %} qrow--picked{% endif %}">
+<li class="list__row qrow{% if row.picked %} qrow--picked{% endif %}"
+    {% if sortable %}x-sort:item="'{{ row.dom_key }}'" data-key="{{ row.dom_key }}" data-garment="{{ row.garment }}" data-due="{{ row.due_label }}" :class="{ 'qrow--picked': picked === '{{ row.dom_key }}' }"{% endif %}>
     <span class="qrow__rank">{{ row.rank }}</span>
     {% if row.order_url %}
         <a href="{{ row.order_url }}"
@@ -36,6 +37,7 @@
         <button class="qrow__handle"
                 type="button"
                 aria-label="Move {{ row.garment }}, {{ row.rank }} of {{ total }}"
+                {% if sortable %}@click="pick('{{ row.dom_key }}')" :aria-pressed="picked === '{{ row.dom_key }}'"{% endif %}
                 aria-pressed="{% if row.picked %}true{% else %}false{% endif %}">
             {% include "components/icon.html" with name="drag" %}
         </button>

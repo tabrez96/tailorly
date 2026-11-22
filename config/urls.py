@@ -17,6 +17,16 @@ urlpatterns = [
         name="assign_sheet",
     ),
     path(
+        "production/plan/queue/<int:pk>/move/",
+        production_views.queue_move,
+        name="queue_move",
+    ),
+    path(
+        "production/plan/queue/<int:pk>/reset/",
+        production_views.queue_reset,
+        name="queue_reset",
+    ),
+    path(
         "my-work/items/<int:pk>/start/", production_views.work_start, name="work_start"
     ),
     path(

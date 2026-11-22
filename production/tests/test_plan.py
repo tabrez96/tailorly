@@ -9,7 +9,7 @@ from django.utils import timezone
 from accounts.roles import OWNER, add_to_role
 from orders.models import Order, OrderItem
 from production import timing
-from production.plan import plan_context
+from production.plan import plan_context, save_move
 from production.timing import queue_rows
 from staff.models import Employee
 
@@ -123,9 +123,11 @@ def test_employee_cannot_open(ali):
     assert response.status_code == 302
 
 
-def test_no_handle_on_readonly_rows(owner, ali, make_item):
-    make_item(ali, estimate=60)
-    assert "qrow__handle" not in owner.get(URL).content.decode()
+def test_rows_are_sortable_with_a_handle(owner, ali, make_item):
+    item = make_item(ali, estimate=60)
+    html = owner.get(URL).content.decode()
+    assert "qrow__handle" in html
+    assert f'data-key="item-{item.pk}"' in html
 
 
 def test_rework_row_shows_chip_and_reason(owner, ali, make_item, make_rework):
@@ -150,3 +152,81 @@ def test_unassigned_groups_custom_items(make_item):
     )
     [row] = plan_context(NOW)["unassigned"]
     assert row["garment"] == "Kurta and 1 more"
+
+
+def move_url(employee):
+    return f"/production/plan/queue/{employee.pk}/move/"
+
+
+def three(ali, make_item):
+    return [
+        make_item(ali, name=n, due=day(i + 3), estimate=60) for i, n in enumerate("ABC")
+    ]
+
+
+def test_queue_move_saves_and_renders_banner(owner, ali, make_item):
+    a, b, c = three(ali, make_item)
+    response = owner.post(move_url(ali), {"key": f"item-{c.pk}", "to": "1"})
+    assert response.status_code == 200
+    c.refresh_from_db()
+    assert c.queue_rank == 1
+    html = response.content.decode()
+    assert "You moved 1 item." in html
+    assert "Moved by you" in html
+    assert 'id="plan-hero"' in html
+
+
+def test_queue_move_bad_input(owner, ali, make_item, db):
+    a, b, c = three(ali, make_item)
+    other = Employee.objects.create(name="Ben", phone="9000011118", daily_wage=800)
+    theirs = make_item(other, estimate=60)
+    for data in ({"key": "x-1", "to": "1"}, {"key": f"item-{a.pk}", "to": "up"}, {}):
+        assert owner.post(move_url(ali), data).status_code == 400
+    assert (
+        owner.post(move_url(ali), {"key": f"item-{theirs.pk}", "to": "1"}).status_code
+        == 404
+    )
+    assert owner.get(move_url(ali)).status_code == 405
+
+
+def test_queue_move_needs_owner(ali, make_item):
+    a, *_ = three(ali, make_item)
+    response = ali.client.post(move_url(ali), {"key": f"item-{a.pk}", "to": "1"})
+    assert response.status_code == 302
+    a.refresh_from_db()
+    assert a.queue_rank is None
+
+
+def test_queue_reset_clears_only_that_employee(owner, ali, make_item):
+    a, b, c = three(ali, make_item)
+    other = Employee.objects.create(name="Ben", phone="9000011118", daily_wage=800)
+    theirs = make_item(other, estimate=60)
+    for item in (a, theirs):
+        item.queue_rank = 1
+        item.save()
+    response = owner.post(f"/production/plan/queue/{ali.pk}/reset/")
+    assert response.status_code == 200
+    a.refresh_from_db()
+    theirs.refresh_from_db()
+    assert a.queue_rank is None
+    assert theirs.queue_rank == 1
+
+
+def test_rework_can_be_moved(owner, ali, make_item, make_rework):
+    a, b, c = three(ali, make_item)
+    rework = make_rework(a, ali, due=day(1))
+    owner.post(move_url(ali), {"key": f"rework-{rework.pk}", "to": "3"})
+    rework.refresh_from_db()
+    assert rework.queue_rank == 3
+
+
+def test_my_work_up_next_follows_a_move(ali, make_item, started_day):
+    make_item(ali, name="Aaa", due=day(3), estimate=60)
+    make_item(ali, name="Bbb", due=day(4), estimate=60)
+    c = make_item(ali, name="Ccc", due=day(5), estimate=60)
+    started_day(ali)
+    html = ali.client.get("/my-work/").content.decode()
+    assert html.index("Bbb") < html.index("Ccc")
+    save_move(ali, ("item", c.pk), 2, timezone.now())
+    html = ali.client.get("/my-work/").content.decode()
+    assert html.index("Ccc") < html.index("Bbb")
