@@ -10,6 +10,15 @@ from today import views as today_views
 urlpatterns = [
     path("", today_views.today, name="today"),
     path("my-work/", production_views.my_work, name="my_work"),
+    path(
+        "my-work/items/<int:pk>/start/", production_views.work_start, name="work_start"
+    ),
+    path(
+        "my-work/items/<int:pk>/finish/",
+        production_views.work_finish,
+        name="work_finish",
+    ),
+    path("my-work/pause/", production_views.work_pause, name="work_pause"),
     path("my-work/day/start/", staff_views.start_my_day, name="start_my_day"),
     path("my-work/day/end/", staff_views.end_my_day, name="end_my_day"),
     path("my-pay/", staff_views.my_pay, name="my_pay"),

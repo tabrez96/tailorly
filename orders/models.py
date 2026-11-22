@@ -221,6 +221,7 @@ class OrderItem(models.Model):
     measurements = models.JSONField(default=list, blank=True)
     notes = models.TextField(blank=True)
     status = models.CharField(max_length=12, choices=STATUSES, default=NOT_STARTED)
+    finished_at = models.DateTimeField(null=True, blank=True)
     estimate_minutes = models.PositiveIntegerField(null=True, blank=True)
     position = models.PositiveSmallIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
