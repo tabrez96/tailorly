@@ -1,0 +1,84 @@
+<p class="muted t-small">
+    A rough monthly guess is fine. It is spread over your working hours and added to each item by the time it takes.
+</p>
+<form method="post"
+      novalidate
+      hx-post="{{ action }}"
+      {% if sheet %}hx-target="#sheet" hx-sync="this:drop"{% else %}hx-target="#page"{% endif %}
+      x-data="{ extra: [], tick: 0, hours: '{{ hours|escapejs }}', totalPaise() { this.tick; let p = 0; $root.querySelectorAll('[data-cost-amount]').forEach(i => { const n = Math.round(Number(i.value.replace(/[,₹\s]/g, '')) * 100); if (n > 0) p += n }); return p }, total() { return this.totalPaise() / 100 }, rate() { const h = Number(this.hours); const p = this.totalPaise(); return p > 0 && h > 0 ? this.inr(Math.floor((p + 50 * h) / (100 * h))) + ' an hour' : 'Not set' }, inr(n) { return '₹' + Math.round(n).toLocaleString('en-IN') } }"
+      @input="tick++">
+    {% csrf_token %}
+    {% if error_text %}
+        {% include "components/error_summary.html" with text=error_text %}
+    {% endif %}
+    {% for row in rows %}
+        <div class="field{% if row.error %} field--error{% endif %}">
+            {% if row.fixed %}
+                <label class="field__label" for="cost-{{ forloop.counter }}">{{ row.name }}</label>
+                <input type="hidden" name="cost_name" value="{{ row.name }}">
+                <input type="hidden" name="cost_fixed" value="1">
+            {% else %}
+                <input class="field__input"
+                       name="cost_name"
+                       value="{{ row.name }}"
+                       maxlength="60"
+                       placeholder="What is it?"
+                       aria-label="Name of cost {{ forloop.counter }}"
+                       {% if row.name_error %}aria-invalid="true" aria-describedby="cost-{{ forloop.counter }}_error"{% endif %}>
+                <input type="hidden" name="cost_fixed" value="0">
+            {% endif %}
+            <input class="field__input"
+                   id="cost-{{ forloop.counter }}"
+                   name="cost_amount"
+                   data-cost-amount
+                   inputmode="decimal"
+                   autocomplete="off"
+                   placeholder="₹0"
+                   value="{{ row.amount }}"
+                   {% if not row.fixed %}aria-label="Amount of cost {{ forloop.counter }}"{% endif %}
+                   {% if row.error and not row.name_error %}aria-invalid="true" aria-describedby="cost-{{ forloop.counter }}_error"{% endif %}>
+            {% if row.error %}<p class="field__error"
+                                 id="cost-{{ forloop.counter }}_error">{{ row.error }}</p>{% endif %}
+        </div>
+    {% endfor %}
+    <template x-for="(r, i) in extra" :key="i">
+        <div class="field">
+            <input class="field__input"
+                   name="cost_name"
+                   maxlength="60"
+                   placeholder="What is it?"
+                   :aria-label="'Name of new cost ' + (i + 1)">
+            <input type="hidden" name="cost_fixed" value="0">
+            <input class="field__input"
+                   name="cost_amount"
+                   data-cost-amount
+                   inputmode="decimal"
+                   autocomplete="off"
+                   placeholder="₹0"
+                   :aria-label="'Amount of new cost ' + (i + 1)">
+        </div>
+    </template>
+    <button type="button" class="link-btn" @click="extra.push({})">+ Add a cost</button>
+    <div class="field{% if hours_error %} field--error{% endif %}">
+        <label class="field__label" for="run-hours">Working hours a month</label>
+        <input class="field__input"
+               id="run-hours"
+               name="hours"
+               x-model="hours"
+               value="{{ hours }}"
+               inputmode="numeric"
+               autocomplete="off"
+               {% if hours_error %}aria-invalid="true" aria-describedby="run-hours_error"{% endif %}>
+        {% if hours_error %}<p class="field__error" id="run-hours_error">{{ hours_error }}</p>{% endif %}
+        <p class="t-small muted">26 days × 8 hours</p>
+    </div>
+    <hr class="run-costs__rule">
+    <p class="run-costs__sum">
+        <strong x-text="inr(total()) + ' a month'">{{ total|inr }} a month</strong>
+        <strong x-text="rate()">{% if rate %}{{ rate|inr }} an hour{% else %}Not set{% endif %}</strong>
+    </p>
+    <p class="t-small muted">
+        Used for gains from now on and for orders not yet delivered. Your real bills still decide the shop's profit.
+    </p>
+    <button class="btn btn--primary btn--block" type="submit">Save</button>
+</form>

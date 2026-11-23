@@ -1,0 +1,66 @@
+{% load formats %}
+<section id="order-costs" class="order-costs">
+    {% if costs.free %}
+        <h2 class="t-section">Free order</h2>
+        <div class="card pay-summary">
+            <p class="muted t-small cost-card__intro">Made for self or family. Nothing is charged and there is no invoice.</p>
+            <p>
+                <span>Usual price, not charged</span><span class="tabular">{{ costs.not_charged|inr }}</span>
+            </p>
+            <p>
+                <span>Materials</span><span class="tabular">{{ costs.total.materials|inr }}</span>
+            </p>
+            <p>
+                <span>Staff time {% if costs.staff_detail %}<span class="t-small muted">{{ costs.staff_detail }}</span>{% endif %}</span><span class="tabular">{{ costs.total.staff|inr }}</span>
+            </p>
+            <p>
+                <span>Running costs {% if costs.running_detail %}<span class="t-small muted">{{ costs.running_detail }}</span>{% endif %}</span><span class="tabular">{{ costs.total.running|inr }}</span>
+            </p>
+            <p class="pay-summary__last">
+                <span>Cost to the shop</span><span class="tabular cost-card__shop">{{ costs.total.cost|inr }}</span>
+            </p>
+            {% include "orders/_cost_notes.html" %}
+            <p class="t-small muted cost-card__notes">
+                Counted in Free work in Reports. To charge for it after all, use Edit and set Who pays to Customer.
+            </p>
+        </div>
+    {% else %}
+        <h2 class="t-section">Cost and gain</h2>
+        <div class="card pay-summary">
+            {% for item in costs.items %}
+                <div class="cost-item">
+                    <p>
+                        <span>{{ item.number }} {{ item.name }}</span><span class="tabular">{{ item.price|inr }}</span>
+                    </p>
+                    <p class="t-small muted">
+                        <span>Cost {{ item.cost|inr }}</span>
+                        <span class="tabular {% if item.loss %}cost-card__loss{% else %}cost-card__gain{% endif %}">Gain {{ item.gain|inr }} ({% if item.pct is None %}—{% else %}{{ item.pct }}%{% endif %})</span>
+                    </p>
+                    <div class="cost-bar" role="img" aria-label="{{ item.words }}">
+                        {% for s in item.bar %}
+                            <span class="cost-bar__seg cost-bar__seg--{{ s.key }}"
+                                  style="width: {{ s.pct }}%"></span>
+                        {% endfor %}
+                    </div>
+                    <p class="t-small muted cost-item__words">{{ item.words }}</p>
+                </div>
+            {% endfor %}
+            <p>
+                <span>Sale</span><span class="tabular">{{ costs.total.sale|inr }}</span>
+            </p>
+            <p>
+                <span>Staff time</span><span class="tabular">{{ costs.total.staff|inr }}</span>
+            </p>
+            <p>
+                <span>Materials</span><span class="tabular">{{ costs.total.materials|inr }}</span>
+            </p>
+            <p>
+                <span>Running costs</span><span class="tabular">{{ costs.total.running|inr }}</span>
+            </p>
+            <p class="pay-summary__last">
+                <span>Gain on this order</span><span class="tabular {% if costs.total.gain < 0 %}cost-card__loss{% else %}cost-card__gain{% endif %}">{{ costs.total.gain|inr }}{% if costs.total.gain_pct is not None %} ({{ costs.total.gain_pct }}%){% endif %}</span>
+            </p>
+            {% include "orders/_cost_notes.html" %}
+        </div>
+    {% endif %}
+</section>

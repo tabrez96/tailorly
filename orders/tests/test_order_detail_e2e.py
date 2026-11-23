@@ -7,6 +7,7 @@ from customers.models import Customer
 from orders.models import Order, OrderItem
 from orders.tests.conftest import make_employee, make_order
 from orders.tests.test_item_photos_e2e import files
+from reports.models import ShopSettings
 
 pytestmark = pytest.mark.e2e
 
@@ -20,6 +21,9 @@ def shop(db):
     order = make_order(meera, 1, status="in_progress", price="1800")
     order.assignee = ali
     order.save()
+    ShopSettings.objects.create(
+        pk=1, running_costs=[{"name": "Rent", "amount": "9500"}]
+    )
     OrderItem.objects.filter(order=order).update(
         notes="Princess cut, back hooks, no padding.",
         measurements=[
