@@ -1,0 +1,17 @@
+<form id="record-note"
+      class="card"
+      hx-post="{{ note.url }}"
+      hx-target="this"
+      hx-swap="outerHTML">
+    {% csrf_token %}
+    <label class="field__label" for="record-note-text">
+        Why it took longer <span class="muted">(optional)</span>
+    </label>
+    <textarea id="record-note-text"
+              name="note"
+              class="field__input"
+              rows="3"
+              maxlength="500">{{ note.value }}</textarea>
+    {% if error %}<p class="field__error">{{ error }}</p>{% endif %}
+    <button type="submit" class="btn btn--tonal">Save note</button>
+</form>

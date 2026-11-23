@@ -119,7 +119,15 @@ def _begin(item) -> None:
     """Fix a missing estimate; the first time, start the item and its order."""
     if not item.estimate_minutes:
         item.estimate_minutes = usual_minutes(item.product)
-        item.save(update_fields=["estimate_minutes"])
+        item.estimate_from_usual = True
+        item.estimate_set_at = timezone.now()
+        item.save(
+            update_fields=[
+                "estimate_minutes",
+                "estimate_from_usual",
+                "estimate_set_at",
+            ]
+        )
     if item.status == OrderItem.NOT_STARTED:
         item.status = OrderItem.IN_PROGRESS
         item.save(update_fields=["status"])

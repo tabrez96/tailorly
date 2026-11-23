@@ -7,6 +7,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
 from accounts.decorators import employee_required, owner_required
+from catalog.models import Product
 from core.formats import format_clock, format_day
 from core.pages import render_page, sheet_saved_location
 from orders.models import Order, OrderItem, Rework
@@ -29,6 +30,7 @@ from production.plan import (
     save_move,
     section_context,
 )
+from production.record import item_record, rework_record
 from production.timing import (
     TimingError,
     close_stale,
@@ -330,3 +332,57 @@ def queue_reset(request, pk):
     employee = get_object_or_404(Employee, pk=pk, active=True)
     clear_queue(employee, timezone.now())
     return _plan_page(request)
+
+
+NOTE_MAX = 500
+
+
+@owner_required
+@require_GET
+def production_record(request, pk):
+    item = get_object_or_404(
+        OrderItem.objects.select_related(
+            "order__customer", "order__assignee", "product"
+        )
+        .prefetch_related("photos", "sessions__employee", "reworks__sessions")
+        .exclude(order__status=Order.DRAFT),
+        pk=pk,
+        type=Product.CUSTOM,
+    )
+    return render_page(
+        request, "production/record.html", item_record(item, timezone.now())
+    )
+
+
+@owner_required
+@require_GET
+def rework_record_view(request, pk):
+    rework = get_object_or_404(
+        Rework.objects.select_related(
+            "item__order__customer", "item__product", "assignee"
+        ).prefetch_related("item__photos", "sessions__employee"),
+        pk=pk,
+    )
+    return render_page(
+        request, "production/record.html", rework_record(rework, timezone.now())
+    )
+
+
+@owner_required
+@require_POST
+def production_record_note(request, pk):
+    item = get_object_or_404(OrderItem, pk=pk, status=OrderItem.FINISHED)
+    note = request.POST.get("note", "").strip()
+    block = {"url": reverse("production_record_note", args=[item.pk]), "value": note}
+    if len(note) > NOTE_MAX:
+        return render(
+            request,
+            "production/_record_note.html",
+            {"note": block, "error": f"Keep it under {NOTE_MAX} characters."},
+            status=422,
+        )
+    item.delay_note = note
+    item.save(update_fields=["delay_note"])
+    response = render(request, "production/_record_note.html", {"note": block})
+    response["HX-Trigger"] = json.dumps({"toast": {"message": "Note saved"}})
+    return response

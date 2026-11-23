@@ -1,0 +1,124 @@
+{% load ui %}
+{% include "components/header.html" with title=title overline=overline back_url=back_url back_direct=False %}
+{% if reason %}
+    <p>{% include "components/chip.html" with tone="grey" label=reason %}</p>
+{% endif %}
+<div class="record">
+    <section class="hero record-hero" aria-label="{{ hero.label }}">
+        <div class="record-hero__head">
+            <p class="t-small muted">{{ hero.label }}</p>
+            {% if hero.chip %}
+                <span class="record-hero__chip">
+                    {% if hero.chip == "Running" %}<span class="chip__dot" aria-hidden="true"></span>{% endif %}
+                    {{ hero.chip }}
+                </span>
+            {% endif %}
+        </div>
+        <p class="record-hero__big tabular">{{ hero.big }}</p>
+        {% if hero.sub or hero.sub_strong %}
+            <p class="t-small muted">
+                {{ hero.sub }}{% if hero.sub_strong %}<strong>{{ hero.sub_strong }}</strong>{% endif %}
+            </p>
+        {% endif %}
+        {% if hero.percent is not None %}
+            <div class="live-bar record-hero__bar" aria-hidden="true">
+                <span style="width: {{ hero.percent }}%"></span>
+            </div>
+        {% endif %}
+    </section>
+    <a class="card record-card"
+       href="{{ card.url }}"
+       hx-get="{{ card.url }}"
+       hx-target="#page"
+       hx-sync="#page:replace"
+       hx-push-url="true">
+        {% thumb card.name card.thumb card.photo_count size="md" %}
+        <div class="list__main">
+            <p class="t-body">
+                <strong>{{ card.title }}</strong>
+            </p>
+            <p class="t-small muted">{{ card.sub }}</p>
+            {% include "components/chip.html" with tone=card.status_tone label=card.status_label %}
+        </div>
+        {% include "components/icon.html" with name="chevron-right" %}
+    </a>
+    {% if bars %}
+        <h2 class="t-section">Estimate vs time taken</h2>
+        <div class="card">
+            {% for bar in bars %}
+                <div class="record-bar">
+                    <span class="record-bar__label">{{ bar.label }}</span>
+                    <span class="record-bar__track" aria-hidden="true"><span class="record-bar__fill record-bar__fill--{{ bar.tone }}"
+                                                                             style="width: {{ bar.percent }}%"></span></span>
+                    <span class="tabular record-bar__value">{{ bar.minutes_text }}</span>
+                </div>
+            {% endfor %}
+            <p class="t-small muted">{{ bars_caption }} {{ pattern }}</p>
+        </div>
+    {% endif %}
+    <h2 class="t-section">Details</h2>
+    <div class="card">
+        <dl class="record-rows">
+            {% for row in details %}
+                <dt class="muted">{{ row.label }}</dt>
+                <dd>
+                    {{ row.value }}
+                    {% if row.chip %}
+                        {% include "components/chip.html" with tone=row.chip_tone label=row.chip %}
+                    {% endif %}
+                </dd>
+            {% endfor %}
+        </dl>
+        {% if reworks %}
+            <p class="item-card__label">Rework after delivery</p>
+            <ul class="list">
+                {% for r in reworks %}
+                    <li class="list__row">
+                        <a class="record-card"
+                           href="{{ r.url }}"
+                           hx-get="{{ r.url }}"
+                           hx-target="#page"
+                           hx-sync="#page:replace"
+                           hx-push-url="true">
+                            <span class="list__main">
+                                <strong>{{ r.label }}</strong>
+                            </span>
+                            <span class="t-small muted">{{ r.time }}</span>
+                            {% include "components/icon.html" with name="chevron-right" %}
+                        </a>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </div>
+    <h2 class="t-section">
+        Work sessions <span class="muted t-small">({{ session_count }})</span>
+    </h2>
+    {% if sessions %}
+        <ul class="list">
+            {% for s in sessions %}
+                <li class="list__row record-session">
+                    <div class="list__main">
+                        <p>
+                            <strong>{{ s.day }}</strong>
+                        </p>
+                        <p class="t-small muted">{{ s.times }}</p>
+                    </div>
+                    <span class="tabular">{{ s.minutes_text }}</span>
+                </li>
+            {% endfor %}
+            <li class="list__row record-session">
+                <strong>Total logged</strong>
+                <strong class="tabular">{{ total_text }}</strong>
+            </li>
+        </ul>
+        <p class="t-small muted">{{ footnote }}</p>
+    {% else %}
+        <div class="card">
+            <p class="muted">No time logged yet.</p>
+        </div>
+    {% endif %}
+    {% if note %}
+        {% include "production/_record_note.html" %}
+    {% endif %}
+</div>

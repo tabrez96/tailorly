@@ -19,6 +19,21 @@ urlpatterns = [
     ),
     path("production/plan/", production_views.work_plan, name="work_plan"),
     path(
+        "production/items/<int:pk>/record/",
+        production_views.production_record,
+        name="production_record",
+    ),
+    path(
+        "production/reworks/<int:pk>/record/",
+        production_views.rework_record_view,
+        name="rework_record",
+    ),
+    path(
+        "production/items/<int:pk>/record/note/",
+        production_views.production_record_note,
+        name="production_record_note",
+    ),
+    path(
         "production/plan/assign/<int:pk>/",
         production_views.assign_sheet,
         name="assign_sheet",

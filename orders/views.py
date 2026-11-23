@@ -105,6 +105,8 @@ from orders.photos import (
     staged_photos,
 )
 from production.assign import assignable
+from production.record import production_line
+from production.timing import _logged
 from staff.attendance import first_name, initials
 from staff.models import Employee
 
@@ -438,7 +440,8 @@ def draft_place(request, pk):
                 for item in items:
                     if item.pk in form.estimates:
                         updated = OrderItem.objects.filter(pk=item.pk).update(
-                            estimate_minutes=form.estimates[item.pk]
+                            estimate_minutes=form.estimates[item.pk],
+                            estimate_set_at=timezone.now(),
                         )
                         if not updated:
                             raise OrderError("An item was removed. Check the items.")
@@ -506,7 +509,9 @@ def _order_context(request, order) -> dict:
         s.product_id: s for s in MeasurementSet.objects.filter(customer=order.customer)
     }
     items = list(
-        order.items.select_related("product").prefetch_related("photos", "materials")
+        order.items.select_related("product").prefetch_related(
+            "photos", "materials", "sessions"
+        )
     )
     label, tone = STATUS_CHIPS[order.status]
     return {
@@ -580,7 +585,21 @@ def _item_card(order, item, number, saved_set, owner=False) -> dict:
     else:
         copied = "Measurements for this item only."
     photos = list(item.photos.all())
+    production = None
+    if owner and custom:
+        sessions = list(item.sessions.all())
+        logged = _logged(sessions, timezone.now()) // 60
+        production = {
+            "url": reverse("production_record", args=[item.pk]),
+            "line": production_line(
+                logged,
+                item.estimate_minutes,
+                len(sessions),
+                item.status != OrderItem.NOT_STARTED,
+            ),
+        }
     return {
+        "production": production,
         "pk": item.pk,
         "number": number,
         "name": item.name,
@@ -636,7 +655,7 @@ def _render_item_card(request, item) -> HttpResponse:
     ).first()
     fresh = (
         OrderItem.objects.select_related("product")
-        .prefetch_related("photos", "materials")
+        .prefetch_related("photos", "materials", "sessions")
         .get(pk=item.pk)
     )
     card = _item_card(order, fresh, ids.index(item.pk) + 1, saved_set, owner=True)

@@ -119,5 +119,17 @@
             </ul>
         {% endif %}
         {% include "orders/_item_materials.html" with block=item.materials %}
+        {% if item.production %}
+            <a class="item-card__production"
+               href="{{ item.production.url }}"
+               hx-get="{{ item.production.url }}"
+               hx-target="#page"
+               hx-sync="#page:replace"
+               hx-push-url="true">
+                <span class="item-card__label">Production</span>
+                <span class="t-small muted">{{ item.production.line }}</span>
+                {% include "components/icon.html" with name="chevron-right" %}
+            </a>
+        {% endif %}
     </div>
 </article>
