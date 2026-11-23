@@ -23,7 +23,7 @@ Status: **draft** (UX not approved yet), **approved**, **building** (a ticket fo
 | S13 | [Payments](screens/S13-payments/screen.html) (+1 states) · [spec](screens/S13-payments/spec.md) | building |  | T-177, T-178, T-237 | 2026-11-17 |
 | S14 | [Staff Report](screens/S14-staff-report/screen.html) (+1 states) · [spec](screens/S14-staff-report/spec.md) | building |  | T-177, T-178, T-179, T-237 | 2026-11-17 |
 | S15 | [Products](screens/S15-products/screen.html) (+5 states) · [spec](screens/S15-products/spec.md) | built |  | T-161, T-164, T-186, T-187 | 2026-11-17 |
-| S16 | [Work Plan](screens/S16-work-plan/screen.html) (+4 states) · [spec](screens/S16-work-plan/spec.md) | building |  | T-172, T-173, T-197, T-203, T-204 | 2026-11-17 |
+| S16 | [Work Plan](screens/S16-work-plan/screen.html) (+4 states) · [spec](screens/S16-work-plan/spec.md) | built |  | T-172, T-173, T-197, T-203, T-204 | 2026-11-17 |
 | S17 | [Production Record](screens/S17-production-record/screen.html) (+2 states) · [spec](screens/S17-production-record/spec.md) | building |  | T-175, T-176, T-236, T-237 | 2026-11-17 |
 | S18 | [Settings](screens/S18-settings/screen.html) (+1 states) · [spec](screens/S18-settings/spec.md) | building |  | T-179, T-180, T-181, T-237 | 2026-11-17 |
 | S19 | [Item Detail](screens/S19-item-detail/screen.html) (+2 states) · [spec](screens/S19-item-detail/spec.md) | building |  | T-167, T-168, T-175 | 2026-11-17 |

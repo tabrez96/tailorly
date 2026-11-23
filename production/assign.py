@@ -286,6 +286,7 @@ def assign(order, employee, estimates: dict[int, int], place: str, now) -> Order
         for item in items:
             if item.status == OrderItem.NOT_STARTED and item.pk in estimates:
                 item.estimate_minutes = estimates[item.pk]
+                item.estimate_set_at = now
         order.assignee = employee
         order.save(update_fields=["assignee", "updated_at"])
         queue = _queue_without(employee, order, now)
@@ -303,5 +304,7 @@ def assign(order, employee, estimates: dict[int, int], place: str, now) -> Order
             for i, row in enumerate(suggested(new)):
                 by_key[row["key"]].queue_rank = at + i
         for item in items:
-            item.save(update_fields=["estimate_minutes", "queue_rank"])
+            item.save(
+                update_fields=["estimate_minutes", "estimate_set_at", "queue_rank"]
+            )
         return order

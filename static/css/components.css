@@ -2305,3 +2305,131 @@ body[data-subpage="1"] .nav {
 .card > .list .list__main p {
   margin: 0;
 }
+
+/* Production record (S17) */
+.record {
+  display: grid;
+  gap: var(--s3);
+}
+.record > * {
+  margin: 0;
+}
+.record > .t-section {
+  margin-top: var(--s3);
+}
+.record-hero {
+  display: grid;
+  gap: var(--s2);
+  padding: var(--s4);
+}
+.record-hero p {
+  margin: 0;
+}
+.record-hero__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.record-hero__big {
+  font-size: 44px;
+  font-weight: 800;
+  line-height: 1;
+}
+.record-hero__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  padding: 2px var(--s3);
+  border-radius: var(--r-pill);
+  background: var(--hero-btn);
+  color: var(--on-hero);
+  font-size: 12px;
+  font-weight: 700;
+}
+.record-hero__bar {
+  background: var(--hero-btn);
+}
+.record-hero__bar span {
+  background: var(--on-hero);
+}
+.record-card {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  color: inherit;
+  text-decoration: none;
+}
+.record-card .list__main {
+  flex: 1;
+}
+.record-card .list__main p {
+  margin: 0;
+}
+.record-bar {
+  display: grid;
+  grid-template-columns: 96px 1fr auto;
+  gap: var(--s3);
+  align-items: center;
+  padding-block: var(--s1);
+}
+.record-bar__label {
+  font-weight: 700;
+  font-size: 13px;
+}
+.record-bar__track {
+  display: block;
+  height: 8px;
+  border-radius: var(--r-pill);
+  background: var(--sunk);
+  overflow: hidden;
+}
+.record-bar__fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-pill);
+}
+.record-bar__fill--estimate {
+  background: var(--muted);
+}
+.record-bar__fill--took {
+  background: var(--warn);
+}
+.record-bar__fill--usual {
+  background: var(--pri);
+}
+.record-bar__value {
+  font-weight: 700;
+  font-size: 13px;
+}
+.record-rows {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--s3);
+  margin: 0;
+}
+.record-rows dt {
+  margin: 0;
+}
+.record-rows dd {
+  margin: 0;
+  text-align: right;
+  font-weight: 700;
+}
+.record-session {
+  justify-content: space-between;
+}
+.record-session p {
+  margin: 0;
+}
+.item-card__production {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  justify-content: space-between;
+  min-height: 48px;
+  border-top: 1px solid var(--line);
+  margin-top: var(--s3);
+  padding-top: var(--s3);
+  color: inherit;
+  text-decoration: none;
+}

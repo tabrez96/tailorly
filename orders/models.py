@@ -223,6 +223,12 @@ class OrderItem(models.Model):
     status = models.CharField(max_length=12, choices=STATUSES, default=NOT_STARTED)
     finished_at = models.DateTimeField(null=True, blank=True)
     estimate_minutes = models.PositiveIntegerField(null=True, blank=True)
+    # When the owner set the estimate (S05 or S16); null on older items.
+    estimate_set_at = models.DateTimeField(null=True, blank=True)
+    # True when Start filled a missing estimate with the usual time.
+    estimate_from_usual = models.BooleanField(default=False)
+    # S17 "Why it took longer", kept for later review.
+    delay_note = models.TextField(blank=True)
     # Owner's place for it in the queue (1 = first); null follows the suggestion.
     queue_rank = models.PositiveSmallIntegerField(null=True, blank=True)
     position = models.PositiveSmallIntegerField(default=0)
