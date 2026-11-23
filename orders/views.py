@@ -109,6 +109,7 @@ from orders.photos import (
 from production.assign import assignable
 from production.record import production_line
 from production.timing import _logged
+from reports.order_costs import cost_card
 from staff.attendance import first_name, initials
 from staff.models import Employee
 
@@ -550,6 +551,7 @@ def _order_context(request, order) -> dict:
         )
         if owner
         else None,
+        "costs": cost_card(order, timezone.now()) if owner else None,
         **_invoice_context(order),
     }
 

@@ -9,6 +9,7 @@ from playwright.sync_api import expect
 
 from customers.models import Customer
 from orders.models import Order, OrderItem
+from production import timing
 from production.models import TimeSession
 from staff.models import DayRecord, Employee
 
@@ -20,6 +21,12 @@ SHOTS = Path("artifacts/screens")
 @pytest.fixture(autouse=True)
 def _shots():
     SHOTS.mkdir(parents=True, exist_ok=True)
+
+
+@pytest.fixture
+def not_stale(monkeypatch):
+    """Keep the open session running when the test runs just after local midnight."""
+    monkeypatch.setattr(timing, "_stale_cutoff", lambda session, now: None)
 
 
 def order(customer, number, assignee, name, days):
@@ -66,7 +73,7 @@ def seed(day=True, session=None):
     return ali
 
 
-def test_production_main(signed_in, live_server):
+def test_production_main(signed_in, live_server, not_stale):
     context, page = signed_in("owner")
     seed(session="open")
     page.goto(live_server.url + "/production/")
@@ -96,7 +103,7 @@ def test_production_not_in_yet(signed_in, live_server):
     assert page.evaluate("window.__marker") == 1
 
 
-def test_production_dark(signed_in, live_server, browser):
+def test_production_dark(signed_in, live_server, browser, not_stale):
     context, page = signed_in("owner")
     seed(session="open")
     client = Client()
@@ -120,7 +127,7 @@ def test_production_dark(signed_in, live_server, browser):
     dark.close()
 
 
-def test_give_work_opens_assign_sheet_and_returns(signed_in, live_server):
+def test_give_work_opens_assign_sheet_and_returns(signed_in, live_server, not_stale):
     context, page = signed_in("owner")
     seed(session="open")
     page.goto(live_server.url + "/production/")
@@ -136,7 +143,7 @@ def test_give_work_opens_assign_sheet_and_returns(signed_in, live_server):
     expect(waiting).not_to_contain_text("Anarkali")
 
 
-def test_polling_starts_and_stops(signed_in, live_server):
+def test_polling_starts_and_stops(signed_in, live_server, not_stale):
     context, page = signed_in("owner")
     seed(session="open")
     page.clock.install()
