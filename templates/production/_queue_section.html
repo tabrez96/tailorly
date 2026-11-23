@@ -1,4 +1,5 @@
 <section class="plan-queue"
+         id="queue-{{ section.employee.pk }}"
          x-data="queueReorder('{% url 'queue_move' section.employee.pk %}')"
          @keydown.escape="done()">
     <div class="plan-section__head">

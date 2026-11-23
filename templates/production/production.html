@@ -1,0 +1,29 @@
+{% include "components/header.html" with title=title overline=overline action_label="Work plan" action_url=work_plan_url %}
+{% if not has_employees %}
+    <div class="empty">
+        <p class="muted empty__text">Add someone in Staff to start giving out work.</p>
+        <a class="btn btn--accent"
+           href="{% url 'employee_add' %}"
+           hx-get="{% url 'employee_add' %}"
+           hx-target="#page"
+           hx-sync="#page:replace"
+           hx-push-url="true">Add employee</a>
+    </div>
+{% else %}
+    <h2 class="t-section">Right now</h2>
+    {% include "production/_right_now.html" %}
+    <h2 class="t-section">Waiting for someone</h2>
+    {% if waiting %}
+        <div class="card">
+            <ul class="list">
+                {% for row in waiting %}
+                    {% include "production/_waiting_row.html" %}
+                {% endfor %}
+            </ul>
+        </div>
+    {% else %}
+        <div class="card">
+            <p class="muted">Every order has someone making it.</p>
+        </div>
+    {% endif %}
+{% endif %}

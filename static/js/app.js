@@ -193,7 +193,10 @@ function pageSwapped(elt) {
   store().tab = page?.dataset.tab ?? "";
   document.body.dataset.subpage = page?.dataset.subpage ?? "";
   document.title = `${title} · Tailorly`;
-  document.querySelector("#page h1")?.focus();
+  document.querySelector("#page h1")?.focus({ preventScroll: true });
+  // A link to page#id (S12 to an S04 item or an S16 queue) lands on that id.
+  const hash = elt?.getAttribute("href")?.split("#")[1];
+  if (hash) document.getElementById(hash)?.scrollIntoView();
   const announce = document.getElementById("announce");
   announce.textContent = "";
   requestAnimationFrame(() => (announce.textContent = title));
