@@ -62,9 +62,11 @@ from orders.items import (
     resolve_type,
 )
 from orders.listing import (
+    HIDDEN_SHOWS,
     OPEN,
     READY,
     SHOWS,
+    SOON,
     STATUS_CHIPS,
     ListFilter,
     filter_url,
@@ -1783,6 +1785,16 @@ def orders(request):
         }
         for key, label in SHOWS
     ]
+    if f.show == SOON:
+        chips.append(
+            {
+                "id": "chip-soon",
+                "label": dict(HIDDEN_SHOWS)[SOON],
+                "count": None,
+                "url": filter_url(base, f),
+                "selected": True,
+            }
+        )
     return render_page(
         request,
         "orders/orders.html",
@@ -1796,6 +1808,6 @@ def orders(request):
             "base_url": base,
             "new_url": reverse("order_new"),
             "clear_url": filter_url(base, ListFilter(f.show)),
-            "show_label": dict(SHOWS)[f.show].lower(),
+            "show_label": dict(SHOWS + HIDDEN_SHOWS)[f.show].lower(),
         },
     )

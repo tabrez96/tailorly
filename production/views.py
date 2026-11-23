@@ -31,6 +31,7 @@ from production.plan import (
     section_context,
 )
 from production.record import item_record, rework_record
+from production.report import report_context, week_so_far
 from production.timing import (
     TimingError,
     close_stale,
@@ -214,8 +215,17 @@ def production(request):
             "tab": "production",
             "overline": f"{format_day(now)} · {format_clock(now)}".upper(),
             "work_plan_url": reverse("work_plan"),
+            "week": week_so_far(now),
             **live_context(now),
         },
+    )
+
+
+@owner_required
+@require_GET
+def production_report(request):
+    return render_page(
+        request, "production/report.html", report_context(request.GET, timezone.now())
     )
 
 

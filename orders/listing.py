@@ -2,7 +2,7 @@
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from urllib.parse import urlencode
 
@@ -15,13 +15,14 @@ from orders import invoice
 from orders.models import Order
 from staff.attendance import first_name
 
-OPEN, READY, DELIVERED, FREE, LATE, ALL = (
+OPEN, READY, DELIVERED, FREE, LATE, ALL, SOON = (
     "open",
     "ready",
     "delivered",
     "free",
     "late",
     "all",
+    "soon",
 )
 SHOWS = [
     (OPEN, "Open"),
@@ -31,6 +32,8 @@ SHOWS = [
     (LATE, "Late"),
     (ALL, "All"),
 ]
+# Reachable by link (the production report) but not offered as a chip.
+HIDDEN_SHOWS = [(SOON, "Due in 7 days")]
 MAX_LENGTH = 80
 _NOT_READY = [Order.OPEN, Order.IN_PROGRESS]
 
@@ -50,7 +53,7 @@ class ListFilter:
 
 def parse_filter(params: Mapping[str, str]) -> ListFilter:
     show = params.get("show", "")
-    if show not in dict(SHOWS):
+    if show not in dict(SHOWS) and show not in dict(HIDDEN_SHOWS):
         show = OPEN
     return ListFilter(show, params.get("q", "").strip()[:MAX_LENGTH])
 
@@ -75,6 +78,12 @@ def show_filter(show: str, today: date) -> Q:
         return Q(paid_by=Order.FREE)
     if show == LATE:
         return Q(status__in=_NOT_READY, due_date__lt=today)
+    if show == SOON:
+        return Q(
+            status__in=_NOT_READY,
+            due_date__gte=today,
+            due_date__lte=today + timedelta(days=6),
+        )
     return Q()
 
 
@@ -95,7 +104,7 @@ def search_filter(q: str) -> Q:
 
 
 def ordering(show: str) -> list:
-    if show in (OPEN, READY, LATE):
+    if show in (OPEN, READY, LATE, SOON):
         return [F("due_date").asc(nulls_last=True), "number"]
     return ["-number"]
 

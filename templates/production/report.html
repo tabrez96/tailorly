@@ -1,0 +1,73 @@
+{% include "components/header.html" with title=title overline=overline back_url=back_url %}
+<nav class="fchips" aria-label="Reports">
+    {% for c in report_row %}
+        <a class="fchip"
+           id="{{ c.id }}"
+           href="{{ c.url }}"
+           hx-get="{{ c.url }}"
+           hx-target="#page"
+           hx-sync="#page:replace"
+           hx-push-url="true"
+           {% if c.selected %}aria-current="true"{% endif %}>{{ c.label }}</a>
+    {% endfor %}
+</nav>
+<nav class="seg" aria-label="Period">
+    <div class="seg__track">
+        {% for s in segments %}
+            <a class="seg__opt"
+               id="{{ s.id }}"
+               href="{{ s.url }}"
+               {% if s.selected %}aria-current="true"{% endif %}
+               hx-get="{{ s.url }}"
+               hx-target="#page"
+               hx-sync="#page:replace"
+               hx-replace-url="true">{{ s.label }}</a>
+        {% endfor %}
+    </div>
+</nav>
+<div class="week-picker">
+    <a class="week-picker__btn"
+       id="period-prev"
+       href="{{ prev_url }}"
+       hx-get="{{ prev_url }}"
+       hx-target="#page"
+       hx-sync="#page:replace"
+       hx-replace-url="true"
+       aria-label="Previous">{% include "components/icon.html" with name="chevron-back" %}</a>
+    <p class="t-body">
+        <strong>{{ label }}</strong>
+    </p>
+    {% if next_url %}
+        <a class="week-picker__btn"
+           id="period-next"
+           href="{{ next_url }}"
+           hx-get="{{ next_url }}"
+           hx-target="#page"
+           hx-sync="#page:replace"
+           hx-replace-url="true"
+           aria-label="Next">{% include "components/icon.html" with name="chevron-right" %}</a>
+    {% else %}
+        <span class="week-picker__btn"
+              id="period-next"
+              aria-disabled="true"
+              aria-label="Next">{% include "components/icon.html" with name="chevron-right" %}</span>
+    {% endif %}
+</div>
+{% if is_empty %}
+    <div class="empty">
+        <div class="icon-tile icon-tile--lg">{% include "components/icon.html" with name="hanger" %}</div>
+        <h2 class="t-sheet empty__title">{{ empty_title }}</h2>
+        <p class="muted empty__text">Garments show here when someone taps Finish item in My work.</p>
+        <a class="btn btn--primary"
+           id="empty-this-week"
+           href="{{ this_week_url }}"
+           hx-get="{{ this_week_url }}"
+           hx-target="#page"
+           hx-sync="#page:replace"
+           hx-replace-url="true">Go to this week</a>
+    </div>
+{% elif period == "day" %}
+    {% include "production/_report_day.html" %}
+{% else %}
+    {% include "production/_report_range.html" %}
+{% endif %}

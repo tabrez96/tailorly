@@ -11,6 +11,11 @@ urlpatterns = [
     path("", today_views.today, name="today"),
     path("my-work/", production_views.my_work, name="my_work"),
     path("production/", production_views.production, name="production"),
+    path(
+        "production/report/",
+        production_views.production_report,
+        name="production_report",
+    ),
     path("production/now/", production_views.production_now, name="production_now"),
     path(
         "production/employees/<int:pk>/day/start/",

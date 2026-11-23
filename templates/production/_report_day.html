@@ -1,0 +1,54 @@
+{% load formats %}
+<section class="hero report-hero">
+    <p class="t-small muted">Garments finished</p>
+    <p class="t-hero-num report-hero__count">{{ count }}</p>
+    {% for line in day_lines %}<p class="t-small muted">{{ line }}</p>{% endfor %}
+</section>
+<h2 class="t-section">{{ day_heading }}</h2>
+<div class="card">
+    <ul class="list">
+        {% for row in finished %}
+            <li>
+                <a class="list__row report-row"
+                   href="{{ row.url }}"
+                   hx-get="{{ row.url }}"
+                   hx-target="#page"
+                   hx-sync="#page:replace"
+                   hx-push-url="true">
+                    <div class="list__main">
+                        <p class="t-body">
+                            <strong>{{ row.name }}</strong> <span class="muted">· {{ row.number }}</span>
+                        </p>
+                        <p class="t-small muted">
+                            {{ row.customer }} · finished {{ row.finished_at|clock }}{% if row.estimate %} · est. {{ row.estimate|duration }}{% endif %}
+                        </p>
+                    </div>
+                    <strong class="t-body tabular">{{ row.took|duration }}</strong>
+                    <span class="list__chev" aria-hidden="true">
+                        {% include "components/icon.html" with name="chevron-right" %}
+                    </span>
+                </a>
+            </li>
+        {% endfor %}
+    </ul>
+</div>
+{% if still %}
+    <h2 class="t-section">Still in progress</h2>
+    <div class="card">
+        <ul class="list">
+            {% for row in still %}
+                <li class="list__row">
+                    <div class="list__main">
+                        <p class="t-body">
+                            <strong>{{ row.name }}</strong> <span class="muted">· {{ row.number }}</span>
+                        </p>
+                        <p class="t-small muted">
+                            {{ row.customer }}{% if row.due_text %} · {{ row.due_text }}{% endif %}
+                        </p>
+                    </div>
+                    {% include "components/chip.html" with tone=row.tone label=row.chip %}
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+{% endif %}
