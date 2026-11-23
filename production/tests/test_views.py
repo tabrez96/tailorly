@@ -138,7 +138,7 @@ def test_page_without_employee_record(db):
 
 
 def test_no_money_or_estimates_on_employee_pages(ali, make_item, started_day):
-    started_day(ali)
+    day = started_day(ali)
     a = make_item(ali, price="1450", estimate=137)
     b = make_item(ali, name="Suit", price="1450", estimate=137)
     Payment.objects.create(
@@ -150,6 +150,10 @@ def test_no_money_or_estimates_on_employee_pages(ali, make_item, started_day):
     pages.append(post(ali.client, "/my-work/pause/").content.decode())
     pages.append(post(ali.client, f"/my-work/items/{b.pk}/finish/").content.decode())
     pages.append(post(ali.client, "/my-work/day/end/").content.decode())
+    # Fix the day to 8 hours so the pay shown is ₹800 whatever time the test runs.
+    day.refresh_from_db()
+    day.end = day.start + timedelta(hours=8)
+    day.save(update_fields=["end"])
     pay = ali.client.get("/my-pay/").content.decode().lower()
     # "estimate" is the pay week wording there, so check the item values instead.
     for word in ("1,450", "1450", "2h 17m", "137"):
