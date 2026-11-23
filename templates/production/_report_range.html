@@ -1,0 +1,157 @@
+{% load formats %}
+<section class="hero report-hero">
+    <p class="t-small muted">Garments finished</p>
+    <p class="t-hero-num report-hero__count">{{ count }}</p>
+    <p class="t-small muted">
+        {{ delivered }} order{{ delivered|pluralize }} delivered · {{ logged_text }} worked on garments
+    </p>
+    <ol class="report-bars">
+        {% for b in bars %}
+            <li class="report-bar{% if b.future %} report-bar--future{% endif %}">
+                <span class="t-small report-bar__count">{{ b.count }}</span>
+                <span class="report-bar__fill" style="--h: {{ b.percent }}"></span>
+                <span class="t-small report-bar__label">{{ b.label }}</span>
+            </li>
+        {% endfor %}
+    </ol>
+    {% if caption %}<p class="t-small muted">{{ caption }}</p>{% endif %}
+</section>
+<div class="stat-pair">
+    <div class="card stat">
+        <p class="t-small muted">On time</p>
+        {% if of %}
+            <p class="stat__value tabular">
+                {{ on_time }} <span class="t-body muted">of {{ of }}</span>
+            </p>
+            <p class="t-small muted">delivered by due date</p>
+        {% else %}
+            <p class="stat__value">—</p>
+            <p class="t-small muted">nothing delivered yet</p>
+        {% endif %}
+    </div>
+    <div class="card stat">
+        <p class="t-small muted">Late now</p>
+        <p class="stat__value tabular{% if late %} stat__value--due{% endif %}">{{ late }}</p>
+        <p class="t-small muted">past due, not ready</p>
+    </div>
+</div>
+{% if estimates %}
+    <h2 class="t-section">Estimate vs time taken</h2>
+    <div class="card">
+        <div class="report-totals">
+            <div>
+                <p class="t-small muted">Estimated</p>
+                <p class="t-big">{{ estimates.estimated_text }}</p>
+            </div>
+            <div>
+                <p class="t-small muted">Took</p>
+                <p class="t-big">{{ estimates.took_text }}</p>
+            </div>
+        </div>
+        <p class="t-small muted">{{ estimates.line }}</p>
+    </div>
+    <div class="card">
+        <ul class="list">
+            {% for row in estimates.furthest %}
+                <li>
+                    <a class="list__row report-row"
+                       href="{{ row.url }}"
+                       hx-get="{{ row.url }}"
+                       hx-target="#page"
+                       hx-sync="#page:replace"
+                       hx-push-url="true">
+                        <div class="list__main">
+                            <p class="t-body">
+                                <strong>{{ row.name }}</strong> <span class="muted">· {{ row.number }}</span>
+                            </p>
+                            <p class="t-small muted">
+                                Est. {{ row.estimate|duration }} · took {{ row.took|duration }}
+                            </p>
+                        </div>
+                        {% include "components/chip.html" with tone=row.diff_tone label=row.diff_text %}
+                        <span class="list__chev" aria-hidden="true">
+                            {% include "components/icon.html" with name="chevron-right" %}
+                        </span>
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% if see_all %}
+        <a class="btn btn--tonal"
+           id="see-all"
+           href="{{ see_all_url }}"
+           hx-get="{{ see_all_url }}"
+           hx-target="#page"
+           hx-sync="#page:replace"
+           hx-replace-url="true">See all</a>
+    {% endif %}
+{% endif %}
+<h2 class="t-section">By garment</h2>
+<div class="card">
+    <ul class="list">
+        {% for g in garments %}
+            <li class="list__row">
+                <div class="list__main">
+                    <p class="t-body">
+                        <strong>{{ g.name }}</strong> <span class="muted">· {{ g.count }}</span>
+                    </p>
+                    <p class="t-small muted">Avg {{ g.avg_took_text }} · est. {{ g.avg_estimate_text }}</p>
+                </div>
+            </li>
+        {% endfor %}
+    </ul>
+</div>
+{% if employees %}
+    <h2 class="t-section">By employee</h2>
+    <div class="card">
+        <ul class="list">
+            {% for e in employees %}
+                <li class="list__row">
+                    <div class="list__main">
+                        <p class="t-body">
+                            <strong>{{ e.name }}</strong>
+                        </p>
+                        <p class="t-small muted">{{ e.line }}</p>
+                    </div>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+{% endif %}
+<h2 class="t-section">Coming up</h2>
+{% if coming_up.orders or coming_up.not_started %}
+    <div class="card">
+        <ul class="list">
+            {% if coming_up.orders %}
+                <li class="list__row">
+                    <p class="t-body list__main">
+                        {{ coming_up.orders }} order{{ coming_up.orders|pluralize }} due in the next 7 days
+                    </p>
+                    <a class="btn btn--tonal btn--sm"
+                       id="coming-up-view"
+                       href="{{ coming_up.url }}"
+                       hx-get="{{ coming_up.url }}"
+                       hx-target="#page"
+                       hx-sync="#page:replace"
+                       hx-push-url="true">View</a>
+                </li>
+            {% endif %}
+            {% for row in coming_up.not_started %}
+                <li class="list__row">
+                    <div class="list__main">
+                        <p class="t-body">
+                            <strong>{{ row.name }}</strong> <span class="muted">· {{ row.number }}</span>
+                        </p>
+                        <p class="t-small muted">{{ row.customer }} · {{ row.due_text }}</p>
+                    </div>
+                    {% include "components/chip.html" with tone="warn" label="Not started" %}
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+{% else %}
+    <div class="card">
+        <p class="muted">Nothing due in the next 7 days.</p>
+    </div>
+{% endif %}

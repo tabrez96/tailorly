@@ -100,6 +100,65 @@ body {
   color: var(--hero-muted);
 }
 
+.report-hero__count {
+  margin: var(--s1) 0 var(--s2);
+}
+.report-bars {
+  list-style: none;
+  display: flex;
+  align-items: flex-end;
+  gap: var(--s2);
+  height: 112px;
+  margin: var(--s4) 0 var(--s2);
+  padding: 0;
+}
+.report-bar {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--s1);
+  text-align: center;
+}
+.report-bar__fill {
+  width: 100%;
+  height: max(4px, calc(var(--h) * 0.6px));
+  border-radius: var(--s2);
+  background: var(--on-hero);
+}
+.report-bar--future .report-bar__fill {
+  opacity: 0.3;
+}
+.report-totals {
+  display: flex;
+  gap: var(--s6);
+}
+.list__chev {
+  display: grid;
+  color: var(--muted);
+}
+a.report-row,
+a.report-row:hover {
+  color: inherit;
+  text-decoration: none;
+}
+.report-hero + .stat-pair {
+  margin-top: var(--s3);
+}
+.report-hero ~ .card + .card,
+.report-hero ~ .card + .btn {
+  margin-top: var(--s3);
+}
+.report-totals p {
+  margin: 0;
+}
+.report-totals + p {
+  margin: var(--s3) 0 0;
+}
+
 /* List */
 .list {
   list-style: none;
@@ -1129,6 +1188,7 @@ body[data-subpage="1"] .nav {
   border: 1px solid var(--hero-btn-edge);
 }
 .work-hero ~ .t-section,
+.report-hero ~ .t-section,
 .day-card ~ .t-section {
   margin-top: var(--s5);
   padding: 0 var(--s1);

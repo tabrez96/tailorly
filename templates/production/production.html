@@ -26,4 +26,35 @@
             <p class="muted">Every order has someone making it.</p>
         </div>
     {% endif %}
+    <h2 class="t-section">This week so far</h2>
+    <div class="card">
+        <ul class="list">
+            <li>
+                <a class="list__row report-row"
+                   id="week-so-far"
+                   href="{{ week.url }}"
+                   hx-get="{{ week.url }}"
+                   hx-target="#page"
+                   hx-sync="#page:replace"
+                   hx-push-url="true">
+                    <div class="list__main">
+                        <p class="t-body">
+                            <strong>{{ week.count }} garment{{ week.count|pluralize }} finished</strong>
+                        </p>
+                        <p class="t-small muted">
+                            {% if week.of %}
+                                {{ week.on_time }} of {{ week.of }} on time
+                            {% else %}
+                                No orders delivered yet
+                            {% endif %}
+                            · {{ week.late }} late now
+                        </p>
+                    </div>
+                    <span class="list__chev" aria-hidden="true">
+                        {% include "components/icon.html" with name="chevron-right" %}
+                    </span>
+                </a>
+            </li>
+        </ul>
+    </div>
 {% endif %}

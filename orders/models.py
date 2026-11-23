@@ -58,6 +58,7 @@ class Order(models.Model):
         related_name="orders",
     )
     invoice_last_sent_at = models.DateTimeField(null=True, blank=True)
+    delivered_at = models.DateTimeField(null=True, blank=True)  # set on Delivered
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -112,7 +113,11 @@ class Order(models.Model):
                 f"to {dict(self.STATUSES)[to].lower()}."
             )
         self.status = to
-        self.save(update_fields=["status", "number", "due_date", "updated_at"])
+        fields = ["status", "number", "due_date", "updated_at"]
+        if to == self.DELIVERED:
+            self.delivered_at = timezone.now()
+            fields.append("delivered_at")
+        self.save(update_fields=fields)
 
     def place(self) -> None:
         with transaction.atomic():

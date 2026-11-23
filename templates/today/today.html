@@ -1,2 +1,30 @@
 {% include "components/header.html" with title=title back_url=back_url %}
 <p class="muted">Today's work appears here.</p>
+<div class="card">
+    <ul class="list">
+        <li>
+            <a class="list__row report-row"
+               id="today-production"
+               href="{{ report_url }}"
+               hx-get="{{ report_url }}"
+               hx-target="#page"
+               hx-sync="#page:replace"
+               hx-push-url="true">
+                <div class="list__main">
+                    <p class="t-body">
+                        <strong>Production this week</strong>
+                    </p>
+                    <p class="t-small muted">
+                        {{ week.count }} garment{{ week.count|pluralize }} finished · {{ week.longer }} took longer
+                    </p>
+                </div>
+                {% if week.late %}
+                    {% include "components/chip.html" with tone="bad" label=late_label %}
+                {% endif %}
+                <span class="list__chev" aria-hidden="true">
+                    {% include "components/icon.html" with name="chevron-right" %}
+                </span>
+            </a>
+        </li>
+    </ul>
+</div>
