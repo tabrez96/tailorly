@@ -1,0 +1,95 @@
+{% load ui %}
+<section class="card live-card" aria-label="{{ card.name }}">
+    <div class="live-card__head">
+        {% if card.photo_url %}
+            <img class="avatar"
+                 src="{{ card.photo_url }}"
+                 alt=""
+                 width="44"
+                 height="44">
+        {% else %}
+            <span class="avatar" aria-hidden="true">{{ card.initials }}</span>
+        {% endif %}
+        <div class="list__main">
+            <p class="t-body">
+                <strong>{{ card.name }}</strong>
+            </p>
+            <p class="t-small muted">{{ card.day_line }}</p>
+        </div>
+        {% include "components/chip.html" with tone=card.chip_tone label=card.chip_label %}
+    </div>
+    {% if card.item %}
+        <div class="live-item">
+            <a class="live-item__link"
+               href="{{ card.item.url }}"
+               hx-get="{{ card.item.url }}"
+               hx-target="#page"
+               hx-sync="#page:replace"
+               hx-push-url="true">
+                {% thumb card.item.name card.item.thumb card.item.photo_count size="sm" %}
+                <div>
+                    <p class="t-body">
+                        <strong>{{ card.item.title }}</strong>
+                    </p>
+                    <p class="t-small muted">{{ card.item.sub }}</p>
+                </div>
+            </a>
+            {% if card.state == "working" %}
+                <div class="live-item__time"
+                     x-data="minuteTimer"
+                     data-base="{{ card.item.base_seconds }}"
+                     data-started="{{ card.item.started_at.isoformat }}"
+                     data-server-now="{{ card.now.isoformat }}"
+                     data-estimate="{{ card.item.estimate }}">
+                    <div>
+                        <p class="live-item__timer tabular" x-text="text">{{ card.item.minutes_text }}</p>
+                        <p class="t-small muted">{{ card.item.since }}</p>
+                    </div>
+                    <div class="live-item__est">
+                        <p>
+                            <strong>est. {{ card.item.estimate_text }}</strong>
+                        </p>
+                        <p class="t-small{% if card.item.over %} live-item__over{% endif %}"
+                           :class="over && 'live-item__over'"
+                           x-text="left">{{ card.item.left_text }}</p>
+                    </div>
+                    <div class="live-bar{% if card.item.over %} live-bar--over{% endif %}"
+                         :class="over && 'live-bar--over'"
+                         aria-hidden="true">
+                        <span style="width: {{ card.item.percent }}%" :style="`width: ${percent}%`"></span>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    {% endif %}
+    {% if card.note %}<p class="t-small muted">{{ card.note }}</p>{% endif %}
+    {% if card.rows %}
+        <p class="t-over">{{ card.rows_label }}</p>
+        <ul class="list">
+            {% for row in card.rows %}
+                {% include "production/_live_row.html" %}
+            {% endfor %}
+        </ul>
+    {% endif %}
+    <div class="live-card__actions{% if not card.start_day_url and not card.give_url %} live-card__actions--one{% endif %}">
+        <a class="btn btn--tonal"
+           href="{{ card.queue_url }}"
+           hx-get="{{ card.queue_url }}"
+           hx-target="#page"
+           hx-sync="#page:replace"
+           hx-push-url="true">{{ card.first }}'s queue</a>
+        {% if card.start_day_url %}
+            <button class="btn btn--primary"
+                    type="button"
+                    hx-post="{{ card.start_day_url }}"
+                    hx-target="#right-now"
+                    hx-swap="outerHTML">Start {{ card.first }}'s day</button>
+        {% elif card.give_url %}
+            <button class="btn btn--primary"
+                    type="button"
+                    id="give-{{ card.employee.pk }}"
+                    hx-get="{{ card.give_url }}"
+                    hx-target="#sheet">Give {{ card.first }} work</button>
+        {% endif %}
+    </div>
+</section>

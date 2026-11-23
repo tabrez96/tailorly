@@ -2,12 +2,12 @@ import json
 
 from django.http import Http404, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, render
-from django.urls import NoReverseMatch, reverse
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
 from accounts.decorators import employee_required, owner_required
-from core.formats import format_day
+from core.formats import format_clock, format_day
 from core.pages import render_page, sheet_saved_location
 from orders.models import Order, OrderItem, Rework
 from production.assign import (
@@ -21,6 +21,7 @@ from production.assign import (
     sheet_context,
 )
 from production.details import details_context
+from production.live import live_context
 from production.plan import (
     clear_queue,
     parse_key,
@@ -30,6 +31,7 @@ from production.plan import (
 )
 from production.timing import (
     TimingError,
+    close_stale,
     finish_item,
     finish_rework,
     my_items,
@@ -39,7 +41,7 @@ from production.timing import (
     start_rework,
     stop,
 )
-from staff.attendance import day_card, first_name
+from staff.attendance import day_card, first_name, start_day
 from staff.models import Employee
 
 NOT_STARTED = "Start your day first."
@@ -200,15 +202,45 @@ def rework_details(request, pk):
 
 @owner_required
 @require_GET
+def production(request):
+    now = timezone.now()
+    return render_page(
+        request,
+        "production/production.html",
+        {
+            "title": "Production",
+            "tab": "production",
+            "overline": f"{format_day(now)} · {format_clock(now)}".upper(),
+            "work_plan_url": reverse("work_plan"),
+            **live_context(now),
+        },
+    )
+
+
+@owner_required
+@require_GET
+def production_now(request):
+    return render(request, "production/_right_now.html", live_context(timezone.now()))
+
+
+@owner_required
+@require_POST
+def production_start_day(request, pk):
+    employee = get_object_or_404(Employee, pk=pk, active=True)
+    now = timezone.now()
+    close_stale(employee, now)
+    start_day(employee, now)  # the same DayRecord as Start my day on S08
+    return render(request, "production/_right_now.html", live_context(now))
+
+
+@owner_required
+@require_GET
 def work_plan(request):
     return _plan_page(request)
 
 
 def _plan_page(request):
-    try:
-        back_url = reverse("production")
-    except NoReverseMatch:  # the Production tab page isn't built yet
-        back_url = reverse("today")
+    back_url = reverse("production")
     context = plan_context(timezone.now())
     open_assign = ""
     if request.GET.get("assign") == "next" and context["assign_next_url"]:
@@ -239,7 +271,7 @@ def assign_sheet(request, pk):
     if not assignable(order):
         raise Http404
     data = request.POST if request.method == "POST" else request.GET
-    back = "order" if data.get("from") == "order" else "plan"
+    back = data.get("from") if data.get("from") in ("order", "production") else "plan"
     now = timezone.now()
     if request.method != "POST":
         return render(
@@ -259,11 +291,10 @@ def assign_sheet(request, pk):
         except AssignError as exc:
             error = str(exc)
         else:
-            path = (
-                reverse("order", args=[order.pk])
-                if back == "order"
-                else reverse("work_plan")
-            )
+            path = {
+                "order": reverse("order", args=[order.pk]),
+                "production": reverse("production"),
+            }.get(back, reverse("work_plan"))
             return sheet_saved_location(
                 path, f"#{order.number} assigned to {first_name(employee.name)}"
             )

@@ -1,0 +1,5 @@
+<div id="right-now" x-data="livePoll('{% url 'production_now' %}', 30000)">
+    {% for card in cards %}
+        {% include "production/_live_card.html" %}
+    {% endfor %}
+</div>

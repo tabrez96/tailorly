@@ -372,6 +372,9 @@ def panel(employee, now) -> dict:
         if hero_row is not None
         else None
     )
+    if hero is not None and state == "paused":
+        # From the query that picked the session, not from the queue snapshot.
+        hero["paused_at"] = last.ended_at
     today = timezone.localdate(now)
     finished_items = (
         OrderItem.objects.filter(

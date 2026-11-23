@@ -96,6 +96,7 @@ def _unassigned() -> list[dict]:
                 "due": f"due {format_day(order.due_date)}"
                 if order.due_date
                 else "no due date",
+                "item_count": len(items),
                 "free": order.is_free,
                 "pk": order.pk,
                 "assign_url": reverse("assign_sheet", args=[order.pk]),

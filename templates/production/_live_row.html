@@ -1,0 +1,10 @@
+<li class="list__row qrow">
+    <span class="qrow__rank">{{ row.rank }}</span>
+    <div class="list__main">
+        <p class="qrow__title">
+            <strong>{{ row.garment }}</strong> <span class="muted">{{ row.order_label }}</span>
+        </p>
+        <p class="t-small muted">{{ row.line }}</p>
+    </div>
+    {% include "components/chip.html" with tone=row.chip_tone label=row.chip_label %}
+</li>
