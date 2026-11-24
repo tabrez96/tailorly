@@ -1,0 +1,91 @@
+{% load formats %}
+{% include "components/header.html" with title=title overline=overline back_url=back_url %}
+{% include "components/report_row.html" %}
+{% include "reports/_period_nav.html" %}
+<section class="hero sales-hero" id="staff-hero">
+    <p class="t-small muted">{{ hero_label }}</p>
+    <p class="t-big sales-hero__total">{{ headline.earned|inr }}</p>
+    {% if headline.line %}<p class="t-small muted">{{ headline.line }}</p>{% endif %}
+</section>
+{% if not cards %}
+    <div class="empty">
+        <p class="muted empty__text">{{ no_staff_text }}</p>
+        <a class="btn btn--tonal"
+           href="{{ staff_url }}"
+           hx-get="{{ staff_url }}"
+           hx-target="#page"
+           hx-sync="#page:replace"
+           hx-push-url="true">Open Staff</a>
+    </div>
+{% endif %}
+{% for c in cards %}
+    <h2 class="t-sheet">{{ c.name }}</h2>
+    <div class="card pay-summary staff-report-card">
+        {% if not c.has_days %}
+            <p class="muted">{{ c.empty_text }}</p>
+        {% else %}
+            <p>
+                <span>Days worked</span><strong>{{ c.worked }}</strong>
+            </p>
+            <p>
+                <span class="staff-report-card__label">Days off <span class="t-small muted">unpaid</span></span><span class="staff-report-card__value">{{ c.off_text }}</span>
+            </p>
+            <p>
+                <span>Hours present</span><span>{{ c.present_text }}</span>
+            </p>
+            <p>
+                <span>Overtime</span><strong class="amount--warn">{{ c.overtime_text }}</strong>
+            </p>
+            <p>
+                <span>Logged on garments</span><span>{{ c.logged_line }}</span>
+            </p>
+            <div class="sales-bar staff-report-card__bar" aria-hidden="true">
+                <span class="sales-bar__fill" style="--w: {{ c.bar }}%"></span>
+            </div>
+            <p class="staff-report-card__first">
+                <strong>{{ c.day_pay_label }}</strong><strong>{{ c.day_pay|inr }}</strong>
+            </p>
+            <p>
+                <span>{{ c.ot_label }}</span><span>{{ c.ot_pay|inr }}</span>
+            </p>
+            <p>
+                <span>Earned</span><span>{{ c.earned|inr }}</span>
+            </p>
+        {% endif %}
+    </div>
+{% endfor %}
+{% if cards %}
+    <p class="t-small muted">
+        Payouts are recorded in <a class="report-note__link"
+                                   href="{{ staff_url }}"
+                                   hx-get="{{ staff_url }}"
+                                   hx-target="#page"
+                                   hx-sync="#page:replace"
+                                   hx-push-url="true">Staff</a>.
+    </p>
+{% endif %}
+{% for c in cards %}
+    {% if c.overtime_rows %}
+        <h2 class="t-sheet">Overtime by day{% if cards|length > 1 %} · {{ c.name }}{% endif %}</h2>
+        <ul class="list">
+            {% for r in c.overtime_rows %}
+                <li class="list__row">
+                    <div class="list__main">
+                        <p class="sales-row__name">{{ r.date_text }}</p>
+                        <p class="t-small muted">{{ r.times }}</p>
+                    </div>
+                    <p class="sales-row__amount">{{ r.overtime_text }}</p>
+                </li>
+            {% endfor %}
+        </ul>
+        {% if c.overtime_more %}
+            <a class="btn btn--tonal"
+               id="overtime-all"
+               href="{{ all_days_url }}"
+               hx-get="{{ all_days_url }}"
+               hx-target="#page"
+               hx-sync="#page:replace"
+               hx-replace-url="true">All days</a>
+        {% endif %}
+    {% endif %}
+{% endfor %}

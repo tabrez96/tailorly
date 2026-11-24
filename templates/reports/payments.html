@@ -1,0 +1,69 @@
+{% load formats %}
+{% include "components/header.html" with title=title overline=overline back_url=back_url %}
+{% include "components/report_row.html" %}
+{% include "reports/_period_nav.html" %}
+<section class="hero sales-hero" id="payments-hero">
+    <p class="t-small muted">{{ hero_label }}</p>
+    <p class="t-big sales-hero__total">{{ received|inr }}</p>
+    <p class="t-small muted">{{ count }} payment{{ count|pluralize }} · {{ collect.total|inr }} still to collect</p>
+</section>
+<h2 class="t-sheet">By method</h2>
+<div class="card" id="payments-methods">
+    {% if methods %}
+        <ul class="list">
+            {% for r in methods %}
+                <li class="list__row sales-row">
+                    <div class="sales-row__top">
+                        <div>
+                            <p class="sales-row__name">{{ r.label }}</p>
+                            <p class="t-small muted">{{ r.count_text }}</p>
+                        </div>
+                        <p class="sales-row__amount">{{ r.total|inr }}</p>
+                    </div>
+                    <div class="sales-bar" aria-hidden="true">
+                        <span class="sales-bar__fill" style="--w: {{ r.percent }}%"></span>
+                    </div>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p class="muted report-note" id="payments-none">{{ none_text }}</p>
+    {% endif %}
+</div>
+<h2 class="t-sheet">To collect</h2>
+<div class="card pay-summary" id="payments-collect">
+    {% if collect.orders %}
+        <p>
+            <span>Not yet delivered</span><span>{{ collect.not_delivered|inr }}</span>
+        </p>
+        <p>
+            <span>Delivered, still owing</span><span class="amount--warn">{{ collect.delivered|inr }}</span>
+        </p>
+        <p class="pay-summary__last">
+            <span>Total · {{ collect.orders }} order{{ collect.orders|pluralize }}</span><span>{{ collect.total|inr }}</span>
+        </p>
+    {% else %}
+        <p>{{ paid_up_text }}</p>
+    {% endif %}
+</div>
+{% if owing %}
+    <h2 class="t-sheet">Owing longest</h2>
+    <ul class="list" id="payments-owing">
+        {% for r in owing %}
+            <li>
+                <a class="list__row owing-row"
+                   href="{{ r.url }}"
+                   hx-get="{{ r.url }}"
+                   hx-target="#page"
+                   hx-sync="#page:replace"
+                   hx-push-url="true">
+                    <div class="list__main">
+                        <p class="sales-row__name">{{ r.customer }}</p>
+                        <p class="t-small muted">{{ r.number_text }} · {{ r.days_text }}</p>
+                    </div>
+                    <p class="sales-row__amount">{{ r.balance|inr }}</p>
+                </a>
+            </li>
+        {% endfor %}
+    </ul>
+{% endif %}
