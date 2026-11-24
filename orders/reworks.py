@@ -4,7 +4,10 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import Decimal
 
+from django.urls import reverse
+
 from catalog.models import Product
+from core.formats import format_day, format_duration
 from core.money import format_inr
 from orders.finishing import clean_answer
 from orders.materials import format_qty
@@ -92,3 +95,91 @@ def staged_rows(staged) -> list[dict]:
         }
         for i, s in enumerate(staged)
     ]
+
+
+STATUS = {
+    "not_started": ("Not started", "warn"),
+    "in_progress": ("In progress", "pri"),
+    "finished": ("Finished", "ok"),
+}
+
+
+def _duration(minutes: int) -> str:
+    """Like format_duration, but minutes are padded next to hours: 3h 05m."""
+    hours, rest = divmod(minutes, 60)
+    return f"{hours}h {rest:02d}m" if hours and rest else format_duration(minutes)
+
+
+def rework_state(finished: bool, logged: int, has_sessions: bool) -> str:
+    if finished:
+        return "finished"
+    return "in_progress" if has_sessions else "not_started"
+
+
+def minutes_text(logged: int, estimate: int, finished: bool) -> str:
+    return f"{logged} min" if finished else f"{logged} of {estimate} min"
+
+
+def materials_text(lines) -> str:
+    if not lines:
+        return "No materials"
+    return " · ".join(
+        f"{line.name} {format_qty(line.quantity)} {line.unit}" for line in lines
+    )
+
+
+def minus_inr(amount: Decimal) -> str:
+    return f"−{format_inr(amount)}" if amount else format_inr(amount)
+
+
+def time_with_rework(logged: int, rework: int) -> str:
+    text = _duration(logged)
+    return f"{text} + {_duration(rework)} rework" if rework else text
+
+
+def ready_made_with_rework(rework: int) -> str:
+    return f"Ready-made + {_duration(rework)} rework" if rework else "Ready-made"
+
+
+def rework_detail(t) -> str:
+    noun = "rework" if t.count == 1 else "reworks"
+    return (
+        f"{t.count} {noun} · {_duration(t.minutes)} · staff {format_inr(t.staff)}"
+        f" · materials {format_inr(t.materials)}"
+    )
+
+
+def rework_section(pairs) -> dict:
+    rows = []
+    for number, (rework, cost) in enumerate(pairs, start=1):
+        finished = rework.finished_at is not None
+        sessions = list(rework.sessions.all())
+        label, tone = STATUS[rework_state(finished, cost.logged, bool(sessions))]
+        photos = list(rework.item.photos.all())
+        rows.append(
+            {
+                "pk": rework.pk,
+                "label": f"R{number}",
+                "name": rework.item.name,
+                "thumb": reverse("item_photo_thumb", args=[photos[0].pk])
+                if photos
+                else None,
+                "reason": rework.get_reason_display(),
+                "status_label": label,
+                "status_tone": tone,
+                "added": format_day(rework.created_at),
+                "who": first_name(rework.assignee.name)
+                if rework.assignee
+                else "Not assigned",
+                "minutes": minutes_text(cost.logged, rework.estimate_minutes, finished),
+                "materials": materials_text(list(rework.materials.all())),
+                "cost": minus_inr(cost.cost),
+                "cost_label": "estimated" if cost.estimated else "cost",
+                "url": reverse("rework_record", args=[rework.pk]),
+            }
+        )
+    return {
+        "rows": rows,
+        "total": minus_inr(sum((c.cost for _, c in pairs), Decimal(0))),
+        "open": any(r.finished_at is None for r, _ in pairs),
+    }

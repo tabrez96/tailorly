@@ -117,3 +117,53 @@ def test_rework_timed_on_my_work(live_server, signed_in, shop):
     page.get_by_role("button", name="Finish item").click()
     page.get_by_text("Finished today").wait_for()
     assert Rework.objects.get().finished_at is not None
+
+
+def shoot(page, name):
+    page.screenshot(path=str(SHOTS / f"{name}.png"), full_page=True)
+    page.emulate_media(color_scheme="dark")
+    page.screenshot(path=str(SHOTS / f"{name}-dark.png"), full_page=True)
+    page.emulate_media(color_scheme="light")
+
+
+def test_rework_states_screens(live_server, signed_in, shop):
+    from orders.models import Payment
+    from production.models import TimeSession
+
+    order, ali = shop
+    _, page = signed_in("owner")
+    page.goto(live_server.url + f"/orders/{order.pk}/")
+    expect(page.get_by_text("No reworks after delivery.")).to_be_visible()
+    expect(page.get_by_text("Rework open")).to_have_count(0)
+    shoot(page, "S04-no-rework")
+
+    blouse, petticoat = order.items.order_by("pk")
+    OrderItem.objects.filter(pk=blouse.pk).update(price=Decimal(1800))
+    OrderItem.objects.filter(pk=petticoat.pk).update(price=Decimal(600))
+    Payment.objects.create(
+        order=order, amount=Decimal(2400), date=timezone.localdate(), method="cash"
+    )
+    now = timezone.now()
+    for item, minutes in ((blouse, 185), (petticoat, 55)):
+        TimeSession.objects.create(
+            employee=ali,
+            item=item,
+            started_at=now - timedelta(days=2),
+            ended_at=now - timedelta(days=2) + timedelta(minutes=minutes),
+        )
+    for item, minutes, finished in ((blouse, 40, now), (petticoat, 20, None)):
+        rework = Rework.objects.create(
+            item=item, reason="fit", note="Loosen", assignee=ali, finished_at=finished
+        )
+        TimeSession.objects.create(
+            employee=ali,
+            rework=rework,
+            started_at=now - timedelta(hours=1),
+            ended_at=now - timedelta(hours=1) + timedelta(minutes=minutes),
+        )
+    page.goto(live_server.url + f"/orders/{order.pk}/")
+    expect(page.get_by_text("Rework open").first).to_be_visible()
+    expect(page.get_by_text("3h 05m + 40m rework")).to_be_visible()
+    expect(page.get_by_text("55m + 20m rework")).to_be_visible()
+    expect(page.get_by_text("Gain on this order after rework")).to_be_visible()
+    shoot(page, "S04-rework-open")

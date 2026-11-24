@@ -15,3 +15,6 @@
 {% if costs.cost_missing %}
     <p class="t-small muted cost-card__notes">Some materials have no cost price yet, so they count as ₹0.</p>
 {% endif %}
+{% if costs.reworks_estimated %}
+    <p class="t-small muted cost-card__notes">Estimated: open reworks use the estimate or the time logged, whichever is more.</p>
+{% endif %}

@@ -1,0 +1,26 @@
+{% load ui formats %}
+<a class="item-row"
+   href="{{ item.detail_url }}"
+   hx-get="{{ item.detail_url }}"
+   hx-target="#page"
+   hx-sync="#page:replace"
+   hx-push-url="true">
+    {% thumb item.name item.thumb size="md" %}
+    <span class="item-row__main">
+        <span class="item-card__title">
+            <span class="draft-page__num">{{ item.number }}</span>
+            <span class="item-card__name">{{ item.name }}</span>
+        </span>
+        <span class="item-row__meta">
+            {% include "components/chip.html" with label=item.status_label tone=item.status_tone %}
+            <span class="t-small muted">{{ item.time_text }}</span>
+        </span>
+    </span>
+    <span class="tabular item-card__price">
+        {% if free %}
+            <s class="item-card__price--struck">{{ item.price|inr }}</s>
+        {% else %}
+            {{ item.price|inr }}
+        {% endif %}
+    </span>
+</a>

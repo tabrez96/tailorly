@@ -190,3 +190,82 @@ def test_bar_all_zero():
 def test_price_zero_pct_none():
     assert item_cost(item(price=D(0), material_cost=D(10)), None).gain_pct is None
     assert costing.pct(D(5), D(0)) is None
+
+
+def rework(**kw) -> costing.ReworkInput:
+    base = dict(
+        finished=True,
+        estimate_minutes=45,
+        work=(),
+        assignee_wage=None,
+        material_cost=D(0),
+    )
+    return costing.ReworkInput(**{**base, **kw})
+
+
+def test_rework_cost_finished_uses_logged():
+    c = costing.rework_cost(
+        rework(work=(Work(40, D(800)),), material_cost=D("33.4"), assignee_wage=D(800))
+    )
+    assert (c.logged, c.minutes, c.staff, c.materials) == (40, 40, D(67), D(33))
+    assert c.cost == D(100)
+    assert c.estimated is False
+
+
+def test_rework_cost_open_uses_estimate_when_more():
+    c = costing.rework_cost(
+        rework(
+            finished=False,
+            work=(Work(25, D(400)),),
+            assignee_wage=D(800),
+        )
+    )
+    assert (c.logged, c.minutes) == (25, 45)
+    # 25 min at 50/h + 20 min at 100/h
+    assert c.staff == D(54)
+    assert c.estimated is True
+
+
+def test_rework_cost_open_uses_logged_when_more():
+    c = costing.rework_cost(
+        rework(finished=False, work=(Work(60, D(800)),), assignee_wage=D(800))
+    )
+    assert (c.logged, c.minutes, c.staff) == (60, 60, D(100))
+
+
+def test_rework_cost_open_without_sessions_or_assignee():
+    c = costing.rework_cost(rework(finished=False))
+    assert (c.minutes, c.staff, c.cost) == (45, D(0), D(0))
+
+
+def test_rework_cost_has_no_running_share():
+    assert "rate" not in costing.rework_cost.__code__.co_varnames[:1]
+    c = costing.rework_cost(rework(work=(Work(60, D(800)),), material_cost=D(20)))
+    assert c.cost == c.staff + c.materials == D(120)
+
+
+def test_rework_total_and_gain_after():
+    a = costing.rework_cost(rework(work=(Work(40, D(800)),), material_cost=D(33)))
+    b = costing.rework_cost(
+        rework(finished=False, assignee_wage=D(800), cost_missing=True)
+    )
+    t = costing.rework_total([a, b])
+    assert (t.count, t.logged, t.minutes) == (2, 40, 85)
+    assert t.cost == a.cost + b.cost
+    assert t.estimated and t.cost_missing
+    gain, percent = costing.gain_after(D(900), D(2400), t)
+    assert gain == 900 - t.cost
+    assert percent == costing.pct(gain, D(2400))
+
+
+def test_item_cost_unchanged_by_refactor_open_item():
+    c = item_cost(
+        item(
+            finished=False,
+            estimate_minutes=60,
+            work=(Work(30, D(800)),),
+            assignee_wage=D(400),
+        ),
+        None,
+    )
+    assert (c.minutes, c.staff, c.rates) == (60, D(75), {D(100), D(50)})

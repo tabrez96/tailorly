@@ -4,6 +4,7 @@ from decimal import Decimal
 import pytest
 from django.contrib.auth.models import User
 from django.http import QueryDict
+from django.urls import reverse
 from django.utils import timezone
 
 from accounts.roles import EMPLOYEE, add_to_role
@@ -269,3 +270,219 @@ def test_saved_rework_in_assignee_queue(owner_client, order, item, ali):
     rework = Rework.objects.get()
     rows = queue_rows(ali, timezone.now())
     assert any(row.get("rework") and row["rework"].pk == rework.pk for row in rows)
+
+
+# --- S04: Rework after delivery -------------------------------------------
+
+from orders.reworks import (  # noqa: E402
+    materials_text,
+    minus_inr,
+    minutes_text,
+    ready_made_with_rework,
+    rework_detail,
+    rework_state,
+    time_with_rework,
+)
+from production import timing  # noqa: E402
+from reports import costing  # noqa: E402
+from reports.order_costs import cost_card, item_cost_card  # noqa: E402
+
+
+def test_minutes_text():
+    assert minutes_text(40, 45, True) == "40 min"
+    assert minutes_text(25, 45, False) == "25 of 45 min"
+
+
+def test_materials_text():
+    assert materials_text([]) == "No materials"
+    lines = [
+        MaterialLine(name="Lining, cotton cream", quantity=D("0.25"), unit="m"),
+        MaterialLine(name="Hooks", quantity=D("4"), unit="pcs"),
+    ]
+    assert materials_text(lines) == "Lining, cotton cream 0.25 m · Hooks 4 pcs"
+
+
+def test_minus_inr():
+    assert minus_inr(D(142)) == "\N{MINUS SIGN}₹142"
+    assert minus_inr(D(0)) == "₹0"
+
+
+def test_time_with_rework():
+    assert time_with_rework(185, 40) == "3h 05m + 40m rework"
+    assert time_with_rework(55, 20) == "55m + 20m rework"
+    assert time_with_rework(185, 0) == "3h 05m"
+
+
+def test_ready_made_with_rework():
+    assert ready_made_with_rework(40) == "Ready-made + 40m rework"
+    assert ready_made_with_rework(0) == "Ready-made"
+
+
+def test_ready_made_row_shows_rework_time(owner_client, order, ali):
+    scarf = OrderItem.objects.create(
+        order=order,
+        name="Scarf",
+        type=Product.READY_MADE,
+        price=D("300"),
+        usual_price=D("300"),
+    )
+    log(ali, add_rework(scarf, ali, finished_at=timezone.now()), 40)
+    assert "Ready-made + 40m rework" in page(owner_client, order)
+
+
+def test_rework_detail():
+    def total(count):
+        return costing.ReworkTotal(count, 0, 65, D(109), D(33), D(142), False, False)
+
+    assert rework_detail(total(2)) == "2 reworks · 1h 05m · staff ₹109 · materials ₹33"
+    assert rework_detail(total(1)).startswith("1 rework · ")
+
+
+def test_rework_state():
+    assert rework_state(True, 40, True) == "finished"
+    assert rework_state(False, 10, True) == "in_progress"
+    assert rework_state(False, 0, False) == "not_started"
+
+
+def add_rework(item, ali, **kw):
+    return Rework.objects.create(
+        item=item, assignee=ali, reason="fit", note="Loosen", **kw
+    )
+
+
+def log(ali, rework, minutes):
+    now = timezone.now()
+    TimeSession.objects.create(
+        employee=ali,
+        rework=rework,
+        started_at=now - timedelta(minutes=minutes),
+        ended_at=now,
+    )
+
+
+def page(client, order):
+    return client.get(f"/orders/{order.pk}/").content.decode()
+
+
+def test_order_delivered_with_reworks_shows_section(owner_client, order, item, ali):
+    OrderItem.objects.filter(pk=item.pk).update(status="finished")
+    now = timezone.now()
+    TimeSession.objects.create(
+        employee=ali,
+        item=item,
+        started_at=now - timedelta(hours=5),
+        ended_at=now - timedelta(hours=5) + timedelta(minutes=185),
+    )
+    done = add_rework(item, ali, finished_at=now)
+    log(ali, done, 40)
+    open_one = add_rework(item, ali)
+    log(ali, open_one, 20)
+    html = page(owner_client, order)
+    for text in (
+        "Rework after delivery",
+        "R1",
+        "R2",
+        "Rework open",
+        "3h 05m + 1h rework",
+        "Gain at delivery",
+        "Gain on this order after rework",
+        reverse("rework_record", args=[done.pk]),
+        reverse("rework_record", args=[open_one.pk]),
+    ):
+        assert text in html
+    assert 'class="item-row"' in html
+
+
+def test_order_stays_delivered_until_reworks_finished(owner_client, order, item, ali):
+    rework = add_rework(item, ali)
+    assert "Rework open" in page(owner_client, order)
+    now = timezone.now()
+    timing.start_rework(ali, rework, now)
+    assert Order.objects.get(pk=order.pk).status == "delivered"
+    timing.finish_rework(ali, rework, now + timedelta(minutes=30))
+    html = page(owner_client, order)
+    assert Order.objects.get(pk=order.pk).status == "delivered"
+    assert "Rework open" not in html
+    assert "R1" in html
+
+
+def test_delivered_no_reworks_empty_state(owner_client, order):
+    html = page(owner_client, order)
+    assert "No reworks after delivery." in html
+    assert "Rework open" not in html
+
+
+def test_ready_order_without_reworks_not_folded(owner_client, customer):
+    order = make_order(customer, 2, status="ready")
+    html = page(owner_client, order)
+    assert 'class="item-row"' not in html
+    assert "Rework after delivery" not in html
+
+
+def test_ready_order_with_rework_is_folded(owner_client, customer, ali):
+    order = make_order(customer, 2, status="ready")
+    add_rework(order.items.get(), ali)
+    html = page(owner_client, order)
+    assert 'class="item-row"' in html
+    assert "Rework after delivery" in html
+
+
+def test_open_order_has_no_section(owner_client, customer):
+    html = page(owner_client, make_order(customer, 3, status="in_progress"))
+    assert "Rework after delivery" not in html
+
+
+def test_invoice_unchanged_by_reworks(owner_client, order, item, ali, cream):
+    Payment.objects.create(
+        order=order, amount=D("500"), date=date(2026, 11, 1), method="cash"
+    )
+    import re
+
+    def invoice_text(html):
+        return re.sub(
+            r"\s+", " ", html.split('id="order-invoice"')[1].split("</section>")[0]
+        )
+
+    before = invoice_text(page(owner_client, order))
+    payments = Payment.objects.count()
+    rework = add_rework(item, ali)
+    MaterialLine.objects.create(
+        rework=rework,
+        product=cream,
+        name=cream.name,
+        unit="m",
+        quantity=D("0.25"),
+        cost_price=D("120"),
+        selling_price=D("150"),
+        on_bill=False,
+    )
+    log(ali, rework, 40)
+    assert invoice_text(page(owner_client, order)) == before
+    assert Payment.objects.count() == payments
+
+
+def test_item_cost_card_subtracts_rework(order, item, ali):
+    other = OrderItem.objects.create(
+        order=order, name="Skirt", type=Product.CUSTOM, price=D(500), usual_price=D(500)
+    )
+    now = timezone.now()
+    before = item_cost_card(item, now)
+    assert before["reworks"] is None
+    rework = add_rework(item, ali, finished_at=now)
+    log(ali, rework, 60)
+    add_rework(other, ali, finished_at=now)
+    card = item_cost_card(item, now)
+    r = card["reworks"]
+    assert r["total"].cost == D(100)
+    assert r["gain_after"] == before["item"].gain - D(100)
+    assert r["shop_cost"] == before["item"].cost + D(100)
+
+
+def test_cost_card_rework_has_no_running_share(order, item, ali):
+    rework = add_rework(item, ali, finished_at=timezone.now())
+    log(ali, rework, 60)
+    card = cost_card(order, timezone.now())
+    assert card["reworks"]["total"].cost == D(100)
+    assert card["reworks"]["gain_after"] == card["total"].gain - D(100)
+    assert card["reworks_estimated"] is False
+    assert cost_card(order, timezone.now())["reworks"]["detail"].startswith("1 rework")

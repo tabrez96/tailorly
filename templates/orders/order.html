@@ -25,6 +25,9 @@
             </div>
             <div class="order-head__chips">
                 {% include "components/chip.html" with label=status_chip.label tone=status_chip.tone %}
+                {% if rework_open %}
+                    {% include "components/chip.html" with label="Rework open" tone="warn" %}
+                {% endif %}
                 {% if free %}
                     {% include "components/chip.html" with label="Free" tone="warn" %}
                 {% endif %}
@@ -55,11 +58,22 @@
     <h2 class="t-section">
         Items <span class="muted">({{ items|length }})</span>
     </h2>
-    {% for item in items %}
-        {% include "orders/_item_card.html" %}
-    {% endfor %}
+    {% if fold_items %}
+        <div class="card item-rows">
+            {% for item in items %}
+                {% include "orders/_item_row.html" %}
+            {% endfor %}
+        </div>
+    {% else %}
+        {% for item in items %}
+            {% include "orders/_item_card.html" %}
+        {% endfor %}
+    {% endif %}
     {% if invoice and is_owner %}
         {% include "orders/_invoice.html" %}
+    {% endif %}
+    {% if reworks %}
+        {% include "orders/_reworks.html" %}
     {% endif %}
     {% if costs %}
         {% include "orders/_cost_gain.html" %}
