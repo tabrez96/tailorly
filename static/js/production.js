@@ -44,14 +44,14 @@ function minuteTimer() {
   };
 }
 
-function livePoll(url, every) {
+function livePoll(url, every, target = "#right-now") {
   return {
     t: null,
     init() {
       this.t = setInterval(() => {
         if (document.visibilityState !== "visible" || !this.$el.isConnected)
           return;
-        htmx.ajax("GET", url, { target: "#right-now", swap: "outerHTML" });
+        htmx.ajax("GET", url, { target, swap: "outerHTML" });
       }, every);
     },
     destroy() {

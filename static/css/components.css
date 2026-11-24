@@ -3055,3 +3055,71 @@ a.owing-row:hover {
 .list__main p {
   margin: 0;
 }
+
+/* Today (S02) */
+.today-hero {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  margin-bottom: var(--s3);
+}
+.today-hero p {
+  margin: 0;
+}
+.today-hero .avatar {
+  background: var(--hero-btn);
+  color: var(--on-hero);
+}
+.today-hero--plain .avatar {
+  background: var(--pri-l);
+  color: var(--pri-d);
+}
+.today-hero__btn {
+  width: 100%;
+}
+.header__gear {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-left: auto;
+  border-radius: 50%;
+  background: var(--pri-l);
+  color: var(--pri-d);
+}
+.money-tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s3);
+  margin-bottom: var(--s3);
+}
+.money-tile {
+  display: block;
+  margin-bottom: 0;
+}
+.money-tile p {
+  margin: 0;
+}
+.money-tile__value {
+  font-size: 28px;
+  font-weight: 800;
+}
+.money-tile__value--warn {
+  color: var(--warn);
+}
+.money-tile__link {
+  color: var(--pri);
+}
+.today-card {
+  margin-bottom: var(--s3);
+}
+.today-card ~ .t-section {
+  margin-top: var(--s5);
+  padding: 0 var(--s1);
+}
+.money-tile,
+.money-tile:hover {
+  color: var(--ink);
+  text-decoration: none;
+}

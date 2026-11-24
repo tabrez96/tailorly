@@ -91,6 +91,7 @@ urlpatterns = [
     path(
         "products/<int:pk>/remove/", catalog_views.product_remove, name="product_remove"
     ),
+    path("", include("today.urls")),
     path("", include("accounts.urls")),
     path("", include("staff.urls")),
     path("", include("customers.urls")),

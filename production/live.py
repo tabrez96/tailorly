@@ -119,6 +119,9 @@ def _item_block(state: str, hero: dict) -> dict:
         "thumb": hero["thumb"],
         "photo_count": hero["photo_count"],
         "name": item.name,
+        "order_number": hero["order"].number,
+        "customer": hero["customer"].name,
+        "rework": bool(hero["rework"]),
     }
     if state == WORKING:
         block["base_seconds"] = hero["closed_seconds"]
@@ -192,6 +195,7 @@ def employee_card(employee, now, give_url: str) -> dict:
         "state": state,
         "chip_label": chip_label,
         "chip_tone": chip_tone,
+        "day": day,
         "day_line": _day_line(state, day),
         "item": _item_block(state, hero)
         if hero and state in (WORKING, PAUSED)

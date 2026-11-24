@@ -1,0 +1,58 @@
+{% load ui %}
+<div id="today-hero"
+     x-data="livePoll('{% url 'today_hero' %}', 30000, '#today-hero')">
+    {% for card in heroes %}
+        <section class="{% if forloop.first %}hero today-hero{% else %}card today-hero today-hero--plain{% endif %}"
+                 aria-label="{{ card.name }}">
+            <div class="live-card__head">
+                {% if card.photo_url %}
+                    <img class="avatar"
+                         src="{{ card.photo_url }}"
+                         alt=""
+                         width="44"
+                         height="44">
+                {% else %}
+                    <span class="avatar" aria-hidden="true">{{ card.initials }}</span>
+                {% endif %}
+                <div class="list__main">
+                    <p class="t-body">
+                        <strong>{{ card.name }}</strong>
+                    </p>
+                    <p class="t-small muted">{{ card.day_line }}</p>
+                </div>
+                {% include "components/chip.html" with tone=card.chip_tone label=card.chip_label %}
+            </div>
+            {% with now_line=card.now_line %}
+                {% if now_line %}
+                    <p class="today-hero__now">
+                        {{ now_line.label }}: <strong>{{ now_line.what }}</strong> for {{ now_line.customer }} ·
+                        {% if now_line.timer %}
+                            <span class="tabular"
+                                  x-data="minuteTimer"
+                                  data-base="{{ now_line.base_seconds }}"
+                                  data-started="{{ now_line.started_at.isoformat }}"
+                                  data-server-now="{{ now.isoformat }}"
+                                  data-estimate="{{ now_line.estimate }}"
+                                  x-text="text">{{ now_line.minutes_text }}</span>
+                        {% else %}
+                            {{ now_line.minutes_text }}
+                        {% endif %}
+                    </p>
+                {% endif %}
+            {% endwith %}
+            {% if card.start_url %}
+                <button class="btn {% if forloop.first %}btn--on-hero{% else %}btn--tonal{% endif %} today-hero__btn"
+                        type="button"
+                        hx-post="{{ card.start_url }}"
+                        hx-target="#today-hero"
+                        hx-swap="outerHTML">Start {{ card.first }}'s day</button>
+            {% elif card.end_url %}
+                <button class="btn {% if forloop.first %}btn--on-hero{% else %}btn--tonal{% endif %} today-hero__btn"
+                        type="button"
+                        hx-post="{{ card.end_url }}"
+                        hx-target="#today-hero"
+                        hx-swap="outerHTML">End {{ card.first }}'s day</button>
+            {% endif %}
+        </section>
+    {% endfor %}
+</div>

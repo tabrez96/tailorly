@@ -32,5 +32,14 @@
                 {% endif %}
             {% endif %}
         {% endif %}
+        {% if gear_url %}
+            <a class="header__gear"
+               href="{{ gear_url }}"
+               hx-get="{{ gear_url }}"
+               hx-target="#page"
+               hx-sync="#page:replace"
+               hx-push-url="true"
+               aria-label="Settings">{% include "components/icon.html" with name="gear" %}</a>
+        {% endif %}
     </div>
 </header>
