@@ -73,7 +73,6 @@ from orders.listing import (
     OPEN,
     READY,
     SHOWS,
-    SOON,
     STATUS_CHIPS,
     ListFilter,
     filter_url,
@@ -1926,11 +1925,11 @@ def orders(request):
         }
         for key, label in SHOWS
     ]
-    if f.show == SOON:
+    if f.show in dict(HIDDEN_SHOWS):
         chips.append(
             {
-                "id": "chip-soon",
-                "label": dict(HIDDEN_SHOWS)[SOON],
+                "id": f"chip-{f.show}",
+                "label": dict(HIDDEN_SHOWS)[f.show],
                 "count": None,
                 "url": filter_url(base, f),
                 "selected": True,

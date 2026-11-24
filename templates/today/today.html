@@ -1,6 +1,35 @@
-{% include "components/header.html" with title=title back_url=back_url %}
-<p class="muted">Today's work appears here.</p>
-<div class="card">
+{% load formats %}
+{% include "components/header.html" with title=title overline=overline gear_url=gear_url %}
+{% if heroes %}
+    {% include "today/_hero.html" %}
+{% endif %}
+<div class="card today-card">
+    <ul class="list">
+        <li>
+            <a class="list__row report-row"
+               id="today-plan"
+               href="{{ plan.url }}"
+               hx-get="{{ plan.url }}"
+               hx-target="#page"
+               hx-sync="#page:replace"
+               hx-push-url="true">
+                <div class="list__main">
+                    <p class="t-body">
+                        <strong>Work plan</strong>
+                    </p>
+                    <p class="t-small muted">{{ plan.line }}</p>
+                </div>
+                {% if plan.chip %}
+                    {% include "components/chip.html" with tone="warn" label=plan.chip %}
+                {% endif %}
+                <span class="list__chev" aria-hidden="true">
+                    {% include "components/icon.html" with name="chevron-right" %}
+                </span>
+            </a>
+        </li>
+    </ul>
+</div>
+<div class="card today-card">
     <ul class="list">
         <li>
             <a class="list__row report-row"
@@ -19,7 +48,7 @@
                     </p>
                 </div>
                 {% if week.late %}
-                    {% include "components/chip.html" with tone="bad" label=late_label %}
+                    {% include "components/chip.html" with tone="warn" label=late_label %}
                 {% endif %}
                 <span class="list__chev" aria-hidden="true">
                     {% include "components/icon.html" with name="chevron-right" %}
@@ -28,3 +57,87 @@
         </li>
     </ul>
 </div>
+<h2 class="t-section">Due in the next 2 days</h2>
+{% if due %}
+    <div class="card">
+        <ul class="list">
+            {% for row in due %}
+                <li>
+                    <a class="list__row report-row"
+                       id="due-{{ row.order.pk }}"
+                       href="{{ row.url }}"
+                       hx-get="{{ row.url }}"
+                       hx-target="#page"
+                       hx-sync="#page:replace"
+                       hx-push-url="true">
+                        <div class="list__main">
+                            <p class="t-body">
+                                <strong>#{{ row.order.number }} · {{ row.order.customer.name }}</strong>
+                            </p>
+                            <p class="t-small{% if row.late %} orow__due--late{% else %} muted{% endif %}">{{ row.line }}</p>
+                        </div>
+                        {% include "components/chip.html" with label=row.status_label tone=row.status_tone %}
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+{% else %}
+    <div class="card">
+        <p class="muted">Nothing due in the next 2 days.</p>
+    </div>
+{% endif %}
+<h2 class="t-section">Money</h2>
+<div class="money-tiles">
+    <a class="card money-tile"
+       id="money-collect"
+       href="{{ money.collect_url }}"
+       hx-get="{{ money.collect_url }}"
+       hx-target="#page"
+       hx-sync="#page:replace"
+       hx-push-url="true">
+        <p class="t-small muted">To collect</p>
+        <p class="money-tile__value money-tile__value--warn tabular">{{ money.collect_total|inr }}</p>
+        <p class="t-small money-tile__link">{{ money.collect_count_text }}</p>
+    </a>
+    <a class="card money-tile"
+       id="money-received"
+       href="{{ money.received_url }}"
+       hx-get="{{ money.received_url }}"
+       hx-target="#page"
+       hx-sync="#page:replace"
+       hx-push-url="true">
+        <p class="t-small muted">Received this week</p>
+        <p class="money-tile__value tabular">{{ money.received|inr }}</p>
+        <p class="t-small muted">{{ money.received_range }}</p>
+    </a>
+</div>
+{% if pay %}
+    <h2 class="t-section">Staff pay</h2>
+    <div class="card">
+        <ul class="list">
+            {% for row in pay %}
+                <li>
+                    <a class="list__row report-row"
+                       id="pay-{{ forloop.counter }}"
+                       href="{{ row.url }}"
+                       hx-get="{{ row.url }}"
+                       hx-target="#page"
+                       hx-sync="#page:replace"
+                       hx-push-url="true">
+                        <div class="list__main">
+                            <p class="t-body">
+                                <strong>{{ row.name }}</strong>
+                            </p>
+                            <p class="t-small muted">{{ row.line }}</p>
+                        </div>
+                        <strong class="tabular">{{ row.total|inr }}</strong>
+                        <span class="list__chev" aria-hidden="true">
+                            {% include "components/icon.html" with name="chevron-right" %}
+                        </span>
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+{% endif %}

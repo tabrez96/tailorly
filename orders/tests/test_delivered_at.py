@@ -5,7 +5,7 @@ from django.utils import timezone
 
 from catalog.models import Product
 from orders.listing import SOON, show_filter
-from orders.models import Order, OrderItem
+from orders.models import Order, OrderItem, Payment
 
 pytestmark = pytest.mark.django_db
 
@@ -72,3 +72,32 @@ def test_orders_page_soon_chip(owner_client, customer):
     assert 'id="chip-soon"' in html and "Due in 7 days" in html
     plain = owner_client.get("/orders/").content.decode()
     assert "chip-soon" not in plain
+
+
+def test_owing_filter_matches_load_owing(owner_client, customer):
+    from orders.tests.conftest import make_order
+
+    paid = make_order(customer, 1)
+    part = make_order(customer, 2)
+    free = make_order(customer, 3, free=True)
+    delivered = make_order(customer, 4, status="delivered")
+    Payment.objects.create(
+        order=paid, amount=1000, date=timezone.localdate(), method="cash"
+    )
+    Payment.objects.create(
+        order=part, amount=400, date=timezone.localdate(), method="cash"
+    )
+    html = owner_client.get("/orders/?show=owing").content.decode()
+    assert f'id="order-{part.pk}"' in html
+    assert f'id="order-{delivered.pk}"' in html
+    assert f'id="order-{paid.pk}"' not in html
+    assert f'id="order-{free.pk}"' not in html
+
+
+def test_owing_chip_shown(owner_client, customer):
+    from orders.tests.conftest import make_order
+
+    make_order(customer, 1)
+    html = owner_client.get("/orders/?show=owing").content.decode()
+    assert 'id="chip-owing"' in html and "Owing" in html
+    assert "chip-owing" not in owner_client.get("/orders/").content.decode()

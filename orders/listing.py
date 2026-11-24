@@ -32,8 +32,9 @@ SHOWS = [
     (LATE, "Late"),
     (ALL, "All"),
 ]
-# Reachable by link (the production report) but not offered as a chip.
-HIDDEN_SHOWS = [(SOON, "Due in 7 days")]
+OWING = "owing"
+# Reachable by link (the production report, Today) but not offered as a chip.
+HIDDEN_SHOWS = [(SOON, "Due in 7 days"), (OWING, "Owing")]
 MAX_LENGTH = 80
 _NOT_READY = [Order.OPEN, Order.IN_PROGRESS]
 
@@ -84,6 +85,11 @@ def show_filter(show: str, today: date) -> Q:
             due_date__gte=today,
             due_date__lte=today + timedelta(days=6),
         )
+    if show == OWING:
+        # Same balances as S13 and the Today tile, so the numbers always agree.
+        from reports.payments import load_owing
+
+        return Q(pk__in=[o.order_id for o in load_owing()])
     return Q()
 
 
@@ -104,7 +110,7 @@ def search_filter(q: str) -> Q:
 
 
 def ordering(show: str) -> list:
-    if show in (OPEN, READY, LATE, SOON):
+    if show in (OPEN, READY, LATE, SOON, OWING):
         return [F("due_date").asc(nulls_last=True), "number"]
     return ["-number"]
 
