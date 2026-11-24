@@ -1,11 +1,13 @@
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
+from django.utils import timezone
+from django.views.decorators.http import require_GET
 
 from accounts.decorators import owner_required
 from core.forms_ui import error_summary_text
 from core.pages import page_location, render_page, sheet_saved
-from reports import costing
+from reports import costing, sales
 from reports import running_costs as form
 from reports.models import ShopSettings
 
@@ -71,4 +73,14 @@ def running_costs(request):
             "back_url": reverse("today"),
         },
         status=status,
+    )
+
+
+@owner_required
+@require_GET
+def sales_report(request):
+    return render_page(
+        request,
+        "reports/sales.html",
+        sales.sales_context(request.GET, timezone.localdate()),
     )

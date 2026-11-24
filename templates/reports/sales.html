@@ -1,0 +1,94 @@
+{% load formats %}
+{% include "components/header.html" with title=title back_url=back_url %}
+{% include "components/report_row.html" %}
+<form class="sales-period"
+      id="sales-period"
+      action="{% url 'sales_report' %}"
+      method="get"
+      hx-get="{% url 'sales_report' %}"
+      hx-target="#page"
+      hx-sync="#page:replace"
+      hx-push-url="true"
+      hx-trigger="change"
+      hx-indicator="#sales-body">
+    {% if group == "garment" %}<input type="hidden" name="group" value="garment">{% endif %}
+    <div class="field">
+        <label class="field__label" for="period">Period</label>
+        <select class="field__input" id="period" name="period">
+            {% for o in options %}
+                <option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    {% if is_custom %}
+        <div class="field-pair field-pair--even">
+            <div class="field">
+                <label class="field__label" for="period-from">From</label>
+                <input class="field__input"
+                       type="date"
+                       id="period-from"
+                       name="from"
+                       value="{{ period.first|date:'Y-m-d' }}">
+            </div>
+            <div class="field">
+                <label class="field__label" for="period-to">To</label>
+                <input class="field__input"
+                       type="date"
+                       id="period-to"
+                       name="to"
+                       value="{{ period.last|date:'Y-m-d' }}">
+            </div>
+        </div>
+    {% endif %}
+    <noscript>
+        <button class="btn btn--tonal" type="submit">Show</button>
+    </noscript>
+</form>
+<div id="sales-body" class="sales-body">
+    {% if is_empty %}
+        <div class="empty">
+            <div class="icon-tile icon-tile--lg">{% include "components/icon.html" with name="hanger" %}</div>
+            <h2 class="t-sheet empty__title">{{ empty_text }}</h2>
+            <p class="muted empty__text">Orders show here once they are placed.</p>
+        </div>
+    {% else %}
+        <section class="hero sales-hero" id="sales-hero">
+            <p class="t-small muted">{{ hero_label }}</p>
+            <p class="t-big sales-hero__total">{{ summary.total|inr }}</p>
+            <p class="t-small muted">
+                {{ summary.orders }} order{{ summary.orders|pluralize }} · {{ summary.customers }} customer{{ summary.customers|pluralize }} · {{ summary.to_collect|inr }} still to collect
+            </p>
+        </section>
+        <nav class="seg" aria-label="Group sales">
+            <div class="seg__track">
+                {% for s in segments %}
+                    <a class="seg__opt"
+                       id="{{ s.id }}"
+                       href="{{ s.url }}"
+                       {% if s.selected %}aria-current="true"{% endif %}
+                       hx-get="{{ s.url }}"
+                       hx-target="#page"
+                       hx-sync="#page:replace"
+                       hx-push-url="true"
+                       hx-indicator="#sales-body">{{ s.label }}</a>
+                {% endfor %}
+            </div>
+        </nav>
+        <ul class="list sales-list" id="sales-rows">
+            {% for r in rows %}
+                <li>
+                    {% if group == "customer" %}
+                        <a class="list__row sales-row"
+                           href="{{ r.url }}"
+                           hx-get="{{ r.url }}"
+                           hx-target="#page"
+                           hx-sync="#page:replace"
+                           hx-push-url="true">{% include "reports/_sales_row.html" %}</a>
+                    {% else %}
+                        <div class="list__row sales-row">{% include "reports/_sales_row.html" %}</div>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+</div>
