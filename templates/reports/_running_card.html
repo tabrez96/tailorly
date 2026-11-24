@@ -1,0 +1,11 @@
+<section class="card run-card" id="running-card">
+    <div>
+        {% if run_card.set %}<p class="run-card__title">{{ run_card.title }}</p>{% endif %}
+        <p class="t-small muted">{{ run_card.text }}</p>
+    </div>
+    <button class="btn btn--tonal btn--sm"
+            type="button"
+            id="running-edit"
+            hx-get="{{ run_url }}"
+            hx-target="#sheet">{% if run_card.set %}Edit{% else %}Add{% endif %}</button>
+</section>

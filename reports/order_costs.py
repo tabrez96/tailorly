@@ -16,7 +16,7 @@ from orders.models import Order, OrderItem, Rework
 from orders.reworks import rework_detail
 from production.models import TimeSession
 from production.timing import _logged
-from reports import costing, profit, sales
+from reports import costing, garments, profit, sales
 from reports.models import ShopBill, ShopSettings
 from staff.models import Payout
 
@@ -292,3 +292,23 @@ def payouts_total(first, last) -> Decimal:
 
 def bills(first, last) -> list[ShopBill]:
     return list(ShopBill.objects.filter(date__range=(first, last)))
+
+
+def period_pieces(orders, rate, now) -> list[garments.Piece]:
+    """One costed piece per item of the period's orders (from period_orders)."""
+    pieces = []
+    for order in orders:
+        wage = order.assignee.daily_wage if order.assignee else None
+        for item in order.items.all():
+            cost = costing.item_cost(item_input(item, wage, now), rate)
+            pieces.append(garments.Piece(item.name, order.is_free, cost))
+    return pieces
+
+
+def bill_months(today) -> list[Decimal]:
+    """Totals of the last 3 full months that have bills, oldest first."""
+    first, last = garments.last_three_months(today)
+    totals = defaultdict(Decimal)
+    for bill in ShopBill.objects.filter(date__range=(first, last)):
+        totals[(bill.date.year, bill.date.month)] += bill.amount
+    return [totals[key] for key in sorted(totals)]
