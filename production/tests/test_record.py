@@ -359,3 +359,14 @@ def test_order_page_production_row_links_to_record(owner, ali, make_item):
     ready = make_item(ali, kind=Product.READY_MADE)
     page = owner.get(reverse("order", args=[ready.order.pk])).content.decode()
     assert "item-card__production" not in page
+
+
+def test_item_record_ignores_rework_time(ali, make_item, make_rework):
+    item = make_item(ali, estimate=165)
+    sessions_for(ali, item=item, spans=((0, 185),))
+    finish(item)
+    before = record.item_record(OrderItem.objects.get(pk=item.pk), at(400))["hero"]
+    rework = make_rework(item, ali)
+    sessions_for(ali, rework=rework, spans=((300, 340),))
+    after = record.item_record(OrderItem.objects.get(pk=item.pk), at(400))["hero"]
+    assert after == before

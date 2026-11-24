@@ -16,8 +16,13 @@
             <p>
                 <span>Running costs {% if costs.running_detail %}<span class="t-small muted">{{ costs.running_detail }}</span>{% endif %}</span><span class="tabular">{{ costs.total.running|inr }}</span>
             </p>
+            {% if costs.reworks %}
+                <p>
+                    <span>Reworks <span class="t-small muted">{{ costs.reworks.detail }}</span></span><span class="tabular">{{ costs.reworks.total.cost|inr }}</span>
+                </p>
+            {% endif %}
             <p class="pay-summary__last">
-                <span>Cost to the shop</span><span class="tabular cost-card__shop">{{ costs.total.cost|inr }}</span>
+                <span>Cost to the shop</span><span class="tabular cost-card__shop">{% if costs.reworks %}{{ costs.reworks.shop_cost|inr }}{% else %}{{ costs.total.cost|inr }}{% endif %}</span>
             </p>
             {% include "orders/_cost_notes.html" %}
             <p class="t-small muted cost-card__notes">
@@ -57,9 +62,17 @@
             <p>
                 <span>Running costs</span><span class="tabular">{{ costs.total.running|inr }}</span>
             </p>
-            <p class="pay-summary__last">
-                <span>Gain on this order</span><span class="tabular {% if costs.total.gain < 0 %}cost-card__loss{% else %}cost-card__gain{% endif %}">{{ costs.total.gain|inr }}{% if costs.total.gain_pct is not None %} ({{ costs.total.gain_pct }}%){% endif %}</span>
+            <p {% if not costs.reworks %}class="pay-summary__last"{% endif %}>
+                <span>{% if costs.reworks %}Gain at delivery{% else %}Gain on this order{% endif %}</span><span class="tabular {% if costs.total.gain < 0 %}cost-card__loss{% else %}cost-card__gain{% endif %}">{{ costs.total.gain|inr }}{% if costs.total.gain_pct is not None %} ({{ costs.total.gain_pct }}%){% endif %}</span>
             </p>
+            {% if costs.reworks %}
+                <p>
+                    <span>Reworks <span class="t-small muted">{{ costs.reworks.detail }}</span></span><span class="tabular">−{{ costs.reworks.total.cost|inr }}</span>
+                </p>
+                <p class="pay-summary__last">
+                    <span>Gain on this order after rework</span><span class="tabular {% if costs.reworks.loss_after %}cost-card__loss{% else %}cost-card__gain{% endif %}">{{ costs.reworks.gain_after|inr }}{% if costs.reworks.pct_after is not None %} ({{ costs.reworks.pct_after }}%){% endif %}</span>
+                </p>
+            {% endif %}
             {% include "orders/_cost_notes.html" %}
         </div>
     {% endif %}

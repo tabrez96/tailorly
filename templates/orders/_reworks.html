@@ -1,0 +1,44 @@
+{% load ui formats %}
+<section id="order-reworks">
+    <div class="reworks-head">
+        <h2 class="t-section">Rework after delivery</h2>
+        {% if reworks.rows %}<span class="tabular cost-card__loss">{{ reworks.total }}</span>{% endif %}
+    </div>
+    {% if reworks.rows %}
+        <div class="card rework-rows">
+            {% for row in reworks.rows %}
+                <a class="rework-row"
+                   href="{{ row.url }}"
+                   hx-get="{{ row.url }}"
+                   hx-target="#page"
+                   hx-sync="#page:replace"
+                   hx-push-url="true">
+                    {% thumb row.name row.thumb size="md" %}
+                    <span class="item-row__main">
+                        <span class="item-card__title">
+                            <span class="draft-page__num">{{ row.label }}</span>
+                            <span class="item-card__name">{{ row.name }}</span>
+                            {% include "components/chip.html" with label=row.reason tone="grey" %}
+                        </span>
+                        <span class="item-row__meta">
+                            {% include "components/chip.html" with label=row.status_label tone=row.status_tone %}
+                            <span class="t-small muted">{{ row.added }} · {{ row.who }} · {{ row.minutes }}</span>
+                        </span>
+                        <span class="t-small muted">{{ row.materials }}</span>
+                    </span>
+                    <span class="rework-row__cost">
+                        <span class="tabular cost-card__loss">{{ row.cost }}</span>
+                        <span class="t-small muted">{{ row.cost_label }}</span>
+                    </span>
+                </a>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="card empty-card">
+            <p>
+                <strong>No reworks after delivery.</strong>
+            </p>
+            <p class="t-small muted">If a garment comes back for a fix, add it here to see what it costs the shop.</p>
+        </div>
+    {% endif %}
+</section>

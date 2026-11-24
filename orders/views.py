@@ -1,4 +1,5 @@
 import json
+from collections import defaultdict
 from datetime import date
 from decimal import Decimal
 
@@ -119,13 +120,16 @@ from orders.reworks import (
     item_maker,
     item_rows,
     read_staged,
+    ready_made_with_rework,
+    rework_section,
     staged_rows,
+    time_with_rework,
 )
 from production.assign import assignable
 from production.estimates import rework_minutes
 from production.record import production_line
 from production.timing import _logged
-from reports.order_costs import cost_card, item_cost_card
+from reports.order_costs import cost_card, item_cost_card, rework_costs
 from staff.attendance import first_name, initials
 from staff.models import Employee
 
@@ -533,6 +537,27 @@ def _order_context(request, order) -> dict:
         )
     )
     label, tone = STATUS_CHIPS[order.status]
+    now = timezone.now()
+    pairs = rework_costs(order, now) if owner else []
+    show_reworks = owner and (
+        order.status == Order.DELIVERED or (order.status == Order.READY and pairs)
+    )
+    cards = [
+        _item_card(order, item, number, saved.get(item.product_id), owner)
+        for number, item in enumerate(items, start=1)
+    ]
+    if show_reworks:
+        by_item = defaultdict(int)
+        for rework, cost in pairs:
+            by_item[rework.item_id] += cost.logged
+        for card, item in zip(cards, items, strict=True):
+            card["time_text"] = (
+                time_with_rework(
+                    _logged(list(item.sessions.all()), now) // 60, by_item[item.pk]
+                )
+                if card["custom"]
+                else ready_made_with_rework(by_item[item.pk])
+            )
     return {
         "title": f"Order #{order.number}",
         "tab": "orders",
@@ -555,10 +580,12 @@ def _order_context(request, order) -> dict:
         "assigned": assigned,
         "maker": maker,
         "free": order.is_free,
-        "items": [
-            _item_card(order, item, number, saved.get(item.product_id), owner)
-            for number, item in enumerate(items, start=1)
-        ],
+        "items": cards,
+        "fold_items": bool(show_reworks),
+        "rework_open": Rework.objects.filter(
+            item__order=order, finished_at__isnull=True
+        ).exists(),
+        "reworks": rework_section(pairs) if show_reworks else None,
         "ready_url": reverse("order_ready", args=[order.pk]),
         "deliver_url": reverse("order_deliver", args=[order.pk]),
         "rework_url": reverse("order_rework_add", args=[order.pk]),
@@ -568,7 +595,7 @@ def _order_context(request, order) -> dict:
         )
         if owner
         else None,
-        "costs": cost_card(order, timezone.now()) if owner else None,
+        "costs": cost_card(order, now, reworks=pairs) if owner else None,
         **_invoice_context(order),
     }
 

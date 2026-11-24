@@ -388,3 +388,23 @@ def test_still_in_progress(owner, ali, finish, make_item):
     )
     html = owner.get("/production/report/?period=day").content.decode()
     assert "Still in progress" in html and "Petticoat" in html
+
+
+@db
+def test_report_ignores_rework_time(ali, finish, make_rework):
+    item = finish(ali, 60, estimate=45)
+    now = timezone.now()
+    before = report._row(OrderItem.objects.get(pk=item.pk), now)
+    summary_before = report.estimate_summary([before])
+    rework = make_rework(item, ali)
+    TimeSession.objects.create(
+        employee=ali,
+        rework=rework,
+        started_at=now - timedelta(hours=3),
+        ended_at=now - timedelta(hours=2),
+    )
+    Rework = type(rework)
+    Rework.objects.filter(pk=rework.pk).update(finished_at=now)
+    after = report._row(OrderItem.objects.get(pk=item.pk), now)
+    assert after["took"] == before["took"] == 60
+    assert report.estimate_summary([after]) == summary_before

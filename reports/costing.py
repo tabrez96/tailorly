@@ -75,6 +75,39 @@ class ItemCost:
 
 
 @dataclass(frozen=True)
+class ReworkInput:
+    finished: bool
+    estimate_minutes: int
+    work: tuple[Work, ...]  # per employee, from the rework's sessions
+    assignee_wage: Decimal | None  # daily wage of the rework's assignee
+    material_cost: Decimal  # sum of known material cost totals
+    cost_missing: bool = False
+
+
+@dataclass(frozen=True)
+class ReworkCost:
+    logged: int  # minutes actually logged
+    minutes: int  # minutes counted (the estimate while open, if more)
+    staff: Decimal
+    materials: Decimal
+    cost: Decimal  # staff + materials; never a running-cost share
+    estimated: bool  # not finished
+    cost_missing: bool
+
+
+@dataclass(frozen=True)
+class ReworkTotal:
+    count: int
+    logged: int
+    minutes: int
+    staff: Decimal
+    materials: Decimal
+    cost: Decimal
+    estimated: bool
+    cost_missing: bool
+
+
+@dataclass(frozen=True)
 class OrderCost:
     items: tuple[ItemCost, ...]
     price: Decimal
@@ -91,29 +124,35 @@ class OrderCost:
     rates: frozenset
 
 
+def _timed_staff(
+    work, finished: bool, estimate: int | None, assignee_wage: Decimal | None
+) -> tuple[int, int, Decimal, frozenset]:
+    """(logged, minutes counted, staff cost unrounded, hourly rates used)."""
+    logged = sum(w.minutes for w in work)
+    staff_raw = sum((w.minutes * hourly_rate(w.daily_wage) / 60 for w in work), ZERO)
+    rates = {hourly_rate(w.daily_wage) for w in work if w.minutes}
+    minutes = logged
+    if not finished and estimate and estimate > logged:
+        minutes = estimate
+        if assignee_wage is not None:
+            extra_rate = hourly_rate(assignee_wage)
+            staff_raw += (estimate - logged) * extra_rate / 60
+            rates.add(extra_rate)
+    return logged, minutes, staff_raw, frozenset(rates)
+
+
 def item_cost(item: ItemInput, rate: Decimal | None) -> ItemCost:
     materials = rupees(item.material_cost)
     sale = item.price + item.billed_selling
     if item.ready_made:
         minutes, staff, running, estimated, rates = 0, ZERO, ZERO, False, frozenset()
     else:
-        logged = sum(w.minutes for w in item.work)
-        staff_raw = sum(
-            (w.minutes * hourly_rate(w.daily_wage) / 60 for w in item.work), ZERO
+        logged, minutes, staff_raw, rates = _timed_staff(
+            item.work, item.finished, item.estimate_minutes, item.assignee_wage
         )
-        rates = {hourly_rate(w.daily_wage) for w in item.work if w.minutes}
-        minutes = logged
-        estimate = item.estimate_minutes
-        if not item.finished and estimate and estimate > logged:
-            minutes = estimate
-            if item.assignee_wage is not None:
-                extra_rate = hourly_rate(item.assignee_wage)
-                staff_raw += (estimate - logged) * extra_rate / 60
-                rates.add(extra_rate)
         estimated = not item.finished
         staff = rupees(staff_raw)
         running = rupees(minutes * rate / 60) if rate else ZERO
-        rates = frozenset(rates)
     cost = staff + materials + running
     gain = sale - cost
     return ItemCost(
@@ -151,6 +190,44 @@ def order_cost(items: list[ItemCost]) -> OrderCost:
         cost_missing=any(i.cost_missing for i in items),
         rates=frozenset().union(*(i.rates for i in items)),
     )
+
+
+def rework_cost(r: ReworkInput) -> ReworkCost:
+    logged, minutes, staff_raw, _ = _timed_staff(
+        r.work, r.finished, r.estimate_minutes, r.assignee_wage
+    )
+    staff = rupees(staff_raw)
+    materials = rupees(r.material_cost)
+    return ReworkCost(
+        logged=logged,
+        minutes=minutes,
+        staff=staff,
+        materials=materials,
+        cost=staff + materials,
+        estimated=not r.finished,
+        cost_missing=r.cost_missing,
+    )
+
+
+def rework_total(costs: list[ReworkCost]) -> ReworkTotal:
+    """Sums of the rounded rework figures."""
+    return ReworkTotal(
+        count=len(costs),
+        logged=sum(c.logged for c in costs),
+        minutes=sum(c.minutes for c in costs),
+        staff=sum((c.staff for c in costs), ZERO),
+        materials=sum((c.materials for c in costs), ZERO),
+        cost=sum((c.cost for c in costs), ZERO),
+        estimated=any(c.estimated for c in costs),
+        cost_missing=any(c.cost_missing for c in costs),
+    )
+
+
+def gain_after(
+    gain: Decimal, price: Decimal, reworks: ReworkTotal
+) -> tuple[Decimal, int | None]:
+    after = gain - reworks.cost
+    return after, pct(after, price)
 
 
 SEGMENTS = (

@@ -2071,6 +2071,63 @@ body[data-subpage="1"] .nav {
   font-weight: 400;
   text-decoration: line-through;
 }
+.item-rows,
+.rework-rows {
+  margin-bottom: var(--s4);
+}
+.item-row,
+.rework-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s3) 0;
+  border-bottom: 1px solid var(--line);
+  color: inherit;
+  text-decoration: none;
+}
+.item-row:first-child,
+.rework-row:first-child {
+  padding-top: 0;
+}
+.item-row:last-child,
+.rework-row:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+.empty-card {
+  text-align: center;
+  padding: var(--s5) var(--s4);
+}
+.empty-card p {
+  margin: 0;
+}
+.empty-card p + p {
+  margin-top: var(--s1);
+}
+.item-row__main {
+  display: grid;
+  gap: var(--s1);
+  justify-items: start;
+  min-width: 0;
+}
+.item-row__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+}
+.rework-row__cost {
+  display: grid;
+  justify-items: end;
+  align-self: start;
+  font-weight: 700;
+}
+.reworks-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
 .item-card__chevron {
   display: grid;
   color: var(--muted);
