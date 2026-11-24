@@ -1,0 +1,185 @@
+{% load formats %}
+{% include "components/header.html" with title=title back_url=back_url %}
+{% include "components/report_row.html" %}
+<form class="profit-period"
+      id="profit-period"
+      action="{% url 'profit_report' %}"
+      method="get"
+      hx-get="{% url 'profit_report' %}"
+      hx-target="#page"
+      hx-sync="#page:replace"
+      hx-push-url="true"
+      hx-trigger="change"
+      hx-indicator="#profit-body">
+    {% if by == "sale" %}<input type="hidden" name="by" value="sale">{% endif %}
+    <div class="field">
+        <label class="field__label" for="period">Period</label>
+        <select class="field__input" id="period" name="period">
+            {% for o in options %}
+                <option value="{{ o.value }}"{% if o.selected %} selected{% endif %}>{{ o.label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    {% if is_custom %}
+        <div class="field-pair field-pair--even">
+            <div class="field">
+                <label class="field__label" for="period-from">From</label>
+                <input class="field__input"
+                       type="date"
+                       id="period-from"
+                       name="from"
+                       value="{{ period.first|date:'Y-m-d' }}">
+            </div>
+            <div class="field">
+                <label class="field__label" for="period-to">To</label>
+                <input class="field__input"
+                       type="date"
+                       id="period-to"
+                       name="to"
+                       value="{{ period.last|date:'Y-m-d' }}">
+            </div>
+        </div>
+    {% endif %}
+    <noscript>
+        <button class="btn btn--tonal" type="submit">Show</button>
+    </noscript>
+</form>
+<div id="profit-body" class="sales-body profit-body">
+    <section class="card profit-card" id="shop-profit">
+        <p class="profit-card__row">
+            <span>Sales</span><span>{{ shop.sales|inr }}</span>
+        </p>
+        <p class="profit-card__row">
+            <span>Materials</span><span>−{{ shop.materials|inr }}</span>
+        </p>
+        <p class="profit-card__row">
+            <span>Staff pay</span><span>−{{ shop.staff_pay|inr }}</span>
+        </p>
+        <p class="profit-card__row">
+            <span>Shop bills</span><span>−{{ shop.bills|inr }}</span>
+        </p>
+        <hr class="profit-card__rule">
+        <p class="profit-card__row profit-card__total">
+            <span>Profit</span>
+            <span class="{% if shop.profit < 0 %}cost-card__loss{% else %}cost-card__gain{% endif %}">{{ shop.profit|inr }}</span>
+        </p>
+        <p class="t-small muted">{{ note }}</p>
+    </section>
+    <h2 class="t-section">Free work and reworks</h2>
+    <ul class="list" id="free-reworks">
+        <li>
+            {% if free %}
+                <a class="list__row profit-line"
+                   id="free-work"
+                   href="{{ free_url }}"
+                   hx-get="{{ free_url }}"
+                   hx-target="#page"
+                   hx-sync="#page:replace"
+                   hx-push-url="true">
+                    <div>
+                        <p class="sales-row__name">Free work</p>
+                        <p class="t-small muted">{{ free.text }}</p>
+                    </div>
+                    <div class="profit-row__cost">
+                        <p class="sales-row__amount cost-card__loss">{{ free.cost|inr }}</p>
+                        <p class="t-small muted">cost</p>
+                    </div>
+                </a>
+            {% else %}
+                <div class="list__row profit-line" id="free-work">
+                    <div>
+                        <p class="sales-row__name">Free work</p>
+                        <p class="t-small muted">{{ none_text }}</p>
+                    </div>
+                </div>
+            {% endif %}
+        </li>
+        <li>
+            {% if reworks %}
+                <a class="list__row profit-line"
+                   id="reworks"
+                   href="{{ reworks_url }}"
+                   hx-get="{{ reworks_url }}"
+                   hx-target="#page"
+                   hx-sync="#page:replace"
+                   hx-push-url="true">
+                    <div>
+                        <p class="sales-row__name">Reworks</p>
+                        <p class="t-small muted">{{ reworks.text }}</p>
+                    </div>
+                    <div class="profit-row__cost">
+                        <p class="sales-row__amount cost-card__loss">{{ reworks.cost|inr }}</p>
+                        <p class="t-small muted">cost</p>
+                    </div>
+                </a>
+            {% else %}
+                <div class="list__row profit-line" id="reworks">
+                    <div>
+                        <p class="sales-row__name">Reworks</p>
+                        <p class="t-small muted">{{ none_text }}</p>
+                    </div>
+                </div>
+            {% endif %}
+        </li>
+    </ul>
+    {% if caption %}<p class="t-small muted" id="free-caption">{{ caption }}</p>{% endif %}
+    <div class="profit-by">
+        <h2 class="t-section">Profit by</h2>
+        <nav class="seg" aria-label="Profit by">
+            <div class="seg__track">
+                {% for s in segments %}
+                    <a class="seg__opt"
+                       id="{{ s.id }}"
+                       href="{{ s.url }}"
+                       {% if s.selected %}aria-current="true"{% endif %}
+                       hx-get="{{ s.url }}"
+                       hx-target="#page"
+                       hx-sync="#page:replace"
+                       hx-push-url="true"
+                       hx-indicator="#profit-body">{{ s.label }}</a>
+                {% endfor %}
+            </div>
+        </nav>
+    </div>
+    {% if rows %}
+        <ul class="list sales-list" id="profit-rows">
+            {% for r in rows %}
+                <li>
+                    <a class="list__row sales-row"
+                       href="{{ r.url }}"
+                       hx-get="{{ r.url }}"
+                       hx-target="#page"
+                       hx-sync="#page:replace"
+                       hx-push-url="true">{% include "reports/_profit_row.html" %}</a>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <div class="empty">
+            <div class="icon-tile icon-tile--lg">{% include "components/icon.html" with name="hanger" %}</div>
+            <h2 class="t-sheet empty__title">{{ rows_empty_text }}</h2>
+            <p class="muted empty__text">Orders show here once they are placed.</p>
+        </div>
+    {% endif %}
+    <div class="profit-bills-head">
+        <h2 class="t-section">Shop bills</h2>
+        <button class="btn btn--tonal btn--sm"
+                type="button"
+                id="add-bill"
+                hx-get="{{ bill_url }}"
+                hx-target="#sheet">+ Add bill</button>
+    </div>
+    <ul class="list" id="shop-bills">
+        {% for b in bills %}
+            <li class="list__row bill-row">
+                <span class="muted">{{ b.date|date:"j M" }}</span>
+                <span class="sales-row__name">{{ b.name }}</span>
+                <span class="sales-row__amount">{{ b.amount|inr }}</span>
+            </li>
+        {% empty %}
+            <li class="list__row">
+                <span class="muted">{{ none_text }}</span>
+            </li>
+        {% endfor %}
+    </ul>
+</div>

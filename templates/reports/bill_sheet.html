@@ -1,0 +1,17 @@
+{% extends "components/sheet_content.html" %}
+{% load ui %}
+{% block sheet_title %}Add bill{% endblock %}
+{% block sheet_body %}
+    <form method="post"
+          novalidate
+          action="{{ action }}"
+          hx-post="{{ action }}"
+          hx-target="#sheet">
+        {% csrf_token %}
+        {% error_summary form "save this bill" %}
+        {% field form.name %}
+        {% field form.amount %}
+        {% field form.date %}
+        <button class="btn btn--primary btn--block" type="submit">Save bill</button>
+    </form>
+{% endblock %}

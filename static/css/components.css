@@ -2858,3 +2858,77 @@ a.sales-row:hover {
 .sales-body.htmx-request .sales-bar__fill {
   background: transparent;
 }
+
+/* Profit report */
+.profit-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+}
+.profit-card p {
+  margin: 0;
+}
+.profit-card__row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s3);
+  line-height: 30px;
+}
+.profit-card__rule {
+  margin: var(--s2) 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+.profit-card__total {
+  font-weight: 700;
+}
+.profit-card .t-small {
+  margin-top: var(--s2);
+}
+.profit-body > h2,
+.profit-by h2,
+.profit-bills-head h2 {
+  margin: 0;
+}
+.profit-body .list > li {
+  position: relative;
+}
+.profit-body .list > li + li::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: var(--s4);
+  right: var(--s4);
+  height: 1px;
+  background: var(--line);
+}
+.profit-line {
+  justify-content: space-between;
+}
+a.profit-line,
+a.profit-line:hover {
+  color: inherit;
+  text-decoration: none;
+}
+.profit-line p {
+  margin: 0;
+}
+.profit-row__cost {
+  text-align: right;
+}
+.profit-by,
+.profit-bills-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+.profit-by .seg {
+  flex: 1;
+  margin: 0;
+  max-width: 240px;
+}
+.bill-row {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+}

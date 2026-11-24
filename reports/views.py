@@ -6,9 +6,11 @@ from django.views.decorators.http import require_GET
 
 from accounts.decorators import owner_required
 from core.forms_ui import error_summary_text
-from core.pages import page_location, render_page, sheet_saved
-from reports import costing, sales
+from core.pages import page_location, render_page, sheet_saved, sheet_saved_location
+from core.reports import report_row
+from reports import costing, order_costs, profit, sales
 from reports import running_costs as form
+from reports.forms import ShopBillForm
 from reports.models import ShopSettings
 
 
@@ -83,4 +85,104 @@ def sales_report(request):
         request,
         "reports/sales.html",
         sales.sales_context(request.GET, timezone.localdate()),
+    )
+
+
+def _profit_context(params, today, now) -> dict:
+    period = sales.parse_period(params, today)
+    by = "sale" if params.get("by") == "sale" else "customer"
+    first, last = period.first, period.last
+    rate = ShopSettings.current().running_rate()
+    orders = [
+        order_costs.figures(o, rate, now)
+        for o in order_costs.period_orders(first, last)
+    ]
+    reworks_total, rework_logged = order_costs.period_rework_total(first, last, now)
+    bill_list = order_costs.bills(first, last)
+    shop = profit.shop_profit(
+        sales.summary(sales.load_sales(first, last))["total"],
+        sum((o.materials for o in orders), sales.ZERO) + reworks_total.materials,
+        order_costs.payouts_total(first, last),
+        sum((b.amount for b in bill_list), sales.ZERO),
+        sum((o.logged_staff for o in orders), sales.ZERO) + rework_logged,
+    )
+    free = profit.free_work(orders)
+    reworks = profit.reworks_line(reworks_total)
+    query = sales.period_query(period)
+    sheet_query = params.urlencode()
+    if by == "sale":
+        rows = [
+            r | {"url": reverse("order", args=[r["order_id"]])}
+            for r in profit.by_sale(orders)
+        ]
+    else:
+        rows = [
+            r | {"url": reverse("customer", args=[r["customer_id"]])}
+            for r in profit.by_customer(orders)
+        ]
+    return {
+        "title": "Reports",
+        "subpage": True,
+        "back_url": sales.back_url(),
+        "report_row": report_row("profit_report", query),
+        "period": period,
+        "options": [
+            {
+                "value": k,
+                "label": sales.option_label(k, today),
+                "selected": k == period.key,
+            }
+            for k in sales.PERIODS
+        ],
+        "is_custom": period.key == sales.CUSTOM,
+        "shop": shop,
+        "note": profit.note(shop),
+        "free": free,
+        "reworks": reworks,
+        "none_text": profit.none_text(period),
+        "caption": profit.caption(free, reworks),
+        "free_url": reverse("orders") + "?show=free",
+        # S03 has no Rework filter yet, so this opens it unfiltered (All, not Open).
+        "reworks_url": reverse("orders") + "?show=all",
+        "segments": [
+            {
+                "id": f"by-{b}",
+                "label": b.capitalize(),
+                "url": f"{reverse('profit_report')}?{query}"
+                + ("&by=sale" if b == "sale" else ""),
+                "selected": by == b,
+            }
+            for b in ("customer", "sale")
+        ],
+        "by": by,
+        "rows": rows,
+        "rows_empty_text": sales.empty_text(period),
+        "bills": bill_list,
+        "bill_url": reverse("bill_new") + (f"?{sheet_query}" if sheet_query else ""),
+    }
+
+
+@owner_required
+@require_GET
+def profit_report(request):
+    return render_page(
+        request,
+        "reports/profit.html",
+        _profit_context(request.GET, timezone.localdate(), timezone.now()),
+    )
+
+
+@owner_required
+def bill_new(request):
+    form = ShopBillForm(request.POST or None, initial={"date": timezone.localdate()})
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        query = request.GET.urlencode()
+        path = reverse("profit_report") + (f"?{query}" if query else "")
+        return sheet_saved_location(path, "Bill saved")
+    return render(
+        request,
+        "reports/bill_sheet.html",
+        {"form": form, "action": request.get_full_path()},
+        status=422 if request.method == "POST" else 200,
     )

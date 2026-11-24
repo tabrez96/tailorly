@@ -1,0 +1,11 @@
+{% load formats %}
+<div class="sales-row__top">
+    <div>
+        <p class="sales-row__name">{{ r.name }}</p>
+        <p class="t-small muted">{{ r.sub }}</p>
+    </div>
+    <p class="sales-row__amount {% if r.profit < 0 %}cost-card__loss{% else %}cost-card__gain{% endif %}">{{ r.profit|inr }}</p>
+</div>
+<div class="sales-bar" aria-hidden="true">
+    <span class="sales-bar__fill" style="--w: {{ r.percent }}%"></span>
+</div>

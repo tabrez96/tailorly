@@ -19,7 +19,7 @@ Status: **draft** (UX not approved yet), **approved**, **building** (a ticket fo
 | S09 | [My Pay](screens/S09-my-pay/screen.html) (+1 states) · [spec](screens/S09-my-pay/spec.md) | built |  | T-174 | 2026-11-17 |
 | S10 | [Staff](screens/S10-staff/screen.html) (+3 states) · [spec](screens/S10-staff/spec.md) | building |  | T-170, T-174, T-178, T-179 | 2026-11-17 |
 | S11 | [Reports](screens/S11-reports/screen.html) (+4 states) · [spec](screens/S11-reports/spec.md) | building |  | T-175, T-177, T-179, T-237, T-243, T-244 | 2026-11-17 |
-| S12 | [Production](screens/S12-production/screen.html) (+6 states) · [spec](screens/S12-production/spec.md) | building |  | T-172, T-173, T-177, T-203, T-237, T-240, T-241 | 2026-11-17 |
+| S12 | [Production](screens/S12-production/screen.html) (+6 states) · [spec](screens/S12-production/spec.md) | built |  | T-172, T-173, T-177, T-203, T-237, T-240, T-241 | 2026-11-17 |
 | S13 | [Payments](screens/S13-payments/screen.html) (+1 states) · [spec](screens/S13-payments/spec.md) | building |  | T-178, T-237 | 2026-11-17 |
 | S14 | [Staff Report](screens/S14-staff-report/screen.html) (+1 states) · [spec](screens/S14-staff-report/spec.md) | building |  | T-178, T-179, T-237 | 2026-11-17 |
 | S15 | [Products](screens/S15-products/screen.html) (+5 states) · [spec](screens/S15-products/spec.md) | built |  | T-161, T-164, T-186, T-187 | 2026-11-17 |
