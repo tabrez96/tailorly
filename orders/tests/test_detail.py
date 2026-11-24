@@ -3,7 +3,16 @@ from decimal import Decimal
 
 from django.utils import timezone
 
-from orders.detail import assigned_line, measurement_summary, queue_rank, status_steps
+from orders.detail import (
+    assigned_line,
+    item_meta,
+    item_overline,
+    measurement_summary,
+    option_rows,
+    photo_badge,
+    queue_rank,
+    status_steps,
+)
 from orders.forms import PaymentForm
 
 
@@ -85,3 +94,43 @@ def test_queue_rank_by_due_date_and_undated_last():
     assert queue_rank([(1, d2), (2, None)], 3, d1) == 1
     assert queue_rank([(1, d1), (2, d2)], 3, None) == 3
     assert queue_rank([(1, None)], 2, None) == 2
+
+
+def test_item_overline():
+    assert (
+        item_overline(1042, "Meera Iyer", 1, 2) == "ORD-1042 · MEERA IYER · ITEM 1 OF 2"
+    )
+
+
+def test_item_meta_full():
+    assert (
+        item_meta("Ali", 160, 180, date(2026, 11, 13))
+        == "Ali · 2h 40m of 3h est. · due Fri 13 Nov"
+    )
+
+
+def test_item_meta_no_estimate_nothing_logged():
+    assert item_meta("Ali", 0, None, date(2026, 11, 13)) == "Ali · due Fri 13 Nov"
+
+
+def test_item_meta_logged_without_estimate():
+    assert item_meta("", 90, None, None) == "1h 30m"
+
+
+def test_item_meta_empty():
+    assert item_meta("", 0, None, None) == ""
+
+
+def test_option_rows_marks_when_done():
+    answers = [
+        {"name": "Lining", "answer": "Yes"},
+        {"name": "Padding", "answer": "No"},
+    ]
+    assert option_rows(answers, {"Lining"}) == [
+        {"name": "Lining", "answer": "Yes", "when_done": True},
+        {"name": "Padding", "answer": "No", "when_done": False},
+    ]
+
+
+def test_photo_badge():
+    assert [photo_badge(n) for n in (0, 1, 3)] == ["", "", "1/3"]

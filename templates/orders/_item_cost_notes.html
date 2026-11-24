@@ -1,0 +1,17 @@
+{% if costs.ready_made %}
+    <p class="t-small muted cost-card__notes">Ready-made items cost their materials only.</p>
+{% elif costs.estimated %}
+    <p class="t-small muted cost-card__notes">Estimated until this item is finished.</p>
+{% endif %}
+{% if costs.rate_missing %}
+    <p class="t-small muted cost-card__notes">
+        Running costs aren't set, so they count as ₹0.
+        <a href="{{ costs.settings_url }}"
+           hx-get="{{ costs.settings_url }}"
+           hx-target="#page"
+           hx-push-url="true">Set running costs</a>
+    </p>
+{% endif %}
+{% if costs.cost_missing %}
+    <p class="t-small muted cost-card__notes">Some materials have no cost price yet, so they count as ₹0.</p>
+{% endif %}

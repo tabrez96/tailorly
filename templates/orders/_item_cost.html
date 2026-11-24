@@ -1,0 +1,55 @@
+{% load formats %}
+<section id="item-costs">
+    {% if costs.free %}
+        <h2 class="t-section">Free order</h2>
+        <div class="card pay-summary">
+            <p>
+                <span>Usual price, not charged</span><span class="tabular">{{ costs.item.sale|inr }}</span>
+            </p>
+            <p>
+                <span>Materials</span><span class="tabular">{{ costs.item.materials|inr }}</span>
+            </p>
+            {% if not costs.ready_made %}
+                <p>
+                    <span>Staff time{% if costs.staff_detail %} <span class="t-small muted">{{ costs.staff_detail }}</span>{% endif %}</span><span class="tabular">{{ costs.item.staff|inr }}</span>
+                </p>
+                <p>
+                    <span>Running costs{% if costs.running_detail %} <span class="t-small muted">{{ costs.running_detail }}</span>{% endif %}</span><span class="tabular">{{ costs.item.running|inr }}</span>
+                </p>
+            {% endif %}
+            <p class="pay-summary__last">
+                <span>Cost to the shop</span><span class="tabular cost-card__shop">{{ costs.item.cost|inr }}</span>
+            </p>
+            {% include "orders/_item_cost_notes.html" %}
+        </div>
+    {% else %}
+        <h2 class="t-section">Cost and gain</h2>
+        <div class="card pay-summary">
+            <p>
+                <span>Price</span><span class="tabular">{{ costs.item.price|inr }}</span>
+            </p>
+            {% if costs.billed > 0 %}
+                <p>
+                    <span>Materials on the bill</span><span class="tabular">+{{ costs.billed|inr }}</span>
+                </p>
+            {% endif %}
+            {% if not costs.ready_made %}
+                <p>
+                    <span>Staff time{% if costs.staff_detail %} <span class="t-small muted">{{ costs.staff_detail }}</span>{% endif %}</span><span class="tabular">−{{ costs.item.staff|inr }}</span>
+                </p>
+            {% endif %}
+            <p>
+                <span>Materials</span><span class="tabular">−{{ costs.item.materials|inr }}</span>
+            </p>
+            {% if not costs.ready_made %}
+                <p>
+                    <span>Running costs{% if costs.running_detail %} <span class="t-small muted">{{ costs.running_detail }}</span>{% endif %}</span><span class="tabular">−{{ costs.item.running|inr }}</span>
+                </p>
+            {% endif %}
+            <p class="pay-summary__last">
+                <span>Gain on this item</span><span class="tabular {% if costs.loss %}cost-card__loss{% else %}cost-card__gain{% endif %}">{{ costs.item.gain|inr }}{% if costs.item.gain_pct is not None %} · {{ costs.item.gain_pct }}%{% endif %}</span>
+            </p>
+            {% include "orders/_item_cost_notes.html" %}
+        </div>
+    {% endif %}
+</section>

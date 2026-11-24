@@ -22,7 +22,7 @@ from django.views.decorators.http import require_POST
 
 from accounts.decorators import owner_required
 from accounts.roles import OWNER, role_for
-from catalog.models import Product
+from catalog.models import Product, ProductOption
 from core.formats import format_day
 from core.forms_ui import error_summary_text
 from core.money import format_inr
@@ -41,7 +41,11 @@ from orders import invoice as invoice_mod
 from orders.access import can_see_order
 from orders.detail import (
     assigned_line,
+    item_meta,
+    item_overline,
     measurement_summary,
+    option_rows,
+    photo_badge,
     queue_rank,
     status_steps,
 )
@@ -109,7 +113,7 @@ from orders.photos import (
 from production.assign import assignable
 from production.record import production_line
 from production.timing import _logged
-from reports.order_costs import cost_card
+from reports.order_costs import cost_card, item_cost_card
 from staff.attendance import first_name, initials
 from staff.models import Employee
 
@@ -604,6 +608,7 @@ def _item_card(order, item, number, saved_set, owner=False) -> dict:
         }
     return {
         "production": production,
+        "detail_url": reverse("order_item", args=[order.pk, item.pk]) if owner else "",
         "pk": item.pk,
         "number": number,
         "name": item.name,
@@ -670,10 +675,98 @@ def _render_item_card(request, item) -> HttpResponse:
     )
 
 
+def _item_detail_context(item) -> dict:
+    order = item.order
+    fresh = (
+        OrderItem.objects.select_related("product")
+        .prefetch_related("photos", "materials", "sessions")
+        .get(pk=item.pk)
+    )
+    fresh.order = order
+    ids = list(order.items.values_list("pk", flat=True))
+    position = ids.index(item.pk) + 1
+    saved_set = MeasurementSet.objects.filter(
+        customer=order.customer, product_id=item.product_id
+    ).first()
+    card = _item_card(order, fresh, position, saved_set, owner=True)
+    card["materials"] = _materials_block(fresh, "item", heading=True) | {
+        "empty": "No materials yet."
+    }
+    if card["measure_url"]:
+        card["measure_url"] += "?on=item"
+    logged = _logged(list(fresh.sessions.all()), timezone.now()) // 60
+    when_done = (
+        set(
+            fresh.product.options.filter(
+                asked_when=ProductOption.WHEN_DONE
+            ).values_list("name", flat=True)
+        )
+        if fresh.product and card["custom"]
+        else set()
+    )
+    maker = _maker(order)
+    return {
+        "title": item.name,
+        "overline": item_overline(
+            order.number, order.customer.name, position, len(ids)
+        ),
+        "tab": "orders",
+        "subpage": True,
+        "back_url": reverse("order", args=[order.pk]),
+        "edit_url": reverse("order_edit_item", args=[order.pk, item.pk])
+        if order.status != Order.DELIVERED
+        else "",
+        "order": order,
+        "item": card,
+        "product_name": fresh.product.name if fresh.product else "",
+        "usual_price": fresh.usual_price,
+        "free": order.is_free,
+        "maker": maker,
+        "meta": item_meta(maker, logged, fresh.estimate_minutes, order.due_date)
+        if card["custom"]
+        else "Sold off the shelf. No measurements and no production.",
+        "options": option_rows(fresh.options, when_done) if card["custom"] else [],
+        "badge": photo_badge(len(card["photos"])),
+        "costs": item_cost_card(fresh, timezone.now()),
+        "order_url": reverse("order", args=[order.pk]),
+    }
+
+
+@login_required
+def item_detail(request, pk, item_pk):
+    if role_for(request.user) != OWNER:
+        raise Http404
+    item = _placed_item_or_404(pk, item_pk)
+    return render_page(request, "orders/item_detail.html", _item_detail_context(item))
+
+
+def _item_detail_refreshed(request, item, toast) -> HttpResponse:
+    """Re-render S19 in place, close the sheet and show a toast."""
+    if not request.headers.get("HX-Request"):
+        return _redirect_303(reverse("order_item", args=[item.order_id, item.pk]))
+    item = _placed_item_or_404(item.order_id, item.pk)
+    response = render(
+        request,
+        "shell/page.html",
+        {
+            **_item_detail_context(item),
+            "page_template": "orders/item_detail.html",
+            "partial": False,
+        },
+    )
+    response["HX-Retarget"] = "#page"
+    response["HX-Reswap"] = "innerHTML"
+    response["HX-Trigger"] = json.dumps(
+        {"sheet:close": True, "toast": {"message": toast}}
+    )
+    return response
+
+
 @owner_required
 def item_measurements_sheet(request, pk, item_pk):
     item = _placed_item_or_404(pk, item_pk, type=Product.CUSTOM)
     order, product = item.order, item.product
+    on = "item" if request.GET.get("on") == "item" else "order"
     status, errors = 200, 0
     if request.method == "POST":
         also = product is not None and request.POST.get("also_update") == "1"
@@ -695,6 +788,10 @@ def item_measurements_sheet(request, pk, item_pk):
                         product=product,
                         defaults={"values": pairs},
                     )
+            if on == "item":
+                return _item_detail_refreshed(
+                    request, item, f"{item.name} measurements saved"
+                )
             if not request.headers.get("HX-Request"):
                 return _redirect_303(reverse("order", args=[order.pk]))
             return sheet_saved_swap(
@@ -719,7 +816,7 @@ def item_measurements_sheet(request, pk, item_pk):
             "subline": f"Item {ids.index(item.pk) + 1} of {len(ids)} · "
             f"#{order.number} · inches",
             "rows": rows,
-            "action": request.path,
+            "action": request.get_full_path(),
             "also_label": (
                 f"Also update {first_name(order.customer.name)}'s "
                 f"saved {product.name} measurements"
@@ -1252,7 +1349,7 @@ def _material_item_or_404(pk, item_pk) -> OrderItem:
 
 
 def _material_on(data) -> str:
-    return "page" if data.get("on") == "page" else "order"
+    return data.get("on") if data.get("on") in ("page", "item") else "order"
 
 
 def _material_done(request, item, on, toast) -> HttpResponse:
@@ -1267,6 +1364,8 @@ def _material_done(request, item, on, toast) -> HttpResponse:
             toast,
             f"#item-{item.pk}-materials",
         )
+    if on == "item":
+        return _item_detail_refreshed(request, item, toast)
     return _order_refreshed(request, item.order, toast)
 
 

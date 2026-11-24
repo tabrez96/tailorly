@@ -38,6 +38,11 @@ urlpatterns = [
         name="order_draft_place",
     ),
     path("orders/<int:pk>/", views.order_detail, name="order"),
+    path(
+        "orders/<int:pk>/items/<int:item_pk>/",
+        views.item_detail,
+        name="order_item",
+    ),
     path("orders/<int:pk>/payments/new/", views.payment_sheet, name="order_payment"),
     path(
         "orders/<int:pk>/invoice/send/",

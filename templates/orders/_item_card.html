@@ -27,9 +27,19 @@
                 {% endif %}
             </span>
         </button>
-        <span class="item-card__chevron" aria-hidden="true">
-            {% include "components/icon.html" with name="chevron-right" %}
-        </span>
+        {% if item.detail_url %}
+            <a class="item-card__chevron"
+               href="{{ item.detail_url }}"
+               hx-get="{{ item.detail_url }}"
+               hx-target="#page"
+               hx-sync="#page:replace"
+               hx-push-url="true"
+               aria-label="Open {{ item.name }}">{% include "components/icon.html" with name="chevron-right" %}</a>
+        {% else %}
+            <span class="item-card__chevron" aria-hidden="true">
+                {% include "components/icon.html" with name="chevron-right" %}
+            </span>
+        {% endif %}
     </div>
     {% if item.summary %}
         <p class="item-card__summary t-small muted" x-show="!open" x-cloak>{{ item.summary }}</p>
