@@ -171,8 +171,11 @@ def test_bar_by_status(customer):
     order.status = Order.READY
     result = finishing.bar(order, True)
     assert result["action"] == "deliver" and result["sheet"] is True
+    assert result["rework"] is True
     order.status = Order.DELIVERED
-    assert finishing.bar(order, False) == {"action": None}
+    assert finishing.bar(order, False) == {"action": None, "rework": True}
+    order.status = Order.DRAFT
+    assert finishing.bar(order, False) == {"action": None, "rework": False}
 
 
 def test_deliver_confirm(customer):

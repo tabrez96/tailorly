@@ -2178,6 +2178,63 @@ body[data-subpage="1"] .nav {
 .material-more__new {
   margin-left: auto;
 }
+.radio-row > .t-small {
+  margin-left: auto;
+}
+/* Why: separate chips that wrap, the selected one filled like a filter chip. */
+.rework-why .seg__track {
+  flex-wrap: wrap;
+  gap: var(--s2);
+  padding: 0;
+  background: none;
+}
+.rework-why .seg__opt {
+  flex: none;
+  padding: 0 var(--s4);
+  border: 1px solid var(--edge);
+  background: var(--card);
+  color: var(--ink);
+}
+.rework-why .seg__opt:has(.seg__input:checked) {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--bg);
+  box-shadow: none;
+}
+.rework-who {
+  display: grid;
+  grid-template-columns: 1.3fr 0.8fr 1.5fr;
+  gap: var(--s3);
+}
+.rework-materials__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.rework-material {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  margin: 0 0 var(--s3);
+  padding: var(--s2) var(--s3);
+  border-radius: var(--r-field);
+  background: var(--sunk);
+}
+.rework-material .row-text {
+  flex: 1;
+}
+.rework-material .icon-tile {
+  width: 36px;
+  height: 36px;
+  background: var(--card);
+}
+.rework-material__amount {
+  font-weight: 700;
+}
+/* The row's text is not a tap target; only the remove button is. */
+.rework-material .row-text__label::after {
+  content: none;
+}
 .item-materials__list {
   margin: 0 0 var(--s2);
   padding: 0;

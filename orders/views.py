@@ -23,7 +23,7 @@ from django.views.decorators.http import require_POST
 from accounts.decorators import owner_required
 from accounts.roles import OWNER, role_for
 from catalog.models import Product, ProductOption
-from core.formats import format_day
+from core.formats import format_day, format_duration
 from core.forms_ui import error_summary_text
 from core.money import format_inr
 from core.pages import (
@@ -56,6 +56,8 @@ from orders.forms import (
     OrderEditForm,
     PaymentForm,
     PlaceForm,
+    ReworkForm,
+    ReworkMaterialForm,
 )
 from orders.items import (
     TYPE_WORDS,
@@ -98,6 +100,7 @@ from orders.models import (
     OrderError,
     OrderItem,
     Payment,
+    Rework,
 )
 from orders.photos import (
     MAX_BYTES,
@@ -110,7 +113,16 @@ from orders.photos import (
     stage_photo,
     staged_photos,
 )
+from orders.reworks import (
+    Staged,
+    default_due,
+    item_maker,
+    item_rows,
+    read_staged,
+    staged_rows,
+)
 from production.assign import assignable
+from production.estimates import rework_minutes
 from production.record import production_line
 from production.timing import _logged
 from reports.order_costs import cost_card, item_cost_card
@@ -549,6 +561,7 @@ def _order_context(request, order) -> dict:
         ],
         "ready_url": reverse("order_ready", args=[order.pk]),
         "deliver_url": reverse("order_deliver", args=[order.pk]),
+        "rework_url": reverse("order_rework_add", args=[order.pk]),
         "bar": finishing.bar(
             order,
             order.status == Order.READY and bool(finishing.pending_questions(order)),
@@ -1912,3 +1925,132 @@ def orders(request):
             "show_label": dict(SHOWS + HIDDEN_SHOWS)[f.show].lower(),
         },
     )
+
+
+REWORK_FIELDS = ("item", "reason", "note", "assignee", "estimate", "due_date")
+
+
+def _rework_sheet(request, order, form, staged, status=200):
+    chosen = str(form["item"].value() or "")
+    items = [i | {"checked": str(i["pk"]) == chosen} for i in item_rows(order)]
+    customer = first_name(order.customer.name)
+    return render(
+        request,
+        "orders/rework_sheet.html",
+        {
+            "action": request.path,
+            "form": form,
+            "items": items,
+            "staged": staged_rows(staged),
+            "subline": (
+                f"Never invoiced: {customer} pays nothing and their balance "
+                "stays the same. The cost comes off this order\u2019s gain."
+            ),
+            "error_text": error_summary_text(len(form.errors), "save this rework")
+            if form.errors
+            else "",
+        },
+        status=status,
+    )
+
+
+def _rework_picker(request, order, form, staged, status=200):
+    products = list(_material_products())
+    raw = request.POST.get("material", "")
+    picked = next((p for p in products if str(p.pk) == raw), None)
+    state = _material_state(request, form, None, products, picked) | {
+        "onBill": False,
+        "changing": False,
+    }
+    if request.POST.get("step") == "pick":
+        state |= {"qty": "1", "cost": "", "sell": ""}
+    posted_item = request.POST.get("item", "")
+    item = (
+        order.items.filter(pk=posted_item).first() if posted_item.isdecimal() else None
+    )
+    return render(
+        request,
+        "orders/rework_material_sheet.html",
+        {
+            "action": request.path,
+            "form": form,
+            "staged": staged_rows(staged),
+            "carry": [(k, request.POST.get(k, "")) for k in REWORK_FIELDS],
+            "item_name": item.name if item else "",
+            "state": state,
+            "qty_label": qty_label(picked.unit if picked else ""),
+            "line": None,
+            "new_material_url": "",
+            "error_text": error_summary_text(len(form.errors), "add this material")
+            if form.errors
+            else "",
+        },
+        status=status,
+    )
+
+
+@owner_required
+def rework_add(request, pk):
+    order = get_object_or_404(
+        Order.objects.select_related("customer", "assignee"),
+        pk=pk,
+        status__in=[Order.READY, Order.DELIVERED],
+    )
+    if request.method != "POST":
+        first = order.items.prefetch_related("sessions__employee").first()
+        maker = item_maker(first, order.assignee) if first else None
+        form = ReworkForm(
+            order=order,
+            initial={
+                "item": first.pk if first else None,
+                "reason": Rework.FIT,
+                "assignee": maker.pk if maker else None,
+                "estimate": format_duration(rework_minutes()),
+                "due_date": default_due(timezone.localdate()),
+            },
+        )
+        return _rework_sheet(request, order, form, [])
+    step = request.POST.get("step", "save")
+    staged = read_staged(request.POST)
+    if step == "save":
+        form = ReworkForm(request.POST, order=order)
+        if not form.is_valid():
+            return _rework_sheet(request, order, form, staged, status=422)
+        cd = form.cleaned_data
+        with transaction.atomic():
+            rework = Rework.objects.create(
+                item=cd["item"],
+                reason=cd["reason"],
+                note=cd["note"].strip(),
+                assignee=cd["assignee"],
+                estimate_minutes=cd["estimate"],
+                due_date=cd["due_date"],
+            )
+            for s in staged:
+                MaterialLine.from_product(
+                    s.product,
+                    s.qty,
+                    rework=rework,
+                    cost_price=per_unit(s.cost, s.qty) if s.cost is not None else None,
+                    cost_unknown=s.cost is None,
+                    selling_price=per_unit(s.sell, s.qty),
+                )
+        return _order_refreshed(
+            request, order, f"Rework added to {first_name(cd['assignee'].name)}'s queue"
+        )
+    if step == "pick":
+        return _rework_picker(request, order, ReworkMaterialForm(), staged)
+    if step == "material":
+        form = ReworkMaterialForm(request.POST)
+        if not form.is_valid():
+            return _rework_picker(request, order, form, staged, status=422)
+        qty, cost, sell = form.amounts
+        staged.append(Staged(form.cleaned_data["material"], qty, cost, sell))
+    elif step.startswith("remove:"):
+        index = step.removeprefix("remove:")
+        if index.isdecimal() and int(index) < len(staged):
+            del staged[int(index)]
+    redisplay = ReworkForm(
+        order=order, initial={k: request.POST.get(k, "") for k in REWORK_FIELDS}
+    )
+    return _rework_sheet(request, order, redisplay, staged)

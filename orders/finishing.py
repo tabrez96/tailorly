@@ -193,8 +193,9 @@ def bar(order: Order, pending: bool) -> dict:
             "action": "deliver",
             "sheet": pending,
             "confirm": deliver_confirm(order),
+            "rework": True,
         }
-    return {"action": None}
+    return {"action": None, "rework": order.status == Order.DELIVERED}
 
 
 def things(n: int) -> str:

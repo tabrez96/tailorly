@@ -1,0 +1,91 @@
+{% if line %}
+    <p class="row-text__label">{{ line.name }} · {{ line.unit }}</p>
+{% else %}
+    <div class="field search">
+        <label class="sr-only" for="mat-search">Search materials</label>
+        <input class="field__input"
+               id="mat-search"
+               type="search"
+               placeholder="Search materials"
+               autocomplete="off"
+               x-model="q"
+               @keydown.enter.prevent>
+    </div>
+    <fieldset class="radio-rows">
+        <legend class="sr-only">Material</legend>
+        <template x-for="(m, i) in materials" :key="m.id">
+            <div class="radio-row" x-show="shown(m, i)">
+                <input class="radio"
+                       type="radio"
+                       name="material"
+                       :id="'mat-pick-' + m.id"
+                       :value="m.id"
+                       :checked="picked === m.id"
+                       @change="pick(m)">
+                <div class="row-text">
+                    <label class="row-text__label" :for="'mat-pick-' + m.id" x-text="m.name"></label>
+                    <span class="t-small muted" x-text="m.sub"></span>
+                </div>
+            </div>
+        </template>
+        <p class="muted"
+           x-show="q.trim() && !materials.some((m, i) => shown(m, i))">No material matches that search.</p>
+        {% if not state.materials %}<p class="muted">No materials yet. Add one with + New material.</p>{% endif %}
+        {% if form.material.errors %}<p class="field__error"
+                                        id="mat-pick_error">{{ form.material.errors|join:" " }}</p>{% endif %}
+    </fieldset>
+    <div class="material-more">
+        <button type="button"
+                class="link-btn"
+                x-show="!all && !q && materials.length > 3"
+                @click="all = true">Show all {{ state.materials|length }} materials</button>
+        {% if new_material_url %}
+            <button type="button"
+                    class="link-btn material-more__new"
+                    hx-get="{{ new_material_url }}"
+                    hx-target="#sheet">+ New material</button>
+        {% endif %}
+    </div>
+{% endif %}
+<div class="measure-grid measure-grid--3">
+    <div class="field{% if form.qty.errors %} field--error{% endif %}">
+        <label class="field__label" for="mat-qty">
+            <span x-text="qtyLabel">{{ qty_label }}</span>
+        </label>
+        <input class="field__input"
+               id="mat-qty"
+               name="qty"
+               x-model="qty"
+               @input="fill()"
+               inputmode="decimal"
+               autocomplete="off"
+               {% if form.qty.errors %}aria-invalid="true" aria-describedby="mat-qty_error"{% endif %}>
+        {% if form.qty.errors %}<p class="field__error" id="mat-qty_error">{{ form.qty.errors|join:" " }}</p>{% endif %}
+    </div>
+    <div class="field{% if form.cost.errors %} field--error{% endif %}">
+        <label class="field__label" for="mat-cost">Cost price (₹)</label>
+        <input class="field__input"
+               id="mat-cost"
+               name="cost"
+               x-model="cost"
+               @input="costCleared = $event.target.value.trim() === ''"
+               inputmode="decimal"
+               autocomplete="off"
+               placeholder="Later"
+               {% if form.cost.errors %}aria-invalid="true" aria-describedby="mat-cost_error"{% endif %}>
+        {% if form.cost.errors %}<p class="field__error"
+                                    id="mat-cost_error">{{ form.cost.errors|join:" " }}</p>{% endif %}
+    </div>
+    <div class="field{% if form.sell.errors %} field--error{% endif %}">
+        <label class="field__label" for="mat-sell">Selling price (₹)</label>
+        <input class="field__input"
+               id="mat-sell"
+               name="sell"
+               x-model="sell"
+               inputmode="decimal"
+               autocomplete="off"
+               {% if form.sell.errors %}aria-invalid="true" aria-describedby="mat-sell_error"{% endif %}>
+        {% if form.sell.errors %}<p class="field__error"
+                                    id="mat-sell_error">{{ form.sell.errors|join:" " }}</p>{% endif %}
+    </div>
+</div>
