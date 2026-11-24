@@ -2,6 +2,7 @@
 
 from datetime import date
 
+from core.formats import format_day, format_duration
 from orders.making import ordinal
 from staff.attendance import first_name
 
@@ -46,3 +47,33 @@ def queue_rank(others: list[tuple[int, date | None]], pk: int, due: date | None)
     """Place of an existing order in its queue: by due date (undated last), then pk."""
     key = (due is None, due or date.min, pk)
     return 1 + sum(1 for p, d in others if (d is None, d or date.min, p) < key)
+
+
+def item_overline(number: int, customer: str, position: int, count: int) -> str:
+    """'ORD-1042 · MEERA IYER · ITEM 1 OF 2' for the item page header."""
+    return f"ORD-{number} · {customer} · item {position} of {count}".upper()
+
+
+def item_meta(maker: str, logged: int, estimate: int | None, due: date | None) -> str:
+    """'Ali · 2h 40m of 3h est. · due Fri 13 Nov'; times are in minutes."""
+    parts = [maker]
+    if estimate:
+        parts.append(f"{format_duration(logged)} of {format_duration(estimate)} est.")
+    elif logged > 0:
+        parts.append(format_duration(logged))
+    if due:
+        parts.append(f"due {format_day(due)}")
+    return " · ".join(p for p in parts if p)
+
+
+def option_rows(answers: list[dict], when_done: set[str]) -> list[dict]:
+    """The option answers of an item, each marked when it is asked at the end."""
+    return [
+        {"name": a["name"], "answer": a["answer"], "when_done": a["name"] in when_done}
+        for a in answers
+    ]
+
+
+def photo_badge(count: int) -> str:
+    """'1/3' for the first photo of several, else nothing."""
+    return f"1/{count}" if count > 1 else ""

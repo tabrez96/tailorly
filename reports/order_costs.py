@@ -113,3 +113,27 @@ def cost_card(order, now) -> dict:
         "rate_missing": rate is None,
         "settings_url": reverse("running_costs"),
     }
+
+
+def item_cost_card(item, now) -> dict:
+    """Cost and gain for one item (S19), from the same figures as the order's card."""
+    order = item.order
+    items, oc, rate = _load(order, now)
+    c = oc.items[[i.pk for i in items].index(item.pk)]
+    hours = format_duration(c.minutes)
+    only_rate = next(iter(c.rates)) if len(c.rates) == 1 else None
+    return {
+        "free": order.is_free,
+        "ready_made": item.type == Product.READY_MADE,
+        "item": c,
+        "billed": c.sale - c.price,  # on-bill material selling, part of the sale
+        "loss": c.gain < 0,
+        "staff_detail": f"{hours} × {format_inr(only_rate)}"
+        if only_rate is not None and c.minutes
+        else "",
+        "running_detail": f"{hours} × {format_inr(rate)}" if rate and c.minutes else "",
+        "estimated": c.estimated,
+        "cost_missing": c.cost_missing,
+        "rate_missing": rate is None and item.type != Product.READY_MADE,
+        "settings_url": reverse("running_costs"),
+    }

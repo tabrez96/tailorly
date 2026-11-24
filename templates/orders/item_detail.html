@@ -1,0 +1,182 @@
+{% load ui formats %}
+<div class="item-detail">
+    {% if edit_url %}
+        {% include "components/header.html" with title=title back_url=back_url back_direct=True overline=overline action_label="Edit" action_url=edit_url %}
+    {% else %}
+        {% include "components/header.html" with title=title back_url=back_url back_direct=True overline=overline %}
+    {% endif %}
+    <section class="item-detail__photos">
+        {{ item.photo_data|json_script:item.photo_data_id }}
+        <div x-data="itemPhotos('{{ item.photo_data_id }}')">
+            <div class="item-detail__placeholder" x-show="!tiles.length">
+                {% include "components/icon.html" with name="camera" %}
+                <button type="button"
+                        class="btn btn--tonal"
+                        id="photo-add-{{ item.pk }}-empty"
+                        @click="$refs.file.click()">+ Add photo</button>
+            </div>
+            <template x-if="tiles.length">
+                <div class="item-detail__hero-wrap">
+                    <a class="item-detail__hero"
+                       :href="tiles[0].full || tiles[0].src"
+                       target="_blank"
+                       rel="noopener">
+                        <img :src="tiles[0].full || tiles[0].src" :alt="alt(0)">
+                        <span class="item-detail__badge"
+                              x-show="tiles.length > 1"
+                              x-text="'1/' + tiles.length">{{ badge }}</span>
+                    </a>
+                    <span class="photo-tile__veil"
+                          x-show="tiles[0].status === 'uploading'"
+                          aria-hidden="true"></span>
+                    <button type="button"
+                            class="photo-tile__retry"
+                            x-show="tiles[0].status === 'failed'"
+                            @click="retry(tiles[0])"
+                            :aria-label="alt(0) + '. Upload failed. Tap to retry.'">
+                        Upload failed. Tap to retry.
+                    </button>
+                </div>
+            </template>
+            <ul class="item-detail__strip" x-show="tiles.length">
+                <template x-for="(t, i) in tiles.slice(1)" :key="t.key">
+                    <li class="photo-tile">
+                        <a class="thumb thumb--md" :href="t.full" target="_blank" rel="noopener">
+                            <img class="thumb__img" :src="t.src" :alt="alt(i + 1)">
+                        </a>
+                        <span class="photo-tile__veil"
+                              x-show="t.status === 'uploading'"
+                              aria-hidden="true"></span>
+                        <button type="button"
+                                class="photo-tile__retry"
+                                x-show="t.status === 'failed'"
+                                @click="retry(t)"
+                                :aria-label="alt(i + 1) + '. Upload failed. Tap to retry.'">
+                            Upload failed. Tap to retry.
+                        </button>
+                    </li>
+                </template>
+                <li x-show="tiles.length < max">
+                    <button type="button"
+                            class="photo-add"
+                            id="photo-add-{{ item.pk }}"
+                            @click="$refs.file.click()">+ Add</button>
+                </li>
+            </ul>
+            <input type="file"
+                   accept="image/*"
+                   multiple
+                   hidden
+                   x-ref="file"
+                   @change="pick($event)">
+            <p class="field__error" x-show="error" x-text="error"></p>
+            <p class="sr-only" aria-live="polite" x-text="status"></p>
+        </div>
+    </section>
+    <div class="card item-detail__summary">
+        <div class="item-detail__top">
+            <div>
+                <p class="item-card__title">
+                    <span class="draft-page__num">{{ item.number }}</span>
+                    <span class="item-card__name">{{ item.name }}</span>
+                    {% include "components/chip.html" with label=item.type_label tone="grey" %}
+                </p>
+                {% if product_name %}
+                    <p class="t-small muted">From product {{ product_name }} · usual {{ usual_price|inr }}</p>
+                {% endif %}
+            </div>
+            <div class="item-detail__price tabular">
+                {% if free %}
+                    <span class="t-small muted">Usual price</span>
+                    <s class="item-card__price--struck">{{ item.price|inr }}</s>
+                {% else %}
+                    {{ item.price|inr }}
+                {% endif %}
+            </div>
+        </div>
+        <div class="item-detail__status">
+            {% include "components/chip.html" with label=item.status_label tone=item.status_tone %}
+            {% if meta %}<span class="t-small muted">{{ meta }}</span>{% endif %}
+        </div>
+    </div>
+    {% if options %}
+        <h2 class="t-section">Options</h2>
+        <div class="card item-detail__options">
+            {% for o in options %}
+                <p class="item-detail__option">
+                    <span>{{ o.name }}</span>
+                    <span>
+                        <strong>{{ o.answer }}</strong>
+                        {% if o.when_done %}<span class="t-small muted">· asked when done</span>{% endif %}
+                    </span>
+                </p>
+            {% endfor %}
+        </div>
+    {% endif %}
+    {% if item.custom %}
+        <div class="item-card__label-row">
+            <h2 class="t-section">
+                Measurements <span class="muted">(inches)</span>
+            </h2>
+            {% if item.measure_url and item.has_values %}
+                <button type="button"
+                        class="link-btn"
+                        id="measure-{{ item.pk }}"
+                        hx-get="{{ item.measure_url }}"
+                        hx-target="#sheet">Edit</button>
+            {% endif %}
+        </div>
+        <div class="card item-detail__block">
+            {% if item.has_values %}
+                {% include "components/measure_tiles.html" with tiles=item.tiles %}
+                <p class="t-small muted">{{ item.copied_text }}</p>
+            {% else %}
+                <p class="muted">No measurements yet for this {{ item.name|lower }}.</p>
+                {% if item.measure_url %}
+                    <button type="button"
+                            class="btn btn--tonal"
+                            id="measure-{{ item.pk }}"
+                            hx-get="{{ item.measure_url }}"
+                            hx-target="#sheet">Add measurements</button>
+                {% endif %}
+            {% endif %}
+        </div>
+    {% endif %}
+    {% if item.notes %}
+        <h2 class="t-section">Notes{% if maker %} for {{ maker }}{% endif %}</h2>
+        <div class="card item-detail__block">
+            <p class="item-card__notes">{{ item.notes }}</p>
+        </div>
+    {% endif %}
+    <div class="card item-detail__block">{% include "orders/_item_materials.html" with block=item.materials %}</div>
+    {% if item.production %}
+        <div class="card item-detail__block">
+            <a class="item-card__production item-detail__production"
+               href="{{ item.production.url }}"
+               hx-get="{{ item.production.url }}"
+               hx-target="#page"
+               hx-sync="#page:replace"
+               hx-push-url="true">
+                <span class="item-card__label">Production</span>
+                <span class="t-small muted">{{ item.production.line }}</span>
+                {% include "components/icon.html" with name="chevron-right" %}
+            </a>
+        </div>
+    {% endif %}
+    {% include "orders/_item_cost.html" %}
+    <div class="action-bar">
+        {% if item.custom %}
+            <button type="button"
+                    class="btn btn--tonal"
+                    id="item-add-material"
+                    hx-get="{{ item.materials.add_url }}"
+                    hx-target="#sheet">+ Add material</button>
+        {% endif %}
+        <a class="btn btn--primary"
+           href="{{ order_url }}"
+           hx-get="{{ order_url }}"
+           hx-target="#page"
+           hx-sync="#page:replace"
+           hx-push-url="true">Open order</a>
+    </div>
+</div>

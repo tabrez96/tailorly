@@ -8,8 +8,9 @@ from core.money import format_inr
 from orders.models import MaterialLine, Order, OrderItem
 from orders.tests.conftest import make_employee, make_order
 from production.models import TimeSession
+from reports import costing
 from reports.models import ShopSettings
-from reports.order_costs import order_costs
+from reports.order_costs import cost_card, item_cost_card, item_input, order_costs
 
 HX = {"HTTP_HX_REQUEST": "true"}
 
@@ -148,3 +149,50 @@ def test_employee_sees_no_prices_costs_or_gain(client, order, rate):
         "Running costs",
     ):
         assert text not in body
+
+
+def test_item_cost_card_matches_costing(order, rate):
+    second = OrderItem.objects.create(
+        order=order, name="Skirt", type="custom", price=D(900), usual_price=D(900)
+    )
+    now = timezone.now()
+    card = cost_card(order, now)["items"]
+    for n, item in enumerate(order.items.order_by("pk")):
+        got = item_cost_card(item, now)
+        assert got["item"].gain == card[n]["gain"]
+        assert got["item"].cost == card[n]["cost"]
+    assert item_cost_card(second, now)["item"].price == D(900)
+    first = order.items.order_by("pk").first()
+    wage = order.assignee.daily_wage
+    expected = costing.item_cost(
+        item_input(first, wage, now), ShopSettings.current().running_rate()
+    )
+    assert item_cost_card(first, now)["item"] == expected
+
+
+def test_item_cost_card_ready_made(customer, rate):
+    order = make_order(customer, 2, price="450")
+    item = order.items.get()
+    item.type = "ready_made"
+    item.save()
+    MaterialLine.objects.create(
+        item=item,
+        name="Cotton dupatta",
+        unit="pc",
+        quantity=D(1),
+        cost_price=D(280),
+        selling_price=D(0),
+    )
+    card = item_cost_card(item, timezone.now())
+    assert (card["item"].staff, card["item"].running) == (D(0), D(0))
+    assert card["item"].gain == D(450) - D(280)
+    assert card["ready_made"] and not card["rate_missing"]
+
+
+def test_item_cost_card_free(customer, rate):
+    order = make_order(customer, 3, free=True, price="1000")
+    card = item_cost_card(order.items.get(), timezone.now())
+    assert card["free"] is True
+    c = card["item"]
+    assert c.cost == c.staff + c.materials + c.running
+    assert c.sale == D(1000)

@@ -24,7 +24,7 @@
             {% endfor %}
         </ul>
     {% else %}
-        <p class="empty-line">No materials for this item.</p>
+        <p class="empty-line">{{ block.empty|default:"No materials for this item." }}</p>
     {% endif %}
     {% if block.add_url %}
         <button type="button"
