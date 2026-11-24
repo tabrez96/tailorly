@@ -1,5 +1,5 @@
 import re
-from datetime import timedelta
+from datetime import date, timedelta
 from decimal import Decimal as D
 
 import pytest
@@ -292,3 +292,123 @@ def test_unfinished_unlogged_item_profit_ignores_estimate(owner_client, ali):
 
 def test_reworks_link_opens_all_orders(owner_client, shop):
     assert 'href="/orders/?show=all"' in get(owner_client)
+
+
+GARMENT = "?by=garment"
+
+
+@pytest.fixture
+def garments_shop(db, ali):
+    """Two Blouses (one free) and a ready-made Kurta, all placed this month."""
+    asha = Customer.objects.create(name="Asha Rao", phone="9000000011")
+    paid = make_order(asha, 1, price="1600")
+    paid.assignee = ali
+    paid.save()
+    session(ali, item=paid.items.get(), minutes=120)  # staff 200
+    finish(paid)
+    free = make_order(asha, 2, free=True, price="1600")
+    free.assignee = ali
+    free.save()
+    session(ali, item=free.items.get(), minutes=120)
+    finish(free)
+    kurta = make_order(asha, 3)
+    OrderItem.objects.filter(order=kurta).update(
+        name="Kurta", type="ready_made", price=D(799)
+    )
+
+
+def save_rent(amount="9500"):
+    ShopSettings.objects.create(
+        pk=1, running_costs=[{"name": "Rent", "amount": amount}]
+    )
+
+
+def test_garment_view_lists_garments(owner_client, garments_shop):
+    save_rent()
+    html = get(owner_client, GARMENT)
+    page = text(html)
+    assert 'id="shop-profit"' not in html
+    assert 'id="running-card"' in html
+    assert "Blouse ×2" in page
+    assert "Kurta ×1" in page
+    # Blouse: price 800 average; staff 200, running 92 each; gain (1308 - 292) / 2
+    assert (
+        "Average price ₹800 · cost ₹292: staff ₹200, materials ₹0, running ₹92" in page
+    )
+    assert "₹508 · 64%" in page
+    assert "Average price ₹799 · cost ₹0" in page
+    assert "₹799 · 100%" in page
+    assert 'href="/orders/?show=all"' in html
+
+
+def test_garment_view_without_running_costs(owner_client, garments_shop):
+    html = get(owner_client, GARMENT)
+    page = text(html)
+    assert (
+        "Add your monthly running costs to see the full cost of each garment." in page
+    )
+    assert re.search(r'id="running-edit"[^>]*>\s*Add\s*<', html)
+    assert 'id="no-rate-note"' in html
+    assert "running ₹0" in page
+
+
+def test_garment_view_with_running_costs(owner_client, garments_shop):
+    save_rent()
+    html = get(owner_client, GARMENT)
+    page = text(html)
+    assert "₹46 an hour of work" in page
+    assert re.search(r'id="running-edit"[^>]*>\s*Edit\s*<', html)
+    assert "no-rate-note" not in html
+
+
+def test_period_form_keeps_garment(owner_client, db):
+    assert 'name="by" value="garment"' in get(owner_client, GARMENT)
+
+
+def bills_for_prefill():
+    today = timezone.localdate()
+    for back, amount in ((3, 9000), (2, 9600), (1, 9900)):
+        index = today.year * 12 + today.month - 1 - back
+        day = date(index // 12, index % 12 + 1, 5)
+        ShopBill.objects.create(name="Rent", amount=D(amount), date=day)
+    ShopBill.objects.create(name="Big", amount=D(50000), date=today)
+
+
+def test_running_costs_prefilled_from_bills(owner_client, db):
+    bills_for_prefill()
+    html = owner_client.get("/settings/running-costs/?sheet=1").content.decode()
+    assert re.search(r'value="Other"', html)
+    assert 'value="9500"' in html
+    assert "₹9,500 a month" in text(html)
+
+
+def test_running_costs_not_prefilled_once_saved(owner_client, db):
+    bills_for_prefill()
+    ShopSettings.objects.create(pk=1, running_costs=[])
+    html = owner_client.get("/settings/running-costs/?sheet=1").content.decode()
+    assert 'value="Other"' not in html
+
+
+def post_sheet(client, query):
+    return client.post(
+        "/settings/running-costs/" + query,
+        {
+            "cost_name": ["Rent"],
+            "cost_amount": ["9500"],
+            "cost_fixed": [""],
+            "hours": "208",
+        },
+        HTTP_HX_REQUEST="true",
+    )
+
+
+def test_sheet_save_with_next_reloads_profit(owner_client, db):
+    response = post_sheet(owner_client, "?sheet=1&next=/reports/profit/%3Fby%3Dgarment")
+    assert response.status_code == 204
+    assert "/reports/profit/?by=garment" in response["HX-Location"]
+
+
+def test_sheet_save_ignores_foreign_next(owner_client, db):
+    response = post_sheet(owner_client, "?sheet=1&next=https://example.com/")
+    assert response["HX-Reswap"] == "none"
+    assert "HX-Location" not in response

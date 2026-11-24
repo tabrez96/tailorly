@@ -1,14 +1,17 @@
+from urllib.parse import urlencode
+
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_GET
 
 from accounts.decorators import owner_required
 from core.forms_ui import error_summary_text
 from core.pages import page_location, render_page, sheet_saved, sheet_saved_location
 from core.reports import report_row
-from reports import costing, order_costs, profit, sales
+from reports import costing, garments, order_costs, profit, sales
 from reports import running_costs as form
 from reports.forms import ShopBillForm
 from reports.models import ShopSettings
@@ -26,6 +29,14 @@ def running_costs(request):
     sheet = request.GET.get("sheet") == "1"
     saved = ShopSettings.current()
     status, errors = 200, 0
+    next_url = request.GET.get("next", "")
+    if not (
+        next_url.startswith(reverse("profit_report"))
+        and url_has_allowed_host_and_scheme(
+            next_url, allowed_hosts={request.get_host()}
+        )
+    ):
+        next_url = ""
     if request.method == "POST":
         lines, rows = form.parse(
             request.POST.getlist("cost_name"),
@@ -37,6 +48,8 @@ def running_costs(request):
         if not errors:
             saved.running_costs, saved.working_hours = lines, hours
             saved.save()
+            if sheet and next_url:
+                return sheet_saved_location(next_url, "Running costs saved")
             if sheet:
                 return sheet_saved(HttpResponse(""), "Running costs saved")
             if request.headers.get("HX-Request"):
@@ -46,16 +59,20 @@ def running_costs(request):
         hours_text = request.POST.get("hours", "")
         total = costing.monthly_total(lines)
     else:
-        rows = form.rows_for(saved.running_costs)
+        lines = saved.running_costs
+        if saved._state.adding:  # never saved: start from the shop bills
+            bills = order_costs.bill_months(timezone.localdate())
+            lines = garments.prefill_lines(garments.bills_average(bills))
+        rows = form.rows_for(lines)
         hours, hours_error, hours_text = None, "", str(saved.working_hours)
-        total = saved.monthly_total()
+        total = costing.monthly_total(lines)
     context = {
         "rows": rows,
         "hours": hours_text,
         "hours_error": hours_error,
         "total": total,
         "rate": costing.running_rate(total, hours or saved.working_hours),
-        "action": request.path + ("?sheet=1" if sheet else ""),
+        "action": request.get_full_path() if sheet else request.path,
         "sheet": sheet,
         "error_text": error_summary_text(errors, "save running costs")
         if errors
@@ -90,13 +107,12 @@ def sales_report(request):
 
 def _profit_context(params, today, now) -> dict:
     period = sales.parse_period(params, today)
-    by = "sale" if params.get("by") == "sale" else "customer"
+    by = params.get("by") if params.get("by") in ("sale", "garment") else "customer"
     first, last = period.first, period.last
-    rate = ShopSettings.current().running_rate()
-    orders = [
-        order_costs.figures(o, rate, now)
-        for o in order_costs.period_orders(first, last)
-    ]
+    settings = ShopSettings.current()
+    rate = settings.running_rate()
+    period_orders = order_costs.period_orders(first, last)
+    orders = [order_costs.figures(o, rate, now) for o in period_orders]
     reworks_total, rework_logged = order_costs.period_rework_total(first, last, now)
     bill_list = order_costs.bills(first, last)
     shop = profit.shop_profit(
@@ -114,6 +130,13 @@ def _profit_context(params, today, now) -> dict:
         rows = [
             r | {"url": reverse("order", args=[r["order_id"]])}
             for r in profit.by_sale(orders)
+        ]
+    elif by == "garment":
+        # S03 has no garment filter yet, so this opens it unfiltered (All).
+        pieces = order_costs.period_pieces(period_orders, rate, now)
+        rows = [
+            r | {"url": reverse("orders") + "?show=all"}
+            for r in garments.rows(garments.by_garment(pieces))
         ]
     else:
         rows = [
@@ -149,14 +172,27 @@ def _profit_context(params, today, now) -> dict:
                 "id": f"by-{b}",
                 "label": b.capitalize(),
                 "url": f"{reverse('profit_report')}?{query}"
-                + ("&by=sale" if b == "sale" else ""),
+                + (f"&by={b}" if b != "customer" else ""),
                 "selected": by == b,
             }
-            for b in ("customer", "sale")
+            for b in ("customer", "sale", "garment")
         ],
         "by": by,
         "rows": rows,
         "rows_empty_text": sales.empty_text(period),
+        "run_card": garments.rate_card(
+            settings.monthly_total(), settings.working_hours, rate
+        ),
+        "run_url": reverse("running_costs")
+        + "?"
+        + urlencode(
+            {
+                "sheet": "1",
+                "next": reverse("profit_report") + "?" + params.urlencode(),
+            }
+        ),
+        "garment_caption": garments.caption(period),
+        "no_rate_note": garments.NO_RATE_NOTE if rate is None else "",
         "bills": bill_list,
         "bill_url": reverse("bill_new") + (f"?{sheet_query}" if sheet_query else ""),
     }

@@ -6,7 +6,7 @@ from django.utils import timezone
 
 from customers.models import Customer
 from orders.tests.conftest import make_order
-from reports.models import ShopBill
+from reports.models import ShopBill, ShopSettings
 
 pytestmark = pytest.mark.e2e
 
@@ -85,3 +85,41 @@ def test_add_bill_sheet(live_server, signed_in):
     page.locator("#shop-bills").get_by_text("Electricity").wait_for()
     assert "₹1,800" in page.locator("#shop-bills").inner_text()
     assert "−₹1,800" in page.locator("#shop-profit").inner_text()
+
+
+def seed_garments():
+    seed()
+    customer = Customer.objects.get(name="Priya Shetty")
+    ready = make_order(customer, 20, price="799")
+    ready.items.update(name="Kurta", type="ready_made")
+    ShopSettings.objects.create(
+        pk=1, running_costs=[{"name": "Rent", "amount": "9500"}]
+    )
+
+
+def test_profit_by_garment(live_server, signed_in):
+    seed_garments()
+    _, page = signed_in("owner")
+    page.goto(live_server.url + "/reports/profit/")
+    page.locator("#by-garment").click()
+    page.locator("#garment-rows").wait_for()
+    settle(page)
+    page.screenshot(path=ARTIFACTS / "S11-by-garment.png", full_page=True)
+    page.locator("#running-edit").click()
+    page.locator("#cost-1").wait_for()
+    settle(page)
+    page.screenshot(path=ARTIFACTS / "S11-running-costs-sheet.png")
+    page.locator("#cost-1").fill("20800")
+    page.get_by_role("button", name="Save", exact=True).click()
+    page.get_by_text("₹100 an hour of work").wait_for()
+    assert "by=garment" in page.url
+
+
+def test_profit_by_garment_dark(live_server, signed_in):
+    seed_garments()
+    _, page = signed_in("owner")
+    page.emulate_media(color_scheme="dark")
+    page.goto(live_server.url + "/reports/profit/?by=garment")
+    page.locator("#garment-rows").wait_for()
+    settle(page)
+    page.screenshot(path=ARTIFACTS / "S11-by-garment-dark.png", full_page=True)

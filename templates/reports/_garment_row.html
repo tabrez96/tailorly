@@ -1,0 +1,16 @@
+{% load formats %}
+<div class="garment-row__head">
+    <p class="garment-row__name">
+        {{ r.name }} <span class="garment-row__count">×{{ r.count }}</span>
+    </p>
+    <p class="tabular {% if r.loss %}cost-card__loss{% else %}cost-card__gain{% endif %}">
+        {{ r.gain|inr }}{% if r.pct is not None %} · {{ r.pct }}%{% endif %}
+    </p>
+</div>
+<div class="cost-bar" role="img" aria-label="{{ r.words }}">
+    {% for s in r.bar %}
+        <span class="cost-bar__seg cost-bar__seg--{{ s.key }}"
+              style="width: {{ s.pct }}%"></span>
+    {% endfor %}
+</div>
+<p class="t-small muted">{{ r.words }}</p>

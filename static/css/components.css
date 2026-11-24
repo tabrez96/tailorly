@@ -2926,9 +2926,89 @@ a.profit-line:hover {
 .profit-by .seg {
   flex: 1;
   margin: 0;
-  max-width: 240px;
+  max-width: 270px;
+}
+.profit-by .seg__opt {
+  min-height: 40px;
+  padding: 0 var(--s2);
+  font-size: 14px;
 }
 .bill-row {
   display: grid;
   grid-template-columns: 56px 1fr auto;
+}
+
+/* Profit by garment */
+.run-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+.run-card p {
+  margin: 0;
+}
+.run-card__title {
+  font-weight: 700;
+}
+.garment-list {
+  padding-block: var(--s1);
+}
+.garment-list .list > li {
+  position: relative;
+}
+.garment-list .list > li + li::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--line);
+}
+.garment-row {
+  display: block;
+  padding-block: var(--s3);
+  color: inherit;
+  text-decoration: none;
+}
+.garment-row:hover {
+  color: inherit;
+  text-decoration: none;
+}
+.garment-row p {
+  margin: 0;
+}
+.garment-row__head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+.garment-row__name {
+  font-weight: 700;
+}
+.garment-row__count {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.cost-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s3);
+  margin: 0;
+  padding: var(--s3) 0 0;
+  border-top: 1px solid var(--line);
+  list-style: none;
+  font-size: 12px;
+}
+.cost-legend__dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: var(--s1);
+  border-radius: 50%;
+}
+.garment-list > .t-small {
+  margin: var(--s2) 0 var(--s3);
 }
