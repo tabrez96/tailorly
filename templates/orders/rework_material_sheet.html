@@ -1,0 +1,33 @@
+{% extends "components/sheet_content.html" %}
+{% load ui %}
+{% block sheet_title %}
+    Add material
+{% endblock %}
+{% block sheet_body %}
+    {{ state|json_script:"material-sheet-data" }}
+    <form method="post"
+          novalidate
+          hx-post="{{ action }}"
+          hx-target="#sheet"
+          hx-sync="this:drop"
+          x-data="materialSheet">
+        {% csrf_token %}
+        {% if error_text %}
+            {% include "components/error_summary.html" with text=error_text %}
+        {% endif %}
+        {% if item_name %}<p class="t-small muted">For the rework on {{ item_name }}</p>{% endif %}
+        {% for name, value in carry %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
+        {% for m in staged %}
+            <input type="hidden" name="m_product" value="{{ m.product_pk }}">
+            <input type="hidden" name="m_qty" value="{{ m.qty }}">
+            <input type="hidden" name="m_cost" value="{{ m.cost }}">
+            <input type="hidden" name="m_sell" value="{{ m.sell }}">
+        {% endfor %}
+        {% include "orders/_material_fields.html" %}
+        <p class="t-small muted">The selling price is shown for reference: a rework is never billed.</p>
+        <div class="sheet__actions">
+            <button class="btn btn--tonal" type="submit" name="step" value="back">Back</button>
+            <button class="btn btn--primary" type="submit" name="step" value="material">Add</button>
+        </div>
+    </form>
+{% endblock %}

@@ -5,9 +5,9 @@ from catalog.models import Product, ProductOption
 from core.formats import format_duration
 from orders.items import item_products, material_hint, price_hint, price_message
 from orders.making import parse_duration
-from orders.models import Order, OrderItem, Payment
+from orders.models import Order, OrderItem, Payment, Rework
 from production.estimates import usual_minutes
-from staff.attendance import parse_decimal
+from staff.attendance import first_name, parse_decimal
 from staff.models import Employee
 
 PRICE_INVALID = "Enter a price in rupees, like 1800."
@@ -325,6 +325,109 @@ class MaterialLineForm(forms.Form):
             kind=Product.SECONDARY, active=True
         )
         self.fields["material"].required = adding
+        self.amounts = None
+
+    def clean(self):
+        from orders import finishing  # finishing imports this module
+
+        cd = super().clean()
+        answer, errors = finishing.clean_answer(
+            cd.get("qty", ""),
+            cd.get("cost", ""),
+            cd.get("sell", ""),
+            cost_optional=True,
+        )
+        for field, message in errors.items():
+            self.add_error(field, message)
+        if answer:
+            self.amounts = answer
+        return cd
+
+
+class ReworkForm(forms.Form):
+    """Validation and errors for the Add rework sheet (S04)."""
+
+    item = forms.ModelChoiceField(
+        OrderItem.objects.none(),
+        widget=forms.RadioSelect,
+        empty_label=None,
+        error_messages={
+            "required": "Choose the item to rework.",
+            "invalid_choice": "Choose the item to rework.",
+        },
+    )
+    reason = forms.ChoiceField(
+        label="Why",
+        choices=Rework.REASONS,
+        widget=forms.RadioSelect,
+        error_messages={"required": "Choose why.", "invalid_choice": "Choose why."},
+    )
+    note = forms.CharField(
+        label="What to do", required=False, widget=forms.Textarea(attrs={"rows": 2})
+    )
+    assignee = forms.ModelChoiceField(
+        Employee.objects.filter(active=True).order_by("name", "id"),
+        label="Who does it",
+        empty_label=None,
+        widget=forms.Select(attrs={"x-ref": "who"}),
+        error_messages={
+            "required": "Choose who does it.",
+            "invalid_choice": "Choose who does it.",
+        },
+    )
+    estimate = forms.CharField(label="Estimate", required=False)
+    due_date = forms.DateField(
+        label="Due",
+        input_formats=["%Y-%m-%d"],
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+        error_messages={
+            "required": "Choose a due date.",
+            "invalid": "Choose a due date.",
+        },
+    )
+
+    def __init__(self, *args, order, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["item"].queryset = order.items.all()
+
+    def clean_estimate(self):
+        try:
+            minutes = parse_duration(self.cleaned_data["estimate"])
+        except ValueError as error:
+            raise forms.ValidationError(str(error)) from error
+        if minutes is None:
+            raise forms.ValidationError("Enter how long it takes, like 45m.")
+        return minutes
+
+    def clean(self):
+        cd = super().clean()
+        if not (cd.get("note") or "").strip():
+            who = cd.get("assignee")
+            self.add_error(
+                "note",
+                f"Say what needs doing so {first_name(who.name)} knows."
+                if who
+                else "Say what needs doing.",
+            )
+        return cd
+
+
+class ReworkMaterialForm(forms.Form):
+    """The add-material picker on the Add rework sheet (inputs are hand-made)."""
+
+    material = forms.ModelChoiceField(
+        Product.objects.filter(kind=Product.SECONDARY, active=True),
+        error_messages={
+            "required": "Choose a material.",
+            "invalid_choice": "Choose a material.",
+        },
+    )
+    qty = forms.CharField(required=False)
+    cost = forms.CharField(required=False)
+    sell = forms.CharField(required=False)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.amounts = None
 
     def clean(self):

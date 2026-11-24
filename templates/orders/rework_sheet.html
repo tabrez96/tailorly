@@ -1,0 +1,82 @@
+{% extends "components/sheet_content.html" %}
+{% load ui %}
+{% block sheet_title %}
+    Add rework
+{% endblock %}
+{% block sheet_body %}
+    <form method="post"
+          novalidate
+          hx-post="{{ action }}"
+          hx-target="#sheet"
+          hx-sync="this:drop"
+          x-data>
+        {% csrf_token %}
+        <p class="muted t-small">{{ subline }}</p>
+        {% if error_text %}
+            {% include "components/error_summary.html" with text=error_text %}
+        {% endif %}
+        <fieldset class="radio-rows"
+                  @change="if ($event.target.dataset.maker) $refs.who.value = $event.target.dataset.maker">
+            <legend class="field__label">Which item</legend>
+            {% for i in items %}
+                <div class="radio-row">
+                    <input class="radio"
+                           type="radio"
+                           id="rework-item-{{ i.pk }}"
+                           name="item"
+                           value="{{ i.pk }}"
+                           data-maker="{{ i.maker_pk }}"
+                           {% if i.checked %}checked{% endif %}>
+                    <div class="row-text">
+                        <label class="row-text__label"
+                               for="rework-item-{{ i.pk }}">{{ i.number }} · {{ i.name }}</label>
+                    </div>
+                    <span class="t-small muted">{{ i.made_by }}</span>
+                </div>
+            {% endfor %}
+            {% if form.item.errors %}<p class="field__error">{{ form.item.errors|join:" " }}</p>{% endif %}
+        </fieldset>
+        <div class="rework-why">{% segmented form.reason %}</div>
+        {% field form.note %}
+        <div class="rework-who">
+            {% field form.assignee %}
+            {% field form.estimate %}
+            {% field form.due_date %}
+        </div>
+        <div class="rework-materials__head">
+            <span class="field__label">Materials used</span>
+            <button class="link-btn"
+                    id="rework-add-material"
+                    type="submit"
+                    name="step"
+                    value="pick">+ Add material</button>
+        </div>
+        {% for m in staged %}
+            <div class="rework-material">
+                <span class="icon-tile">{% include "components/icon.html" with name="fabric" %}</span>
+                <span class="row-text">
+                    <span class="row-text__label">{{ m.name }}</span>
+                    <span class="t-small muted">{{ m.line }}</span>
+                </span>
+                <span class="rework-material__amount">{{ m.amount }}</span>
+                <button class="link-btn"
+                        type="submit"
+                        name="step"
+                        value="remove:{{ m.index }}"
+                        aria-label="Remove {{ m.name }}">×</button>
+                <input type="hidden" name="m_product" value="{{ m.product_pk }}">
+                <input type="hidden" name="m_qty" value="{{ m.qty }}">
+                <input type="hidden" name="m_cost" value="{{ m.cost }}">
+                <input type="hidden" name="m_sell" value="{{ m.sell }}">
+            </div>
+        {% empty %}
+            <p class="muted">No materials.</p>
+        {% endfor %}
+        <div class="sheet__actions">
+            <button class="btn btn--tonal"
+                    type="button"
+                    @click="$dispatch('sheet:close')">Cancel</button>
+            <button class="btn btn--primary" type="submit" name="step" value="save">Save rework</button>
+        </div>
+    </form>
+{% endblock %}
