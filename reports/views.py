@@ -11,8 +11,9 @@ from accounts.decorators import owner_required
 from core.forms_ui import error_summary_text
 from core.pages import page_location, render_page, sheet_saved, sheet_saved_location
 from core.reports import report_row
-from reports import costing, garments, order_costs, profit, sales
+from reports import costing, garments, order_costs, payments, profit, sales
 from reports import running_costs as form
+from reports import staff_report as staff_report_mod
 from reports.forms import ShopBillForm
 from reports.models import ShopSettings
 
@@ -221,4 +222,24 @@ def bill_new(request):
         "reports/bill_sheet.html",
         {"form": form, "action": request.get_full_path()},
         status=422 if request.method == "POST" else 200,
+    )
+
+
+@owner_required
+@require_GET
+def payments_report(request):
+    return render_page(
+        request,
+        "reports/payments.html",
+        payments.payments_context(request.GET, timezone.localdate()),
+    )
+
+
+@owner_required
+@require_GET
+def staff_report(request):
+    return render_page(
+        request,
+        "reports/staff.html",
+        staff_report_mod.staff_context(request.GET, timezone.now()),
     )

@@ -3012,3 +3012,46 @@ a.profit-line:hover {
 .garment-list > .t-small {
   margin: var(--s2) 0 var(--s3);
 }
+
+/* S13 Payments, S14 Staff report */
+.amount--warn {
+  color: var(--warn);
+  font-weight: 700;
+}
+.report-note {
+  margin: 0;
+  padding: var(--s4);
+}
+.staff-report-card p {
+  padding: var(--s2) 0;
+  border-bottom: 0;
+}
+.staff-report-card__label {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.staff-report-card__value {
+  margin-left: var(--s3);
+  text-align: right;
+}
+.report-note__link {
+  color: inherit;
+  text-decoration: underline;
+}
+.staff-report-card .sales-bar {
+  margin: var(--s1) 0 var(--s2);
+}
+.staff-report-card__first {
+  margin-top: var(--s2);
+  border-top: 1px solid var(--line);
+}
+a.owing-row,
+a.owing-row:hover {
+  color: inherit;
+  text-decoration: none;
+}
+.owing-row p,
+.staff-report-card + .list p,
+.list__main p {
+  margin: 0;
+}
