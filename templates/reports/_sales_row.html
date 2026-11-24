@@ -1,0 +1,11 @@
+{% load formats %}
+<div class="sales-row__top">
+    <div>
+        <p class="sales-row__name">{{ r.name }}</p>
+        <p class="t-small muted">{% if group == "customer" %}{{ r.orders_text }}{% else %}{{ r.count_text }}{% endif %}</p>
+    </div>
+    <p class="sales-row__amount">{{ r.total|inr }}</p>
+</div>
+<div class="sales-bar" aria-hidden="true">
+    <span class="sales-bar__fill" style="--w: {{ r.percent }}%"></span>
+</div>

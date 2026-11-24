@@ -4,4 +4,5 @@ from reports import views
 
 urlpatterns = [
     path("settings/running-costs/", views.running_costs, name="running_costs"),
+    path("reports/sales/", views.sales_report, name="sales_report"),
 ]

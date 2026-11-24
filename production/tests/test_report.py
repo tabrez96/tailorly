@@ -36,6 +36,13 @@ def test_parse_period_defaults_and_future():
     assert report.parse_period({"date": "2027-01-01"}, THU) == ("week", THU)
 
 
+def test_parse_period_last_month():
+    assert report.parse_period({"period": "last_month"}, date(2027, 1, 15)) == (
+        "month",
+        date(2026, 12, 31),
+    )
+
+
 def test_period_range_and_step():
     assert report.period_range("day", THU) == (THU, THU)
     assert report.period_range("week", THU) == (date(2026, 11, 9), date(2026, 11, 15))

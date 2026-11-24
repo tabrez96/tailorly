@@ -2799,3 +2799,62 @@ a.item-card__chevron {
   padding: 0;
   border-top: 0;
 }
+
+/* Sales report */
+.sales-period .field-pair {
+  margin-top: calc(-1 * var(--s1));
+}
+.sales-hero {
+  margin: 0 0 var(--s4);
+}
+.sales-hero p {
+  margin: 0;
+}
+.sales-hero__total {
+  margin: var(--s1) 0;
+}
+a.sales-row,
+a.sales-row:hover {
+  color: inherit;
+  text-decoration: none;
+}
+.sales-row {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--s2);
+}
+.sales-row__top {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+.sales-row__top p {
+  margin: 0;
+}
+.sales-row__name,
+.sales-row__amount {
+  font-weight: 700;
+}
+.sales-bar {
+  height: 8px;
+  border-radius: var(--r-pill);
+  background: var(--pri-l);
+  overflow: hidden;
+}
+.sales-bar__fill {
+  display: block;
+  height: 100%;
+  width: var(--w);
+  border-radius: inherit;
+  background: var(--pri);
+}
+/* Loading: grey outlines while a new period or grouping loads */
+.sales-body.htmx-request .sales-hero > *,
+.sales-body.htmx-request .sales-row__top p {
+  color: transparent;
+  background: var(--sunk);
+  border-radius: var(--s1);
+}
+.sales-body.htmx-request .sales-bar__fill {
+  background: transparent;
+}

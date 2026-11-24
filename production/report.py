@@ -29,6 +29,8 @@ DASH = "\N{EN DASH}"
 
 def parse_period(params, today: date) -> tuple[str, date]:
     period = params.get("period", "")
+    if period == "last_month":
+        return MONTH, today.replace(day=1) - timedelta(days=1)
     if period not in dict(PERIODS):
         period = WEEK
     try:
