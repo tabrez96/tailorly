@@ -3,20 +3,22 @@
 from collections import defaultdict
 from decimal import Decimal
 
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Sum
 from django.urls import reverse
+from django.utils import timezone
 
 from catalog.models import Product
 from core.formats import format_duration
 from core.money import format_inr
 from orders import invoice
 from orders.materials import cost_total
-from orders.models import OrderItem, Rework
+from orders.models import Order, OrderItem, Rework
 from orders.reworks import rework_detail
 from production.models import TimeSession
 from production.timing import _logged
-from reports import costing
-from reports.models import ShopSettings
+from reports import costing, profit, sales
+from reports.models import ShopBill, ShopSettings
+from staff.models import Payout
 
 
 def _work(sessions, now) -> tuple[costing.Work, ...]:
@@ -210,3 +212,83 @@ def item_cost_card(item, now) -> dict:
         "rate_missing": rate is None and item.type != Product.READY_MADE,
         "settings_url": reverse("running_costs"),
     }
+
+
+def period_orders(first, last) -> list[Order]:
+    """Placed orders (free ones included) created in the range, ready for costing."""
+    lo, hi = sales._bounds(first, last)
+    return list(
+        Order.objects.filter(created_at__gte=lo, created_at__lt=hi)
+        .exclude(status=Order.DRAFT)
+        .select_related("customer", "assignee")
+        .prefetch_related(
+            "items__materials",
+            Prefetch(
+                "items__sessions",
+                queryset=TimeSession.objects.select_related("employee"),
+            ),
+        )
+    )
+
+
+def logged_staff_cost(work) -> Decimal:
+    """Staff cost of the minutes actually logged, without any estimate."""
+    return costing.rupees(
+        sum(
+            (w.minutes * costing.hourly_rate(w.daily_wage) / 60 for w in work),
+            Decimal(0),
+        )
+    )
+
+
+def figures(order, rate, now) -> profit.OrderFigures:
+    wage = order.assignee.daily_wage if order.assignee else None
+    inputs = [item_input(i, wage, now) for i in order.items.all()]
+    oc = costing.order_cost([costing.item_cost(i, rate) for i in inputs])
+    return profit.OrderFigures(
+        order_id=order.pk,
+        number=order.number,
+        customer_id=order.customer_id,
+        customer=order.customer.name,
+        created=timezone.localdate(order.created_at),
+        free=order.is_free,
+        sale=oc.sale,
+        materials=oc.materials,
+        staff=oc.staff,
+        logged_staff=logged_staff_cost([w for i in inputs for w in i.work]),
+        running=oc.running,
+        shop_cost=oc.cost,
+        estimated=oc.estimated,
+    )
+
+
+def period_rework_total(first, last, now) -> tuple[costing.ReworkTotal, Decimal]:
+    """Reworks created in the range, whichever order they belong to.
+
+    Returns the total and the staff cost of the logged time alone.
+    """
+    lo, hi = sales._bounds(first, last)
+    reworks = (
+        Rework.objects.filter(created_at__gte=lo, created_at__lt=hi)
+        .select_related("assignee")
+        .prefetch_related(
+            "materials",
+            Prefetch(
+                "sessions", queryset=TimeSession.objects.select_related("employee")
+            ),
+        )
+    )
+    inputs = [rework_input(r, now) for r in reworks]
+    total = costing.rework_total([costing.rework_cost(i) for i in inputs])
+    return total, logged_staff_cost([w for i in inputs for w in i.work])
+
+
+def payouts_total(first, last) -> Decimal:
+    total = Payout.objects.filter(paid_on__range=(first, last)).aggregate(
+        total=Sum("amount")
+    )["total"]
+    return total or Decimal(0)
+
+
+def bills(first, last) -> list[ShopBill]:
+    return list(ShopBill.objects.filter(date__range=(first, last)))
