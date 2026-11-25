@@ -30,9 +30,9 @@ TOOLS = {
     "get_order": Tool(("orders",), READ),
     "list_orders": Tool(("orders",), READ),
     "get_measurements": Tool(("orders", "measurements"), READ),
-    "get_invoice": Tool(("orders", "money"), READ),
-    "list_unpaid": Tool(("orders", "money"), READ),
-    "money_summary": Tool(("money",), READ),
+    "money_to_collect": Tool(("money",), READ),
+    "list_payments": Tool(("money",), READ),
+    "order_cost_and_gain": Tool(("orders", "money"), READ),
     "staff_week": Tool(("staff",), READ),
     # Never delete, never record a payout
     "create_order": Tool(("orders",), CHANGE),

@@ -1,6 +1,7 @@
 import httpx2 as httpx
 import pytest
 from asgiref.sync import async_to_sync
+from django.urls import reverse
 from mcp.server.mcpserver.exceptions import ToolError
 
 from assistants import keys
@@ -11,7 +12,15 @@ from customers.models import Customer
 from orders.models import Order, OrderItem
 from reports.models import ShopSettings
 
-FOUR = ["find_customers", "get_order", "list_orders", "get_measurements"]
+DEFAULT = [
+    "find_customers",
+    "get_order",
+    "list_orders",
+    "get_measurements",
+    "money_to_collect",
+    "list_payments",
+    "order_cost_and_gain",
+]
 
 
 def switches(**kw):
@@ -46,9 +55,11 @@ def names(tools):
 
 def test_list_tools_hides_tools_whose_scope_is_off(key):
     server = build_server()
-    assert names(async_to_sync(server.list_tools)()) == FOUR
+    assert names(async_to_sync(server.list_tools)()) == DEFAULT
     switches(mcp_measurements=False)
-    assert names(async_to_sync(server.list_tools)()) == FOUR[:3]
+    assert names(async_to_sync(server.list_tools)()) == [
+        n for n in DEFAULT if n != "get_measurements"
+    ]
 
 
 def test_call_refused_tool_raises_and_logs(key):
@@ -102,9 +113,49 @@ def test_http_tools_list_end_to_end(key):
 
     ok, anonymous = async_to_sync(post_both)()
     assert ok.status_code == 200, ok.text
-    assert names_of(ok.json()) == FOUR
+    assert names_of(ok.json()) == DEFAULT
     assert anonymous.status_code == 401
 
 
 def names_of(payload):
     return [t["name"] for t in payload["result"]["tools"]]
+
+
+def test_staff_week_listed_only_with_staff_on(key):
+    server = build_server()
+    switches()
+    assert "staff_week" not in names(async_to_sync(server.list_tools)())
+    with pytest.raises(ToolError, match="Staff and pay"):
+        async_to_sync(server.call_tool)("staff_week", {})
+    assert AssistantActivity.objects.get().what == "staff_week · refused"
+    switches(mcp_staff=True)
+    assert "staff_week" in names(async_to_sync(server.list_tools)())
+    async_to_sync(server.call_tool)("staff_week", {})
+
+
+def test_money_tools_hidden_and_refused_with_money_off(key):
+    switches(mcp_money=False)
+    server = build_server()
+    money = ["money_to_collect", "list_payments", "order_cost_and_gain"]
+    assert not set(money) & set(names(async_to_sync(server.list_tools)()))
+    args = {"list_payments": {"start": "2026-11-01", "end": "2026-11-02"}}
+    for name in money:
+        with pytest.raises(ToolError, match="Invoices and payments"):
+            async_to_sync(server.call_tool)(name, args.get(name, {"number": 1}))
+
+
+def test_each_new_tool_logs_activity_shown_in_s21(key, order, owner):
+    switches(mcp_staff=True)
+    server = build_server()
+    calls = {
+        "money_to_collect": {},
+        "list_payments": {"start": "2026-11-24", "end": "2026-11-24"},
+        "order_cost_and_gain": {"number": 1},
+        "staff_week": {},
+    }
+    for name, args in calls.items():
+        async_to_sync(server.call_tool)(name, args)
+    rows = AssistantActivity.objects.order_by("pk")
+    assert [(r.what, r.kind) for r in rows] == [(n, "read") for n in calls]
+    html = owner.get(reverse("assistants")).content.decode()
+    assert all(name in html for name in calls)
