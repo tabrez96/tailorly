@@ -13,7 +13,7 @@ def make_key():
 @pytest.mark.django_db
 def test_authorize_refuses_change_tool_under_only_read():
     ShopSettings.objects.update_or_create(pk=1, defaults={"mcp_can_change": False})
-    for name in ("create_order", "record_payment", "update_measurements"):
+    for name in ("create_order", "record_payment", "update_item_measurements"):
         with pytest.raises(dispatch.Refused):
             dispatch.authorize(name)
     ShopSettings.objects.update_or_create(pk=1, defaults={"mcp_can_change": True})

@@ -131,6 +131,7 @@ def _order(order: Order, access: Access, *, detail: bool) -> dict:
     items = []
     for item in order.items.all():
         row = {
+            "id": item.id,
             "name": item.name,
             "type": item.type,
             "status": item.status,

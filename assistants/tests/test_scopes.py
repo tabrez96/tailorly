@@ -18,7 +18,7 @@ def test_refusal_names_the_switch_that_is_off():
 
 
 def test_change_tool_refused_under_only_read():
-    for name in ("create_order", "record_payment", "update_measurements"):
+    for name in ("create_order", "record_payment", "update_item_measurements"):
         assert "only read" in refusal(name, Access(ALL, False))
         assert refusal(name, Access(ALL, True)) is None
 

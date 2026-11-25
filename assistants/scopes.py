@@ -37,7 +37,7 @@ TOOLS = {
     # Never delete, never record a payout
     "create_order": Tool(("orders",), CHANGE),
     "record_payment": Tool(("orders", "money"), CHANGE),
-    "update_measurements": Tool(("orders", "measurements"), CHANGE),
+    "update_item_measurements": Tool(("orders", "measurements"), CHANGE),
 }
 
 

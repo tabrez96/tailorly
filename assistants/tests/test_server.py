@@ -1,10 +1,12 @@
+from decimal import Decimal
+
 import httpx2 as httpx
 import pytest
 from asgiref.sync import async_to_sync
 from django.urls import reverse
 from mcp.server.mcpserver.exceptions import ToolError
 
-from assistants import keys
+from assistants import keys, scopes
 from assistants.models import AccessKey, AssistantActivity
 from assistants.server import TailorlyMCP, build_app, build_server
 from catalog.models import Product
@@ -159,3 +161,104 @@ def test_each_new_tool_logs_activity_shown_in_s21(key, order, owner):
     assert [(r.what, r.kind) for r in rows] == [(n, "read") for n in calls]
     html = owner.get(reverse("assistants")).content.decode()
     assert all(name in html for name in calls)
+
+
+CHANGE_TOOLS = ["create_order", "record_payment", "update_item_measurements"]
+
+
+def call(name, arguments):
+    return async_to_sync(build_server().call_tool)(name, arguments)
+
+
+@pytest.fixture
+def shirt(order):
+    return Product.objects.create(
+        name="Shirt",
+        kind="primary",
+        type="custom",
+        usual_price=1000,
+        measurement_fields=["Chest"],
+    )
+
+
+def test_change_tools_hidden_and_refused_under_only_read(key, order):
+    switches(mcp_staff=True)
+    assert not set(CHANGE_TOOLS) & set(
+        names(async_to_sync(build_server().list_tools)())
+    )
+    for name in CHANGE_TOOLS:
+        with pytest.raises(ToolError, match="only read"):
+            call(name, {"number": order.number})
+    rows = AssistantActivity.objects.order_by("id")
+    assert [(r.what, r.kind) for r in rows] == [
+        (f"{n} · refused", "change") for n in CHANGE_TOOLS
+    ]
+
+
+def test_change_tools_listed_with_read_and_change(key):
+    switches(mcp_can_change=True, mcp_staff=True)
+    listed = names(async_to_sync(build_server().list_tools)())
+    assert listed == list(scopes.TOOLS)
+
+
+def test_record_payment_logs_change_linked_to_order(key, order):
+    switches(mcp_can_change=True)
+    call("record_payment", {"number": 1, "amount": "100"})
+    assert order.invoice().balance == Decimal("200")
+    row = AssistantActivity.objects.get()
+    assert (row.what, row.kind, row.key, row.order) == (
+        "record_payment",
+        "change",
+        key,
+        order,
+    )
+
+
+def test_failed_change_call_links_the_order_it_named(key, order):
+    switches(mcp_can_change=True)
+    with pytest.raises(ToolError):
+        call("record_payment", {"number": 1, "amount": "abc"})
+    row = AssistantActivity.objects.get()
+    assert (row.what, row.order) == ("record_payment · failed", order)
+
+
+def test_create_order_logs_change_linked_to_new_order(key, order, shirt, owner):
+    switches(mcp_can_change=True)
+    args = {"customer_id": order.customer_id, "products": ["Shirt"]}
+    call("create_order", {**args, "due_date": "2099-01-01"})
+    row = AssistantActivity.objects.get()
+    assert row.order.number == 2
+    assert row.order.customer == order.customer
+    assert f"#{row.order.number}" in owner.get(reverse("orders")).content.decode()
+
+
+def test_every_change_call_appears_in_s21(key, order, shirt, owner):
+    switches(mcp_can_change=True)
+    call("record_payment", {"number": 1, "amount": "10"})
+    created = call(
+        "create_order",
+        {
+            "customer_id": order.customer_id,
+            "products": ["Shirt"],
+            "due_date": "2099-01-01",
+        },
+    )
+    item = Order.objects.get(number=2).items.get()
+    call(
+        "update_item_measurements",
+        {"number": 2, "item_id": item.id, "values": {"Chest": "40"}},
+    )
+    assert created
+    html = owner.get(reverse("assistants")).content.decode()
+    for name in CHANGE_TOOLS:
+        assert name in html
+    assert "Claude" in html
+    assert reverse("order", args=[order.pk]) in html
+    assert reverse("order", args=[Order.objects.get(number=2).pk]) in html
+
+
+def test_registered_tools_are_exactly_the_scope_table():
+    registered = {t.name for t in build_server()._tool_manager.list_tools()}
+    assert registered == set(scopes.TOOLS)
+    assert len(registered) == 11
+    assert not any(w in n for n in registered for w in ("delete", "remove", "payout"))
