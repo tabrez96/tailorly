@@ -7,6 +7,7 @@ from django.db.models import Q
 from django.urls import NoReverseMatch, reverse
 
 from core.formats import format_clock, format_day, format_duration
+from customers.models import Customer
 from orders.listing import order_row, rows_queryset
 from orders.models import Order
 from production.live import GONE, IDLE, NOT_IN, ORDER, PAUSED, WORKING, employee_card
@@ -156,3 +157,63 @@ def settings_url() -> str:
         return reverse("settings")
     except NoReverseMatch:
         return ""
+
+
+def setup_steps(has_employee: bool, has_customer: bool, urls: dict) -> list[dict]:
+    """The S02 first-run list; the first undone step gets the primary button."""
+    steps = [
+        (
+            "Add your employee",
+            "Name, phone, daily wage. They get their own login.",
+            "Add",
+            urls["employee"],
+            has_employee,
+        ),
+        (
+            "Add your first customer",
+            "Details, measurements and notes.",
+            "Add",
+            urls["customer"],
+            has_customer,
+        ),
+        (
+            "Create your first order",
+            "Custom or ready-made.",
+            "Create",
+            urls["order"],
+            False,  # first run ends when an order is placed
+        ),
+    ]
+    out, primary_taken = [], False
+    for n, (title, line, label, url, done) in enumerate(steps, start=1):
+        primary = not done and not primary_taken
+        primary_taken = primary_taken or primary
+        out.append(
+            {
+                "n": n,
+                "title": title,
+                "line": line,
+                "label": label,
+                "url": url,
+                "done": done,
+                "primary": primary,
+            }
+        )
+    return out
+
+
+def is_first_run() -> bool:
+    """No order placed yet (drafts do not count)."""
+    return not Order.objects.exclude(status=Order.DRAFT).exists()
+
+
+def first_run_steps() -> list[dict]:
+    return setup_steps(
+        Employee.objects.exists(),
+        Customer.objects.exists(),
+        {
+            "employee": reverse("employee_add"),
+            "customer": reverse("customers") + "?add=1",
+            "order": reverse("order_new"),
+        },
+    )

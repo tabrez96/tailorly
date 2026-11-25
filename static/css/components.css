@@ -3123,3 +3123,67 @@ a.owing-row:hover {
   color: var(--ink);
   text-decoration: none;
 }
+
+/* S02 first run and hold tip */
+.setup__step {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s3) 0;
+}
+.setup__step + .setup__step {
+  border-top: 1px solid var(--edge);
+}
+.setup__step--done strong {
+  color: var(--muted);
+}
+.setup__note {
+  text-align: center;
+}
+.hold-tip__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 18;
+  background: var(--scrim);
+}
+.hold-tip__card {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(92px + env(safe-area-inset-bottom));
+  z-index: 19;
+  padding: var(--s4);
+  background: var(--card);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-float);
+}
+.hold-tip__pointer {
+  position: absolute;
+  bottom: -7px;
+  /* centred over the Orders tab: second of five */
+  left: calc(6px + (100vw - 36px) * 0.3 - 7px);
+  width: 14px;
+  height: 14px;
+  background: var(--card);
+  transform: rotate(45deg);
+}
+.hold-tip__list {
+  display: grid;
+  grid-template-columns: 6.5rem 1fr;
+  gap: var(--s3) 0;
+  margin: var(--s4) 0;
+}
+.hold-tip__list dt {
+  font-weight: 700;
+}
+.hold-tip__list dd {
+  margin: 0;
+  color: var(--muted);
+}
+body:has(#hold-tip) .nav {
+  z-index: 20;
+}
+body:has(#hold-tip) .nav__item[href="/orders/"] {
+  outline: 2px solid var(--acc);
+  outline-offset: 2px;
+}

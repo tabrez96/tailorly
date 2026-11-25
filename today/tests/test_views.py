@@ -3,6 +3,7 @@ from datetime import timedelta
 from django.utils import timezone
 
 from production.models import TimeSession
+from reports.models import ShopSettings
 from staff.models import DayRecord
 
 
@@ -32,7 +33,8 @@ def test_no_heroes_without_employees(owner):
     assert "Staff pay" not in html
 
 
-def test_nothing_due_text(owner):
+def test_nothing_due_text(owner, ali, make_item):
+    make_item(ali, due=timezone.localdate() + timedelta(days=30))
     assert "Nothing due in the next 2 days." in owner.get("/").content.decode()
 
 
@@ -82,3 +84,72 @@ def test_start_end_require_post_and_owner(owner, ali):
     ali.active = False
     ali.save()
     assert owner.post(f"/today/employees/{ali.pk}/day/start/").status_code == 404
+
+
+def test_first_run_shows_setup(owner):
+    html = owner.get("/").content.decode()
+    assert "Welcome to Tailorly" in html
+    assert "You can do these in any order." in html
+    assert "Due in the next 2 days" not in html
+    assert 'id="hold-tip"' not in html
+
+
+def step(html, n):
+    return html.split(f'id="setup-{n}"')[1].split("</li>")[0]
+
+
+def test_setup_links_open_in_place(owner):
+    html = owner.get("/").content.decode()
+    for n, url in (
+        (1, "/settings/staff/add/"),
+        (2, "/customers/?add=1"),
+        (3, "/orders/new/"),
+    ):
+        part = step(html, n)
+        assert f'href="{url}"' in part and f'hx-get="{url}"' in part
+        assert 'hx-target="#page"' in part and 'hx-push-url="true"' in part
+
+
+def test_setup_done_step_has_no_button(owner, ali):
+    html = owner.get("/").content.decode()
+    one = step(html, 1)
+    assert "Done" in one and "<a" not in one
+    assert "btn--primary" in step(html, 2)
+    assert "btn--tonal" in step(html, 3)
+
+
+def test_setup_customer_only(owner, customer):
+    html = owner.get("/").content.decode()
+    assert "btn--primary" in step(html, 1)
+    assert "Done" in step(html, 2)
+
+
+def test_hold_tip_shows_until_got_it(owner, ali, make_item):
+    make_item(ali)
+    assert 'id="hold-tip"' in owner.get("/").content.decode()
+    response = owner.post("/today/hold-tip/", HTTP_HX_REQUEST="true")
+    assert response.status_code == 200 and response.content == b""
+    assert 'id="hold-tip"' not in owner.get("/").content.decode()
+    assert ShopSettings.objects.get(pk=1).hold_tip_seen
+
+
+def test_hold_tip_not_shown_when_seen_row_exists(owner, ali, make_item):
+    make_item(ali)
+    ShopSettings.objects.create(pk=1, hold_tip_seen=True)
+    assert 'id="hold-tip"' not in owner.get("/").content.decode()
+
+
+def test_hold_tip_post_without_htmx_redirects(owner):
+    response = owner.post("/today/hold-tip/")
+    assert response.status_code == 303 and response["Location"] == "/"
+
+
+def test_hold_tip_owner_only(owner, ali):
+    assert ali.client.post("/today/hold-tip/").status_code in (302, 403)
+    assert not ShopSettings.objects.exists()
+    assert owner.get("/today/hold-tip/").status_code == 405
+
+
+def test_hold_tip_keeps_costs_unsaved(owner):
+    owner.post("/today/hold-tip/", HTTP_HX_REQUEST="true")
+    assert not ShopSettings.objects.get(pk=1).costs_saved

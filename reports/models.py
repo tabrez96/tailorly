@@ -13,6 +13,10 @@ class ShopSettings(models.Model):
     # [{"name": "Rent", "amount": "7000"}, ...], rupees a month.
     running_costs = models.JSONField(default=list, blank=True)
     working_hours = models.PositiveSmallIntegerField(default=costing.DEFAULT_HOURS)
+    hold_tip_seen = models.BooleanField(default=False)  # Got it on the S02 hold tip
+    costs_saved = models.BooleanField(
+        default=False
+    )  # running costs saved at least once
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

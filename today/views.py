@@ -1,3 +1,4 @@
+from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.utils import timezone
@@ -7,6 +8,7 @@ from accounts.decorators import owner_required
 from core.pages import render_page
 from production.report import week_so_far
 from production.timing import close_stale, stop
+from reports.models import ShopSettings
 from staff.attendance import end_day, start_day
 from staff.models import Employee
 from today import cards
@@ -16,27 +18,32 @@ from today import cards
 @require_GET
 def today(request):
     now = timezone.now()
+    base = {
+        "title": "Today",
+        "tab": "today",
+        "overline": cards.overline(now, request.user.first_name),
+        "gear_url": cards.settings_url(),
+    }
+    if cards.is_first_run():
+        context = {**base, "first_run": True, "steps": cards.first_run_steps()}
+        return render_page(request, "today/today.html", context)
     day = timezone.localdate(now)
     week = week_so_far(now)
-    return render_page(
-        request,
-        "today/today.html",
-        {
-            "title": "Today",
-            "tab": "today",
-            "overline": cards.overline(now, request.user.first_name),
-            "gear_url": cards.settings_url(),
-            "heroes": cards.hero_cards(now),
-            "now": now,
-            "plan": cards.work_plan_card(now),
-            "week": week,
-            "late_label": f"{week['late']} late",
-            "report_url": reverse("production_report") + "?from=today",
-            "due": cards.due_rows(day),
-            "money": cards.money(day),
-            "pay": cards.staff_pay(day),
-        },
-    )
+    context = {
+        **base,
+        "heroes": cards.hero_cards(now),
+        "now": now,
+        "plan": cards.work_plan_card(now),
+        "week": week,
+        "late_label": f"{week['late']} late",
+        "report_url": reverse("production_report") + "?from=today",
+        "due": cards.due_rows(day),
+        "money": cards.money(day),
+        "pay": cards.staff_pay(day),
+        "hold_tip": not ShopSettings.current().hold_tip_seen,
+        "hold_tip_url": reverse("today_hold_tip_seen"),
+    }
+    return render_page(request, "today/today.html", context)
 
 
 def _hero(request, now):
@@ -69,3 +76,14 @@ def today_end_day(request, pk):
     stop(employee, now)
     end_day(employee, now, by_owner=True)  # the same code as End day on S10
     return _hero(request, now)
+
+
+@owner_required
+@require_POST
+def today_hold_tip_seen(request):
+    ShopSettings.objects.update_or_create(pk=1, defaults={"hold_tip_seen": True})
+    if request.headers.get("HX-Request"):
+        return HttpResponse("")  # the tip swaps itself out
+    response = HttpResponseRedirect(reverse("today"))
+    response.status_code = 303
+    return response
