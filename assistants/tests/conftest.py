@@ -29,3 +29,9 @@ def ali(db):
 def order_factory(db):
     customer = Customer.objects.create(name="Asha Rao", phone="9000000011")
     return lambda: Order.objects.create(customer=customer, number=1, status="open")
+
+
+@pytest.fixture(autouse=True)
+def _keep_test_connection(monkeypatch):
+    # The test connection must stay open; the gate's own cleanup is tested on its own.
+    monkeypatch.setattr("assistants.gate.close_old_connections", lambda: None)
