@@ -1,0 +1,16 @@
+[Unit]
+Description=Tailorly web app (gunicorn)
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+User=tailorly
+Group=tailorly
+WorkingDirectory=/srv/tailorly
+EnvironmentFile=/etc/tailorly/tailorly.env
+EnvironmentFile=-/etc/tailorly/release.env
+ExecStart=/srv/tailorly/.venv/bin/gunicorn config.wsgi --workers 2 --bind 127.0.0.1:8000 --access-logfile -
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

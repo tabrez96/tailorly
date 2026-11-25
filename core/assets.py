@@ -17,7 +17,12 @@ def version_of(root: Path, paths: Iterable[Path]) -> str:
 
 @functools.cache
 def asset_version() -> str:
-    """Computed once per process; a deploy restarts the workers."""
+    """The release's version when set, else a hash of the static files.
+
+    Computed once per process; a deploy restarts the workers.
+    """
+    if settings.ASSET_VERSION:
+        return settings.ASSET_VERSION
     root = Path(settings.STATICFILES_DIRS[0])
     return version_of(
         root,

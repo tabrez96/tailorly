@@ -7,6 +7,7 @@ description = "Test fixtures and examples hold made-up passwords and database UR
 paths = [
   '''(^|/)tests/''',
   '''(^|/)\.env\.example$''',
+  '''(^|/)deploy/production\.env\.example$''',
 ]
 
 [[allowlists]]

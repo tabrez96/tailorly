@@ -1,0 +1,10 @@
+[Unit]
+Description=Tailorly nightly backup
+
+[Timer]
+OnCalendar=*-*-* 02:30:00 Asia/Kolkata
+Persistent=true
+Unit=tailorly-backup.service
+
+[Install]
+WantedBy=timers.target
