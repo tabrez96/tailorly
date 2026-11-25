@@ -174,8 +174,8 @@ def test_staff_pay_matches_week_pay(ali):
     assert row["url"] == f"/settings/staff/?e={ali.pk}"
 
 
-def test_settings_url_empty_without_route():
-    assert cards.settings_url() == ""
+def test_settings_url():
+    assert cards.settings_url() == "/settings/"
 
 
 def test_setup_steps_none_done():

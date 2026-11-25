@@ -21,7 +21,7 @@ from staff.pay import overtime_minutes, worked_minutes
 
 DAY, WEEK, MONTH = "day", "week", "month"
 PERIODS = [(DAY, "Day"), (WEEK, "Week"), (MONTH, "Month")]
-FROMS = {"production": "production", "today": "today"}
+FROMS = {"production": "production", "today": "today", "settings": "settings"}
 FURTHEST = 3
 SOON_DAYS = 7
 DASH = "\N{EN DASH}"

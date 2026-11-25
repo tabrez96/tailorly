@@ -1,0 +1,10 @@
+<span class="icon-tile">{% include "components/icon.html" with name=row.icon %}</span>
+<div class="list__main">
+    <p class="t-body">
+        <strong>{{ row.title }}</strong>
+    </p>
+    <p class="t-small muted">{{ row.line }}</p>
+</div>
+{% if row.chip %}
+    {% include "components/chip.html" with tone="warn" label=row.chip %}
+{% endif %}

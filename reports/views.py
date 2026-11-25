@@ -97,7 +97,7 @@ def running_costs(request):
             **context,
             "title": "Running costs",
             "subpage": True,
-            "back_url": reverse("today"),
+            "back_url": reverse("settings"),
         },
         status=status,
     )

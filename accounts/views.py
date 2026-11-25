@@ -2,9 +2,10 @@ from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.views import LoginView, LogoutView
+from django.urls import reverse
 
 from accounts.forms import SIGN_IN_ERROR, SignInForm
-from accounts.roles import home_url, role_for
+from accounts.roles import EMPLOYEE, OWNER, home_url, role_for
 from core.pages import render_page
 
 
@@ -54,7 +55,9 @@ def change_password(request):
         "title": "Change password",
         "form": form,
         "saved": saved,
-        "back_url": home_url(role_for(request.user)),
+        "back_url": reverse("settings")
+        if role_for(request.user) == OWNER
+        else home_url(EMPLOYEE),
     }
     return render_page(request, "accounts/change_password.html", context, status=status)
 

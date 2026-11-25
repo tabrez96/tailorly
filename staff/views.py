@@ -29,7 +29,7 @@ from staff.models import Employee, Payout
 from staff.pay import pay_day, payout_summary, short_period, week_pay
 
 STAFF_URL = "/settings/staff/"
-STAFF_BACK = "/"  # S18 Settings once it exists
+STAFF_BACK = "/settings/"
 
 
 def _records(employee, monday):
