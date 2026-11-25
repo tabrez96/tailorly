@@ -33,7 +33,7 @@ def test_visible_defaults():
         "get_order",
         "list_orders",
         "get_measurements",
-        "get_invoice",
-        "list_unpaid",
-        "money_summary",
+        "money_to_collect",
+        "list_payments",
+        "order_cost_and_gain",
     ]

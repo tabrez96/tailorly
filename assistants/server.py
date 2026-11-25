@@ -12,7 +12,7 @@ from mcp.server.transport_security import TransportSecuritySettings
 
 from reports.models import ShopSettings
 
-from . import dispatch, scopes, tools
+from . import dispatch, report_tools, scopes, tools
 from .gate import KeyGate
 
 
@@ -72,6 +72,26 @@ def build_server() -> TailorlyMCP:
     async def get_measurements(customer_id: int) -> dict:
         """A customer's saved measurements for each garment."""
         return await sync_to_async(tools.get_measurements)(customer_id)
+
+    @server.tool()
+    async def money_to_collect() -> dict:
+        """Money customers still owe: totals, and the orders owing."""
+        return await sync_to_async(report_tools.money_to_collect)()
+
+    @server.tool()
+    async def list_payments(start: str, end: str) -> dict:
+        """Payments received from start to end (YYYY-MM-DD, max 366 days)."""
+        return await sync_to_async(report_tools.list_payments)(start, end)
+
+    @server.tool()
+    async def order_cost_and_gain(number: int) -> dict:
+        """What an order costs and gains, per item, as on its cost card."""
+        return await sync_to_async(report_tools.order_cost_and_gain)(number)
+
+    @server.tool()
+    async def staff_week(week: str | None = None) -> dict:
+        """Each employee's days, overtime, pay and payout for a week (YYYY-MM-DD)."""
+        return await sync_to_async(report_tools.staff_week)(week)
 
     return server
 

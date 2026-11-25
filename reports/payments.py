@@ -86,12 +86,12 @@ def owing_longest(owing: list[Owing], today: date) -> list[dict]:
     ]
 
 
+def payments_in(first: date, last: date):
+    return Payment.objects.filter(date__range=(first, last))
+
+
 def load_payments(first: date, last: date) -> list[tuple[str, Decimal]]:
-    return list(
-        Payment.objects.filter(date__range=(first, last)).values_list(
-            "method", "amount"
-        )
-    )
+    return list(payments_in(first, last).values_list("method", "amount"))
 
 
 def load_owing() -> list[Owing]:
