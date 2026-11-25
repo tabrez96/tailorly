@@ -1,0 +1,27 @@
+<form x-data="savePref"
+      hx-post="{% url 'assistants_set' %}"
+      hx-trigger="change"
+      hx-target="#assistants"
+      hx-swap="outerHTML"
+      @htmx:before:request="error = ''"
+      @htmx:error="failed()"
+      @htmx:response:error="failed()"
+      hx-status:5xx="swap:none">
+    <input type="hidden" name="name" value="{{ name }}">
+    <div class="switch-row">
+        <span class="icon-tile">{% include "components/icon.html" with name=icon %}</span>
+        <div class="row-text">
+            <label class="row-text__label" for="{{ id }}">{{ title }}</label>
+            {% if line %}<span class="t-small muted">{{ line }}</span>{% endif %}
+        </div>
+        <input class="switch"
+               type="checkbox"
+               role="switch"
+               id="{{ id }}"
+               name="value"
+               value="on"
+               aria-describedby="{{ id }}_error"
+               {% if checked %}checked{% endif %}>
+    </div>
+    <p class="field__error" id="{{ id }}_error" role="alert" x-text="error"></p>
+</form>

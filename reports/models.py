@@ -17,6 +17,12 @@ class ShopSettings(models.Model):
     costs_saved = models.BooleanField(
         default=False
     )  # running costs saved at least once
+    mcp_on = models.BooleanField(default=False)
+    mcp_orders = models.BooleanField(default=True)  # orders and customers
+    mcp_measurements = models.BooleanField(default=True)  # measurements and photos
+    mcp_money = models.BooleanField(default=True)  # invoices, payments, costs, gains
+    mcp_staff = models.BooleanField(default=False)  # attendance, overtime, payouts
+    mcp_can_change = models.BooleanField(default=False)  # False: only read
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

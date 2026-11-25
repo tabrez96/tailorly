@@ -7,9 +7,11 @@ from functools import cache
 
 from django.conf import settings
 from django.http import QueryDict
-from django.urls import NoReverseMatch, reverse
+from django.urls import reverse
 from django.utils import timezone
 
+from assistants import prefs
+from assistants.models import AccessKey
 from core.formats import format_duration
 from core.money import format_inr
 from production.report import MONTH, period_range, week_so_far
@@ -167,11 +169,9 @@ def running_row() -> dict:
 
 
 def mcp_row() -> dict:
-    try:
-        url = reverse("assistants")
-    except NoReverseMatch:
-        url = ""
-    return _row("settings-mcp", "MCP server", "plug", "Off", url)
+    s = ShopSettings.current()
+    line = prefs.settings_line(s.mcp_on, AccessKey.active().count(), s.mcp_can_change)
+    return _row("settings-mcp", "MCP server", "plug", line, reverse("assistants"))
 
 
 def account(user) -> dict:

@@ -1,0 +1,15 @@
+{% extends "components/sheet_content.html" %}
+{% load ui %}
+{% block sheet_title %}New key{% endblock %}
+{% block sheet_body %}
+    <form method="post"
+          novalidate
+          action="{{ action }}"
+          hx-post="{{ action }}"
+          hx-target="#sheet">
+        {% csrf_token %}
+        {% error_summary form "make this key" %}
+        {% field form.name %}
+        <button class="btn btn--primary btn--block" type="submit">Make key</button>
+    </form>
+{% endblock %}

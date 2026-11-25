@@ -7,6 +7,7 @@ from django.contrib.auth.models import User
 from django.urls import reverse
 from django.utils import timezone
 
+from assistants.models import AccessKey
 from core.money import format_inr
 from orders.models import Order, Payment
 from reports.models import ShopSettings
@@ -142,10 +143,16 @@ def test_first_run_texts(owner):
     assert f'href="{reverse("employee_add")}"' in tag
 
 
-def test_mcp_off_and_not_a_link(owner):
+def test_mcp_row_links_to_assistants(owner):
     html = page(owner)
     assert "MCP server" in html and line(html, "settings-mcp") == "Off"
-    assert re.search(r'<a[^>]*id="settings-mcp"', html) is None
+    assert re.search(r'<a[^>]*id="settings-mcp"[^>]*href="/settings/assistants/"', html)
+
+
+def test_mcp_row_on(owner):
+    ShopSettings.objects.update_or_create(pk=1, defaults={"mcp_on": True})
+    AccessKey.objects.create(name="Claude", prefix="abcd1234", key_hash="a" * 64)
+    assert line(page(owner), "settings-mcp") == "On · 1 app connected · only read"
 
 
 def test_account_section(owner, client):
