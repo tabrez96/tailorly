@@ -91,6 +91,7 @@ AUTH_PASSWORD_VALIDATORS = [
 LANGUAGE_CODE = "en-in"
 TIME_ZONE = "Asia/Kolkata"
 SHOP_NAME = os.environ.get("SHOP_NAME", "").strip()
+MCP_SERVER_URL = os.environ.get("MCP_SERVER_URL", "").strip()
 USE_I18N = True
 USE_TZ = True
 

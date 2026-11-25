@@ -1,0 +1,149 @@
+<div id="assistants"{% if oob %} hx-swap-oob="true"{% endif %}>
+    <h2 class="t-section settings-section">MCP server</h2>
+    <div class="card assist-card">
+        {% include "assistants/_switch_form.html" with name="on" icon="plug" id="mcp-on" title="MCP server" line=server_line checked=s.mcp_on %}
+        <p class="assist-card__text">
+            Let an AI assistant such as Claude answer questions about your shop and help with orders, through the Model Context Protocol (MCP).
+        </p>
+        {% if s.mcp_on %}
+            <div x-data="copyText" data-copied="Address copied">
+                <p class="field__label">Server address</p>
+                <div class="copy-row">
+                    <div class="mono-box" id="mcp-address" x-ref="text">{{ address }}</div>
+                    <button class="btn btn--tonal" type="button" @click="copy()">Copy</button>
+                </div>
+                <p class="field__error" role="alert" x-show="failed" x-cloak>
+                    Couldn't copy. Press and hold the address to copy it.
+                </p>
+            </div>
+            <p class="t-small muted">
+                Paste this into your assistant's MCP or connector settings, with an access key from below.
+            </p>
+        {% endif %}
+    </div>
+    {% if not s.mcp_on %}
+        <div class="card assist-card">
+            <div class="empty">
+                <div class="icon-tile icon-tile--lg">{% include "components/icon.html" with name="plug" %}</div>
+                <h2 class="t-sheet empty__title">No assistant connected</h2>
+                <p class="muted empty__text">
+                    Turn on the MCP server, then make one access key for each app you connect. Nothing is shared until you do.
+                </p>
+                <form hx-post="{% url 'assistants_set' %}"
+                      hx-target="#assistants"
+                      hx-swap="outerHTML">
+                    <input type="hidden" name="name" value="on">
+                    <input type="hidden" name="value" value="on">
+                    <button class="btn btn--primary" type="submit" id="mcp-turn-on">Turn on MCP server</button>
+                </form>
+            </div>
+        </div>
+    {% else %}
+        <h2 class="t-section settings-section">What it can see</h2>
+        <div class="card assist-card">
+            {% include "assistants/_switch_form.html" with name="orders" icon="list" id="mcp-orders" title="Orders and customers" line="Items, due dates, status, notes" checked=s.mcp_orders %}
+            {% include "assistants/_switch_form.html" with name="measurements" icon="camera" id="mcp-measurements" title="Measurements and photos" line="Each item's measurements and pictures" checked=s.mcp_measurements %}
+            {% include "assistants/_switch_form.html" with name="money" icon="rupee" id="mcp-money" title="Invoices and payments" line="Prices, payments, costs and gains" checked=s.mcp_money %}
+            {% if s.mcp_staff %}
+                {% include "assistants/_switch_form.html" with name="staff" icon="badge" id="mcp-staff" title="Staff and pay" line="Attendance, overtime, payouts" checked=True %}
+            {% else %}
+                {% include "assistants/_switch_form.html" with name="staff" icon="badge" id="mcp-staff" title="Staff and pay" line="Off: attendance and pay stay private" checked=False %}
+            {% endif %}
+        </div>
+        <h2 class="t-section settings-section">What it can do</h2>
+        <form x-data="savePref"
+              hx-post="{% url 'assistants_set' %}"
+              hx-trigger="change"
+              hx-target="#assistants"
+              hx-swap="outerHTML"
+              @htmx:before:request="error = ''"
+              @htmx:error="failed()"
+              @htmx:response:error="failed()"
+              hx-status:5xx="swap:none">
+            <input type="hidden" name="name" value="mode">
+            <fieldset class="seg">
+                <legend class="sr-only">What it can do</legend>
+                <div class="seg__track">
+                    {% for o in modes %}
+                        <label class="seg__opt" for="{{ o.id }}">
+                            <input class="seg__input"
+                                   type="radio"
+                                   id="{{ o.id }}"
+                                   name="value"
+                                   value="{{ o.value }}"
+                                   aria-describedby="mcp-mode_error"
+                                   {% if o.checked %}checked{% endif %}
+                                   {% if o.value == "change" %}@click="if (prev !== 'change' && !confirm('Let assistants make changes? Changes show in Recent activity.')) $event.preventDefault()"{% endif %}>
+                            {{ o.label }}
+                        </label>
+                    {% endfor %}
+                </div>
+            </fieldset>
+            <p class="field__error" id="mcp-mode_error" role="alert" x-text="error"></p>
+        </form>
+        <p class="muted t-small">
+            Read and change lets it create orders, record payments and update item measurements. It can never delete anything or record a payout.
+        </p>
+        <h2 class="t-section settings-section">Access keys</h2>
+        {% if key_rows %}
+            <ul class="list card">
+                {% for row in key_rows %}
+                    <li class="list__row">
+                        <div class="list__main">
+                            <p class="t-body">
+                                <strong>{{ row.key.name }}</strong>
+                            </p>
+                            <p class="t-small muted">Made {{ row.key.created_at|date:"j M" }} · {{ row.used }}</p>
+                        </div>
+                        <button class="btn btn--ghost btn--danger btn--sm"
+                                type="button"
+                                id="revoke-{{ row.key.pk }}"
+                                hx-post="{% url 'assistant_key_revoke' row.key.pk %}"
+                                hx-confirm="Revoke {{ row.key.name }}? That app stops working at once."
+                                hx-target="#assistants"
+                                hx-swap="outerHTML">Revoke</button>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="muted">No keys yet. Make one for each app you connect.</p>
+        {% endif %}
+        <button class="btn btn--tonal assist-new"
+                type="button"
+                id="new-key"
+                hx-get="{% url 'assistant_key_new' %}"
+                hx-target="#sheet">+ New key</button>
+        <h2 class="t-section settings-section">Recent activity</h2>
+        {% if activity %}
+            <ul class="list card">
+                {% for a in activity %}
+                    <li class="list__row">
+                        <div class="list__main">
+                            <p class="t-body">
+                                {% if a.kind == "change" and a.order_id %}
+                                    <a href="{% url 'order' a.order_id %}"
+                                       hx-get="{% url 'order' a.order_id %}"
+                                       hx-target="#page"
+                                       hx-sync="#page:replace"
+                                       hx-push-url="true">
+                                        <strong>{{ a.what }}</strong>
+                                    </a>
+                                {% else %}
+                                    <strong>{{ a.what }}</strong>
+                                {% endif %}
+                            </p>
+                            <p class="t-small muted">{{ a.key.name }} · {{ a.at|date:"j M, g:i A" }}</p>
+                        </div>
+                        {% if a.kind == "change" %}
+                            {% include "components/chip.html" with label="Change" tone="pri" %}
+                        {% else %}
+                            {% include "components/chip.html" with label="Read" tone="grey" %}
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="muted">Nothing yet. Activity shows here once an app uses its key.</p>
+        {% endif %}
+    {% endif %}
+</div>

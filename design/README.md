@@ -9,7 +9,7 @@ Status: **draft** (UX not approved yet), **approved**, **building** (a ticket fo
 | ID | Screen | Status | Purpose | Tickets | Updated |
 | --- | --- | --- | --- | --- | --- |
 | S01 | [Sign in](screens/S01-sign-in/screen.html) (+2 states) · [spec](screens/S01-sign-in/spec.md) | built | Sign in as the owner or the employee | T-160, T-207 | 2026-11-17 |
-| S02 | [Today](screens/S02-today/screen.html) (+3 states) · [spec](screens/S02-today/spec.md) | building |  | T-179, T-237, T-250, T-251 | 2026-11-17 |
+| S02 | [Today](screens/S02-today/screen.html) (+3 states) · [spec](screens/S02-today/spec.md) | built |  | T-179, T-237, T-250, T-251 | 2026-11-17 |
 | S03 | [Orders](screens/S03-orders/screen.html) (+2 states) · [spec](screens/S03-orders/spec.md) | built | Find any order and see its status and balance | T-166, T-179, T-197, T-237, T-243, T-244 | 2026-11-17 |
 | S04 | [Order Detail](screens/S04-order-detail/screen.html) (+10 states) · [spec](screens/S04-order-detail/spec.md) | built |  | T-166, T-167, T-168, T-169, T-173, T-175, T-176, T-178, T-179, T-190, T-197, T-198, T-199, T-200, T-203, T-236, T-239, T-241, T-243 | 2026-11-17 |
 | S05 | [New order](screens/S05-new-order/screen.html) (+3 states) · [spec](screens/S05-new-order/spec.md) | built | Create a custom or ready-made order for a customer | T-162, T-164, T-165, T-190, T-197, T-203 | 2026-11-17 |
@@ -17,11 +17,11 @@ Status: **draft** (UX not approved yet), **approved**, **building** (a ticket fo
 | S07 | [Customer detail](screens/S07-customer-detail/screen.html) (+2 states) · [spec](screens/S07-customer-detail/spec.md) | built | A customer's details, measurements and orders | T-162, T-165, T-166, T-167, T-169, T-177, T-188, T-198, T-243 | 2026-11-17 |
 | S08 | [My Work](screens/S08-my-work/screen.html) (+4 states) · [spec](screens/S08-my-work/spec.md) | built |  | T-170, T-171, T-172, T-173, T-176, T-202, T-204 | 2026-11-17 |
 | S09 | [My Pay](screens/S09-my-pay/screen.html) (+1 states) · [spec](screens/S09-my-pay/spec.md) | built |  | T-174 | 2026-11-17 |
-| S10 | [Staff](screens/S10-staff/screen.html) (+3 states) · [spec](screens/S10-staff/spec.md) | building |  | T-170, T-174, T-178, T-179, T-251 | 2026-11-17 |
-| S11 | [Reports](screens/S11-reports/screen.html) (+4 states) · [spec](screens/S11-reports/spec.md) | building |  | T-175, T-177, T-237, T-243, T-244, T-251 | 2026-11-17 |
-| S12 | [Production](screens/S12-production/screen.html) (+6 states) · [spec](screens/S12-production/spec.md) | building |  | T-172, T-173, T-177, T-179, T-203, T-237, T-240, T-241, T-251 | 2026-11-17 |
-| S13 | [Payments](screens/S13-payments/screen.html) (+1 states) · [spec](screens/S13-payments/spec.md) | building |  | T-178, T-179, T-237, T-251 | 2026-11-17 |
-| S14 | [Staff Report](screens/S14-staff-report/screen.html) (+1 states) · [spec](screens/S14-staff-report/spec.md) | building |  | T-178, T-237, T-251 | 2026-11-17 |
+| S10 | [Staff](screens/S10-staff/screen.html) (+3 states) · [spec](screens/S10-staff/spec.md) | built |  | T-170, T-174, T-178, T-179, T-251 | 2026-11-17 |
+| S11 | [Reports](screens/S11-reports/screen.html) (+4 states) · [spec](screens/S11-reports/spec.md) | built |  | T-175, T-177, T-237, T-243, T-244, T-251 | 2026-11-17 |
+| S12 | [Production](screens/S12-production/screen.html) (+6 states) · [spec](screens/S12-production/spec.md) | built |  | T-172, T-173, T-177, T-179, T-203, T-237, T-240, T-241, T-251 | 2026-11-17 |
+| S13 | [Payments](screens/S13-payments/screen.html) (+1 states) · [spec](screens/S13-payments/spec.md) | built |  | T-178, T-179, T-237, T-251 | 2026-11-17 |
+| S14 | [Staff Report](screens/S14-staff-report/screen.html) (+1 states) · [spec](screens/S14-staff-report/spec.md) | built |  | T-178, T-237, T-251 | 2026-11-17 |
 | S15 | [Products](screens/S15-products/screen.html) (+5 states) · [spec](screens/S15-products/spec.md) | built |  | T-161, T-164, T-186, T-187 | 2026-11-17 |
 | S16 | [Work Plan](screens/S16-work-plan/screen.html) (+4 states) · [spec](screens/S16-work-plan/spec.md) | built |  | T-172, T-173, T-176, T-179, T-197, T-203, T-204 | 2026-11-17 |
 | S17 | [Production Record](screens/S17-production-record/screen.html) (+2 states) · [spec](screens/S17-production-record/spec.md) | built |  | T-236, T-237, T-239, T-241 | 2026-11-17 |

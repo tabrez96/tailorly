@@ -152,12 +152,54 @@ function invoiceSend() {
   };
 }
 
+// S21: a switch or segment that saves on change; if the save fails, put it back.
+function savePref() {
+  return {
+    error: "",
+    saved: [],
+    prev: "",
+    init() {
+      const inputs = [...this.$el.querySelectorAll('input[name="value"]')];
+      this.saved = inputs.map((i) => i.checked);
+      this.prev = inputs.find((i) => i.checked)?.value ?? "";
+    },
+    failed() {
+      this.$el
+        .querySelectorAll('input[name="value"]')
+        .forEach((i, n) => (i.checked = this.saved[n]));
+      this.error = "Couldn't save. Check your connection and try again.";
+    },
+  };
+}
+
+// Copy the text of x-ref="text": a toast on success, an inline alert on failure.
+function copyText() {
+  return {
+    failed: false,
+    async copy() {
+      try {
+        await navigator.clipboard.writeText(this.$refs.text.textContent.trim());
+        this.failed = false;
+        window.dispatchEvent(
+          new CustomEvent("toast", {
+            detail: { message: this.$el.dataset.copied },
+          }),
+        );
+      } catch {
+        this.failed = true;
+      }
+    },
+  };
+}
+
 document.addEventListener("alpine:init", () => {
   Alpine.store("shell", { tab: document.body.dataset.tab || "", depth: 0 });
   Alpine.data("sheet", sheet);
   Alpine.data("hold", hold);
   Alpine.data("toast", toast);
   Alpine.data("invoiceSend", invoiceSend);
+  Alpine.data("savePref", savePref);
+  Alpine.data("copyText", copyText);
 });
 
 // The hold link already navigated; the release click must not reach htmx, or

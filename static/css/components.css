@@ -3221,3 +3221,60 @@ a.settings-row:hover {
 .settings-section {
   margin: var(--s5) var(--s1) var(--s2);
 }
+
+/* S21 AI assistants */
+.mono-box {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 14px;
+  background: var(--sunk);
+  border-radius: 14px;
+  font:
+    14px ui-monospace,
+    monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mono-box--wrap {
+  white-space: normal;
+  word-break: break-all;
+  user-select: all;
+}
+.key-warn {
+  margin: var(--s3) 0;
+  padding: 12px;
+  color: var(--warn);
+  background: var(--warn-bg);
+  border-radius: 14px;
+  font-weight: 700;
+}
+.copy-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.assist-card {
+  padding: var(--s3) var(--s4);
+}
+.assist-card + .assist-card {
+  margin-top: var(--s3);
+}
+.assist-card > form + form {
+  border-top: 1px solid var(--edge);
+}
+.assist-card__text {
+  margin: var(--s2) 0 var(--s3);
+}
+.assist-new {
+  margin: var(--s3) 0 0;
+}
+#assistants .field__error:empty {
+  display: none;
+}
+.copy-row--even {
+  margin-top: var(--s4);
+}
+.copy-row--even .btn {
+  flex: 1;
+}

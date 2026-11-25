@@ -97,6 +97,7 @@ urlpatterns = [
     path("", include("customers.urls")),
     path("", include("orders.urls")),
     path("", include("reports.urls")),
+    path("", include("assistants.urls")),
     path("admin/", admin.site.urls),
     path("styleguide/", views.styleguide, name="styleguide"),
     path("styleguide/shell/", views.shell_check, name="shell_check"),

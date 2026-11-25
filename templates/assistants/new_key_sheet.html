@@ -1,0 +1,20 @@
+{% extends "components/sheet_content.html" %}
+{% block sheet_title %}Your new key{% endblock %}
+{% block sheet_body %}
+    <div x-data="copyText" data-copied="Key copied">
+        <p class="muted">{{ key.name }} · can see and do what you set in Settings</p>
+        <div class="mono-box mono-box--wrap" id="new-key-value" x-ref="text">{{ raw }}</div>
+        <p class="key-warn">Copy it now and paste it into the app. You won't see this key again.</p>
+        <p class="field__error" role="alert" x-show="failed" x-cloak>
+            Couldn't copy. Press and hold the key to copy it.
+        </p>
+        <div class="copy-row copy-row--even">
+            <button class="btn btn--tonal"
+                    type="button"
+                    x-data
+                    @click="$dispatch('sheet:close')">Done</button>
+            <button class="btn btn--primary" type="button" @click="copy()">Copy key</button>
+        </div>
+    </div>
+    {% include "assistants/_assistants.html" %}
+{% endblock %}
