@@ -133,6 +133,15 @@ set -a; . ./.env; set +a
 uv run python manage.py runserver
 ```
 
+### MCP server
+
+```
+set -a; . ./.env; set +a
+uv run python manage.py run_mcp   # http://127.0.0.1:8001/mcp
+```
+
+It answers only while the MCP server switch on Settings > AI assistants is on, with an access key from that page sent as `Authorization: Bearer <key>`. The tunnel routes `/mcp` to port 8001; set `MCP_SERVER_URL` to the public address so its host is accepted. Tools list only what the "What it can see" switches allow.
+
 ### First setup
 
 Create the owner account (asks for a password; the phone number is the username):

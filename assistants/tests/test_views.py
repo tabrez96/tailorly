@@ -174,3 +174,15 @@ def test_address_from_setting(owner, settings):
     assert "https://shop.example/mcp" in page(owner)
     settings.MCP_SERVER_URL = ""
     assert "http://testserver/mcp" in page(owner)
+
+
+def test_activity_shows_key_tool_and_time(owner):
+    from assistants import dispatch
+
+    ShopSettings.objects.update_or_create(pk=1, defaults={"mcp_on": True})
+    key = make_key("Claude desktop")
+    row = dispatch.record(key.pk, "get_order")
+    html = page(owner)
+    assert "Claude desktop" in html and "get_order" in html
+    stamp = timezone.localtime(row.at).strftime("%-d %b, %-I:%M %p")
+    assert f"Claude desktop · {stamp}" in html
