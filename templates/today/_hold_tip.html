@@ -1,0 +1,35 @@
+<div id="hold-tip" class="hold-tip">
+    <div class="hold-tip__scrim" aria-hidden="true"></div>
+    <section class="hold-tip__card"
+             role="dialog"
+             aria-modal="false"
+             aria-labelledby="hold-tip-title">
+        <h2 id="hold-tip-title" class="t-section">Press and hold a tab to make something new</h2>
+        <p class="t-small muted">A tap opens the tab. Holding it for half a second goes straight to the form.</p>
+        <dl class="hold-tip__list">
+            <dt>Orders</dt>
+            <dd>
+                New order
+            </dd>
+            <dt>Customers</dt>
+            <dd>
+                Add a customer
+            </dd>
+            <dt>Products</dt>
+            <dd>
+                Add a product
+            </dd>
+            <dt>Production</dt>
+            <dd>
+                Assign the next waiting order
+            </dd>
+        </dl>
+        <button class="btn btn--primary btn--block"
+                type="button"
+                id="hold-tip-ok"
+                hx-post="{{ hold_tip_url }}"
+                hx-target="#hold-tip"
+                hx-swap="outerHTML">Got it</button>
+        <span class="hold-tip__pointer" aria-hidden="true"></span>
+    </section>
+</div>

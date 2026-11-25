@@ -1,0 +1,30 @@
+<div class="card today-card">
+    <h2 class="t-sheet" style="margin: 0">Welcome to Tailorly</h2>
+    <p class="t-small muted">Three steps and your shop is ready.</p>
+</div>
+<div class="card today-card">
+    <ol class="list setup">
+        {% for step in steps %}
+            <li class="setup__step{% if step.done %} setup__step--done{% endif %}"
+                id="setup-{{ step.n }}">
+                <div class="list__main">
+                    <p class="t-body">
+                        <strong>{{ step.n }}. {{ step.title }}</strong>
+                    </p>
+                    <p class="t-small muted">{{ step.line }}</p>
+                </div>
+                {% if step.done %}
+                    {% include "components/chip.html" with tone="ok" label="Done" %}
+                {% else %}
+                    <a class="btn {% if step.primary %}btn--primary{% else %}btn--tonal{% endif %}"
+                       href="{{ step.url }}"
+                       hx-get="{{ step.url }}"
+                       hx-target="#page"
+                       hx-sync="#page:replace"
+                       hx-push-url="true">{{ step.label }}</a>
+                {% endif %}
+            </li>
+        {% endfor %}
+    </ol>
+</div>
+<p class="t-small muted setup__note">You can do these in any order.</p>

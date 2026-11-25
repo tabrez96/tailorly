@@ -3,6 +3,7 @@ from django.urls import path
 from today import views
 
 urlpatterns = [
+    path("today/hold-tip/", views.today_hold_tip_seen, name="today_hold_tip_seen"),
     path("today/hero/", views.today_hero, name="today_hero"),
     path(
         "today/employees/<int:pk>/day/start/",

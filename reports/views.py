@@ -47,8 +47,15 @@ def running_costs(request):
         hours, hours_error = form.parse_hours(request.POST.get("hours", ""))
         errors = sum(1 for r in rows if r.error) + (1 if hours_error else 0)
         if not errors:
-            saved.running_costs, saved.working_hours = lines, hours
-            saved.save()
+            # Write only these fields so a stale read can't undo hold_tip_seen.
+            ShopSettings.objects.update_or_create(
+                pk=1,
+                defaults={
+                    "running_costs": lines,
+                    "working_hours": hours,
+                    "costs_saved": True,
+                },
+            )
             if sheet and next_url:
                 return sheet_saved_location(next_url, "Running costs saved")
             if sheet:
@@ -61,7 +68,7 @@ def running_costs(request):
         total = costing.monthly_total(lines)
     else:
         lines = saved.running_costs
-        if saved._state.adding:  # never saved: start from the shop bills
+        if not saved.costs_saved:  # never saved: start from the shop bills
             bills = order_costs.bill_months(timezone.localdate())
             lines = garments.prefill_lines(garments.bills_average(bills))
         rows = form.rows_for(lines)

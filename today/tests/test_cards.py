@@ -3,7 +3,8 @@ from decimal import Decimal
 
 from django.utils import timezone
 
-from orders.models import Payment
+from customers.models import Customer
+from orders.models import Order, Payment
 from production.live import GONE, IDLE, NOT_IN, PAUSED, WORKING
 from production.models import TimeSession
 from reports import payments
@@ -11,6 +12,8 @@ from staff.attendance import week_start
 from staff.models import DayRecord
 from staff.pay import week_pay
 from today import cards
+
+URLS = {"employee": "/e/", "customer": "/c/", "order": "/o/"}
 
 
 def aware(y, m, d, h=9, mi=0):
@@ -173,3 +176,31 @@ def test_staff_pay_matches_week_pay(ali):
 
 def test_settings_url_empty_without_route():
     assert cards.settings_url() == ""
+
+
+def test_setup_steps_none_done():
+    steps = cards.setup_steps(False, False, URLS)
+    assert [s["done"] for s in steps] == [False] * 3
+    assert [s["primary"] for s in steps] == [True, False, False]
+    assert [s["label"] for s in steps] == ["Add", "Add", "Create"]
+    assert [s["url"] for s in steps] == ["/e/", "/c/", "/o/"]
+
+
+def test_setup_steps_employee_done():
+    steps = cards.setup_steps(True, False, URLS)
+    assert steps[0]["done"] and not steps[0]["primary"]
+    assert [s["primary"] for s in steps] == [False, True, False]
+
+
+def test_setup_steps_both_done():
+    steps = cards.setup_steps(True, True, URLS)
+    assert [s["done"] for s in steps] == [True, True, False]
+    assert [s["primary"] for s in steps] == [False, False, True]
+
+
+def test_is_first_run_ignores_drafts(db):
+    customer = Customer.objects.create(name="Meera Iyer", phone="9000000011")
+    Order.objects.create(customer=customer, number=1, status=Order.DRAFT)
+    assert cards.is_first_run()
+    Order.objects.create(customer=customer, number=2, status=Order.OPEN)
+    assert not cards.is_first_run()

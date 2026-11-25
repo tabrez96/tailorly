@@ -1,3 +1,5 @@
+import re
+
 import pytest
 from django.contrib.auth.models import User
 from django.test import Client
@@ -104,3 +106,27 @@ def test_end_day_from_hero(signed_in, live_server, not_stale):
     page.get_by_role("button", name="End Ali's day").click()
     expect(page.locator("#today-hero").get_by_text("Gone home")).to_be_visible()
     assert page.evaluate("window.__marker") == 1
+
+
+def test_today_first_run(signed_in, live_server):
+    context, page = signed_in("owner")
+    page.goto(live_server.url + "/")
+    expect(page.get_by_text("Welcome to Tailorly")).to_be_visible()
+    page.screenshot(path=str(SHOTS / "S02-today-first-run.png"))
+    page.evaluate("window.__marker = 1")
+    page.locator("#setup-2 a").click()
+    expect(page).to_have_url(re.compile(r"/customers/\?add=1"))
+    expect(page.locator(".nav")).to_be_visible()
+    assert page.evaluate("window.__marker") == 1  # no full reload
+
+
+def test_today_hold_tip(signed_in, live_server, not_stale):
+    context, page = signed_in("owner", hold_tip_seen=False)
+    seed(session="open")
+    page.goto(live_server.url + "/")
+    expect(page.locator(".hold-tip__card")).to_be_visible()
+    page.screenshot(path=str(SHOTS / "S02-today-hold-tip.png"))
+    page.get_by_role("button", name="Got it").click()
+    expect(page.locator("#hold-tip")).to_have_count(0)
+    page.reload()
+    expect(page.locator("#hold-tip")).to_have_count(0)

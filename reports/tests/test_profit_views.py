@@ -384,9 +384,16 @@ def test_running_costs_prefilled_from_bills(owner_client, db):
 
 def test_running_costs_not_prefilled_once_saved(owner_client, db):
     bills_for_prefill()
-    ShopSettings.objects.create(pk=1, running_costs=[])
+    ShopSettings.objects.create(pk=1, running_costs=[], costs_saved=True)
     html = owner_client.get("/settings/running-costs/?sheet=1").content.decode()
     assert 'value="Other"' not in html
+
+
+def test_running_costs_prefilled_after_hold_tip(owner_client, db):
+    bills_for_prefill()
+    ShopSettings.objects.create(pk=1, hold_tip_seen=True)
+    html = owner_client.get("/settings/running-costs/?sheet=1").content.decode()
+    assert re.search(r'value="Other"', html)
 
 
 def post_sheet(client, query):
@@ -400,6 +407,11 @@ def post_sheet(client, query):
         },
         HTTP_HX_REQUEST="true",
     )
+
+
+def test_running_costs_save_marks_costs_saved(owner_client, db):
+    post_sheet(owner_client, "?sheet=1")
+    assert ShopSettings.objects.get(pk=1).costs_saved
 
 
 def test_sheet_save_with_next_reloads_profit(owner_client, db):
