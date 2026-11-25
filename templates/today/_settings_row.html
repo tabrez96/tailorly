@@ -1,0 +1,16 @@
+{% if row.url %}
+    <a class="list__row settings-row"
+       id="{{ row.id }}"
+       href="{{ row.url }}"
+       hx-get="{{ row.url }}"
+       hx-target="#page"
+       hx-sync="#page:replace"
+       hx-push-url="true">
+        {% include "today/_settings_row_body.html" %}
+        <span class="list__chev" aria-hidden="true">
+            {% include "components/icon.html" with name="chevron-right" %}
+        </span>
+    </a>
+{% else %}
+    <div class="list__row settings-row" id="{{ row.id }}">{% include "today/_settings_row_body.html" %}</div>
+{% endif %}

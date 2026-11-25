@@ -1,0 +1,74 @@
+{% include "components/header.html" with title=title back_url=back_url %}
+<h2 class="t-section settings-section">Reports</h2>
+<div class="card">
+    <ul class="list settings-list">
+        {% for row in reports %}
+            <li>{% include "today/_settings_row.html" %}</li>
+        {% endfor %}
+    </ul>
+</div>
+<h2 class="t-section settings-section">Shop</h2>
+<div class="card">
+    <ul class="list settings-list">
+        {% for row in shop %}
+            <li>{% include "today/_settings_row.html" %}</li>
+        {% endfor %}
+    </ul>
+</div>
+<h2 class="t-section settings-section">AI assistants</h2>
+<div class="card">
+    <ul class="list settings-list">
+        <li>{% include "today/_settings_row.html" with row=mcp %}</li>
+    </ul>
+</div>
+<h2 class="t-section settings-section">Account</h2>
+<div class="card">
+    <ul class="list settings-list">
+        <li>
+            <div class="list__row settings-row">
+                <span class="icon-tile crow__initials">{{ account.initials }}</span>
+                <div class="list__main">
+                    <p class="t-body">
+                        <strong>{{ account.name }}</strong>
+                    </p>
+                    <p class="t-small muted">{{ account.line }}</p>
+                </div>
+            </div>
+        </li>
+        <li>
+            <a class="list__row settings-row"
+               id="settings-password"
+               href="{{ password_url }}"
+               hx-get="{{ password_url }}"
+               hx-target="#page"
+               hx-sync="#page:replace"
+               hx-push-url="true">
+                <span class="icon-tile">{% include "components/icon.html" with name="lock" %}</span>
+                <div class="list__main">
+                    <p class="t-body">
+                        <strong>Change password</strong>
+                    </p>
+                </div>
+                <span class="list__chev" aria-hidden="true">
+                    {% include "components/icon.html" with name="chevron-right" %}
+                </span>
+            </a>
+        </li>
+        <li>
+            <form method="post" action="{% url 'sign_out' %}">
+                {% csrf_token %}
+                <button type="submit"
+                        class="list__row settings-row settings-row--danger"
+                        id="settings-sign-out">
+                    <span class="icon-tile">{% include "components/icon.html" with name="sign-out" %}</span>
+                    <div class="list__main">
+                        <p class="t-body">
+                            <strong>Sign out</strong>
+                        </p>
+                    </div>
+                </button>
+            </form>
+        </li>
+    </ul>
+</div>
+<p class="t-small muted settings-version">{{ version }}</p>

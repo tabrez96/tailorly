@@ -76,6 +76,7 @@ def card(
     return {
         "name": name,
         "worked": worked,
+        "overtime_minutes": ot_minutes,
         "off_text": off_text,
         "present_text": format_duration(present),
         "overtime_text": overtime_text,

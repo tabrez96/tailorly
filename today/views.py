@@ -11,7 +11,7 @@ from production.timing import close_stale, stop
 from reports.models import ShopSettings
 from staff.attendance import end_day, start_day
 from staff.models import Employee
-from today import cards
+from today import cards, settings_rows
 
 
 @owner_required
@@ -87,3 +87,27 @@ def today_hold_tip_seen(request):
     response = HttpResponseRedirect(reverse("today"))
     response.status_code = 303
     return response
+
+
+@owner_required
+@require_GET
+def settings_page(request):
+    now = timezone.now()
+    return render_page(
+        request,
+        "today/settings.html",
+        {
+            "title": "Settings",
+            "subpage": True,
+            "back_url": reverse("today"),
+            "reports": settings_rows.report_rows(now),
+            "shop": [
+                settings_rows.staff_row(timezone.localdate(now)),
+                settings_rows.running_row(),
+            ],
+            "mcp": settings_rows.mcp_row(),
+            "account": settings_rows.account(request.user),
+            "password_url": reverse("change_password"),
+            "version": settings_rows.app_version(),
+        },
+    )

@@ -23,8 +23,20 @@ def test_today_links(owner, ali, make_item):
     assert "Hi SABREEN" not in html and "· HI SABREEN" in html
 
 
-def test_no_gear_without_settings_route(owner):
-    assert 'aria-label="Settings"' not in owner.get("/").content.decode()
+def test_gear_opens_settings(owner):
+    html = owner.get("/").content.decode()
+    tag = html[html.index('aria-label="Settings"') :]
+    tag = (
+        html[: html.index('aria-label="Settings"')].rsplit("<a", 1)[1]
+        + tag.split(">", 1)[0]
+    )
+    for attr in (
+        'href="/settings/"',
+        'hx-get="/settings/"',
+        'hx-target="#page"',
+        'hx-push-url="true"',
+    ):
+        assert attr in tag, attr
 
 
 def test_no_heroes_without_employees(owner):
