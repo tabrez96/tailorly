@@ -6,6 +6,7 @@ requires-python = ">=3.14"
 dependencies = [
     "dj-database-url>=3",
     "django>=6.1,<6.2",
+    "gunicorn>=27.0.1",
     "mcp>=2.3.0",
     "pillow>=13.0.0",
     "psycopg[binary]>=3.2",

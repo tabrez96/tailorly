@@ -23,6 +23,7 @@ jobs:
       SECRET_KEY: ci-only-not-a-secret
       DATABASE_URL: postgres://tailorly:tailorly@localhost:5432/tailorly
       ALLOWED_HOSTS: localhost
+      REQUIRE_PG_TOOLS: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -41,6 +42,11 @@ jobs:
       - run: uv run python manage.py check
       - run: uv run python manage.py migrate --noinput
       - run: uv run playwright install --with-deps chromium
+      - name: PostgreSQL 18 client tools (backup restore test)
+        run: |
+          sudo apt-get install -y postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y postgresql-client-18
       - run: uv run pytest --cov --cov-report=term-missing
 
   secrets:

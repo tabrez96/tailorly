@@ -1,0 +1,12 @@
+[Unit]
+Description=Tailorly nightly backup and draft cleanup
+After=postgresql.service
+
+[Service]
+Type=oneshot
+User=tailorly
+Group=tailorly
+WorkingDirectory=/srv/tailorly
+EnvironmentFile=/etc/tailorly/tailorly.env
+ExecStart=/srv/tailorly/.venv/bin/python manage.py backup --keep 14
+ExecStart=/srv/tailorly/.venv/bin/python manage.py delete_old_drafts

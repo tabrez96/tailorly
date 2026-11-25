@@ -92,6 +92,9 @@ LANGUAGE_CODE = "en-in"
 TIME_ZONE = "Asia/Kolkata"
 SHOP_NAME = os.environ.get("SHOP_NAME", "").strip()
 MCP_SERVER_URL = os.environ.get("MCP_SERVER_URL", "").strip()
+# Set from the release on deploy so open phones reload the shell; empty hashes the
+# static files.
+ASSET_VERSION = os.environ.get("ASSET_VERSION", "").strip()
 USE_I18N = True
 USE_TZ = True
 
@@ -108,10 +111,17 @@ STORAGES = {
 # Media is never served publicly; a later ticket adds the login-checked view.
 MEDIA_ROOT = Path(os.environ.get("MEDIA_ROOT", BASE_DIR / "media"))
 MEDIA_URL = "media/"
+BACKUP_DIR = Path(os.environ.get("BACKUP_DIR", BASE_DIR / "backups"))
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
+# Production turns these on in its env file; tests and local runs use plain http.
+SECURE_SSL_REDIRECT = os.environ.get("SECURE_SSL_REDIRECT", "0") == "1"
+SECURE_HSTS_SECONDS = int(os.environ.get("SECURE_HSTS_SECONDS", "0"))
+# The tunnel hostname is one subdomain of the owner's domain: HSTS must not reach
+# the other subdomains or be submitted to the browser preload list.
+SILENCED_SYSTEM_CHECKS = ["security.W005", "security.W021"]
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
