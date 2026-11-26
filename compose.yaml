@@ -1,0 +1,52 @@
+# Production: run from /srv/tailorly with the filled-in .env next to this file.
+x-app: &app
+  build:
+    context: .
+    args:
+      ASSET_VERSION: ${ASSET_VERSION:-}
+  image: tailorly
+  restart: unless-stopped
+  env_file: .env
+  environment:
+    # POSTGRES_PASSWORD must be URL-safe (hex); see deploy/production.env.example.
+    DATABASE_URL: postgres://tailorly:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/tailorly
+  volumes:
+    - /var/lib/tailorly/media:/data/media
+  depends_on:
+    db:
+      condition: service_healthy
+
+services:
+  db:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: tailorly
+      POSTGRES_DB: tailorly
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      # PostgreSQL 18 images keep data under /var/lib/postgresql/18/docker: mount the parent.
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "tailorly", "-d", "tailorly"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    <<: *app
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - /var/lib/tailorly/media:/data/media
+      - /var/backups/tailorly:/data/backups
+
+  mcp:
+    <<: *app
+    command:
+      ["python", "manage.py", "run_mcp", "--host", "0.0.0.0", "--port", "8001"]
+    ports:
+      - "127.0.0.1:8001:8001"
+
+volumes:
+  pgdata:

@@ -69,3 +69,17 @@ jobs:
           betterleaks version
       - name: Scan full git history
         run: betterleaks git . --redact --verbose --exit-code 1 --config .betterleaks.toml
+
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t tailorly .
+      - name: Runs as a non-root user
+        run: test "$(docker run --rm tailorly id -u)" = "10001"
+      - name: PostgreSQL 18 client for backups
+        run: docker run --rm tailorly pg_dump --version | grep -E ' 18\.'
+      - name: Static files collected
+        run: docker run --rm tailorly test -f staticfiles/staticfiles.json
+      - name: Compose file is valid
+        run: touch .env && POSTGRES_PASSWORD=ci docker compose config -q

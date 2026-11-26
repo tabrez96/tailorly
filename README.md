@@ -234,61 +234,60 @@ Amounts are in rupees (INR) with no tax.
 
 ### What runs
 
-| Unit                    | What                                              | Where                    |
-| ----------------------- | ------------------------------------------------- | ------------------------ |
-| `tailorly-web`          | gunicorn, 2 workers                               | 127.0.0.1:8000           |
-| `tailorly-mcp`          | MCP server (`manage.py run_mcp`)                  | 127.0.0.1:8001           |
-| `tailorly-backup.timer` | database dump + media archive, then draft cleanup | every night at 02:30 IST |
+| Service                 | What                                                                    | Where                    |
+| ----------------------- | ----------------------------------------------------------------------- | ------------------------ |
+| `db`                    | PostgreSQL 18 (`postgres:18`), data in the `pgdata` volume              | not published            |
+| `web`                   | gunicorn, 2 workers                                                     | 127.0.0.1:8000           |
+| `mcp`                   | MCP server (`manage.py run_mcp`)                                        | 127.0.0.1:8001           |
+| `tailorly-backup.timer` | (host systemd) `manage.py backup` then `delete_old_drafts` inside `web` | every night at 02:30 IST |
 
 Cloudflare Tunnel (`cloudflared`) publishes one HTTPS hostname: `/mcp` goes to port 8001 and everything else to port 8000 (`deploy/cloudflared.example.yml`).
 
+Media lives in `/var/lib/tailorly/media` and backups in `/var/backups/tailorly` on the host, mounted into the containers. The containers run as uid 10001.
+
 ### Install
 
-Install PostgreSQL 18 from the [PostgreSQL apt repository](https://www.postgresql.org/download/linux/), create the `tailorly` user, check out the app and install it. uv installs Python 3.14 from `.python-version`; install uv for the `tailorly` user first.
+Requires Docker Engine with the Compose plugin.
 
 ```
-sudo apt install postgresql-18
-sudo useradd --system --create-home tailorly
-sudo install -d -o tailorly -g tailorly /srv/tailorly
-sudo -u tailorly git clone <repo> /srv/tailorly
-cd /srv/tailorly && sudo -u tailorly uv sync --locked --no-dev
-sudo -u postgres createuser tailorly && sudo -u postgres createdb -O tailorly tailorly
-sudo mkdir -p /etc/tailorly /var/lib/tailorly/media /var/backups/tailorly
-sudo chown tailorly: /var/lib/tailorly/media /var/backups/tailorly
-sudo cp deploy/production.env.example /etc/tailorly/tailorly.env
+sudo install -d -o "$USER" /srv/tailorly
+git clone <repo> /srv/tailorly
+cd /srv/tailorly
+sudo install -d -o 10001 -g 10001 /var/lib/tailorly/media /var/backups/tailorly
+sudo install -m 600 deploy/production.env.example .env
 ```
 
-Edit `/etc/tailorly/tailorly.env`, then `sudo chown root:tailorly /etc/tailorly/tailorly.env && sudo chmod 640 /etc/tailorly/tailorly.env`.
+Edit `.env`. Run every later command from `/srv/tailorly`.
 
 ### Production settings checklist
 
 - `DEBUG=0`.
 - A new `SECRET_KEY` (the command is in the example file).
+- `POSTGRES_PASSWORD` from `openssl rand -hex 24` (hex only, because it goes into a URL). It only applies when the `pgdata` volume is first created; to change it later, run `ALTER USER` inside the `db` container.
 - `ALLOWED_HOSTS` is the tunnel hostname; `CSRF_TRUSTED_ORIGINS` is `https://` plus the hostname.
 - `SECURE_SSL_REDIRECT=1` and `SECURE_HSTS_SECONDS` set (Cloudflare sends `X-Forwarded-Proto`).
 - `MCP_SERVER_URL` is `https://<hostname>/mcp`.
-- `ASSET_VERSION` is written on every release (see First start); it lives in `/etc/tailorly/release.env`, not in the env file.
+- `ASSET_VERSION` is passed at build time (see First start); it is not in `.env`.
 
 Verify:
 
 ```
-set -a; . /etc/tailorly/tailorly.env; set +a
-.venv/bin/python manage.py check --deploy --fail-level WARNING
+sudo docker compose run --rm web python manage.py check --deploy --fail-level WARNING
 ```
 
 ### First start
 
-As `tailorly`, with the env loaded as above:
-
 ```
-.venv/bin/python manage.py migrate
-.venv/bin/python manage.py collectstatic --noinput
-.venv/bin/python manage.py create_owner --phone "98450 12345" --name "Shop owner"
-echo "ASSET_VERSION=$(git rev-parse --short HEAD)" | sudo tee /etc/tailorly/release.env
-sudo cp deploy/tailorly-*.service deploy/tailorly-backup.timer /etc/systemd/system/
+sudo ASSET_VERSION=$(git rev-parse --short HEAD) docker compose build
+sudo docker compose run --rm web python manage.py migrate
+sudo docker compose up -d
+sudo docker compose exec web python manage.py create_owner --phone "98450 12345" --name "Shop owner"
+sudo cp deploy/tailorly-backup.service deploy/tailorly-backup.timer /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable --now tailorly-web tailorly-mcp tailorly-backup.timer
+sudo systemctl enable --now tailorly-backup.timer
 ```
+
+Other management commands (for example `changepassword <phone>`) run the same way: `sudo docker compose exec web python manage.py <command>`. Logs: `sudo docker compose logs -f web mcp`.
 
 ### Cloudflare Tunnel
 
@@ -310,15 +309,42 @@ The credentials JSON stays in `/etc/cloudflared/`, never in the repo (`deploy/*.
 
 ```
 git pull --ff-only
-uv sync --locked --no-dev
-set -a; . /etc/tailorly/tailorly.env; set +a
-.venv/bin/python manage.py migrate
-.venv/bin/python manage.py collectstatic --noinput
-echo "ASSET_VERSION=$(git rev-parse --short HEAD)" | sudo tee /etc/tailorly/release.env
-sudo systemctl restart tailorly-web tailorly-mcp
+sudo ASSET_VERSION=$(git rev-parse --short HEAD) docker compose build
+sudo docker compose run --rm web python manage.py migrate
+sudo docker compose up -d
 ```
 
 Open phones see the new asset version and reload the shell once.
+
+### Moving from the host install
+
+One time only. Run from `/srv/tailorly`, with the checkout owned by the user who runs `git` (see Install). First create `.env` and carry the settings over, because Compose needs it for every step below:
+
+```
+sudo install -m 600 deploy/production.env.example .env
+```
+
+Edit `.env`: copy the values from `/etc/tailorly/tailorly.env` (drop `DATABASE_URL`, `MEDIA_ROOT` and `BACKUP_DIR`) and set `POSTGRES_PASSWORD` from `openssl rand -hex 24`. Then check it while the old services still run:
+
+```
+sudo ASSET_VERSION=$(git rev-parse --short HEAD) docker compose build
+sudo docker compose run --rm --no-deps web python manage.py check --deploy --fail-level WARNING
+```
+
+Then stop and remove the old units and move the data across:
+
+```
+sudo systemctl disable --now tailorly-web tailorly-mcp
+sudo rm /etc/systemd/system/tailorly-web.service /etc/systemd/system/tailorly-mcp.service
+sudo docker compose up -d --wait db \
+  && sudo -u tailorly pg_dump --format=custom --no-owner --no-privileges tailorly \
+    | sudo docker compose exec -T db pg_restore -U tailorly --no-owner --single-transaction --exit-on-error -d tailorly \
+  && sudo chown -R 10001:10001 /var/lib/tailorly/media /var/backups/tailorly
+```
+
+The dump goes straight into the new database, so no copy of it is left on disk. Run `sudo docker compose up -d` only if that chain succeeded. If it failed, fix the cause, run `sudo docker compose down -v` to clear the half-made database volume, and run the chain again.
+
+Reinstall the backup unit as in First start, run `sudo docker compose run --rm web python manage.py migrate` (the imported database is still on the old schema), then `sudo docker compose up -d`. Stop the host PostgreSQL once the app works: `sudo systemctl disable --now postgresql`.
 
 ### Backups
 
@@ -334,16 +360,19 @@ Copy `/var/backups/tailorly` off the machine regularly.
 ### Restore from a backup
 
 ```
-sudo -u tailorly pg_restore --list /var/backups/tailorly/tailorly-<stamp>.dump > /dev/null \
-  && sudo -u tailorly tar -tzf /var/backups/tailorly/tailorly-<stamp>-media.tar.gz > /dev/null \
-  && sudo systemctl stop tailorly-web tailorly-mcp tailorly-backup.timer tailorly-backup \
-  && sudo -u postgres dropdb tailorly \
-  && sudo -u postgres createdb -O tailorly tailorly \
-  && sudo -u tailorly pg_restore --no-owner --single-transaction --exit-on-error --dbname=tailorly /var/backups/tailorly/tailorly-<stamp>.dump \
+sudo docker compose exec -T db pg_restore --list < /var/backups/tailorly/tailorly-<stamp>.dump > /dev/null \
+  && sudo tar -tzf /var/backups/tailorly/tailorly-<stamp>-media.tar.gz > /dev/null \
+  && sudo systemctl stop tailorly-backup.timer tailorly-backup \
+  && sudo docker compose stop web mcp \
+  && sudo docker compose exec -T db dropdb -U tailorly tailorly \
+  && sudo docker compose exec -T db createdb -U tailorly tailorly \
+  && sudo docker compose exec -T db pg_restore -U tailorly --no-owner --single-transaction --exit-on-error -d tailorly < /var/backups/tailorly/tailorly-<stamp>.dump \
   && sudo rm -rf /var/lib/tailorly/media \
-  && sudo install -d -o tailorly -g tailorly /var/lib/tailorly/media \
-  && sudo -u tailorly tar -xzf /var/backups/tailorly/tailorly-<stamp>-media.tar.gz -C /var/lib/tailorly \
-  && sudo systemctl start tailorly-web tailorly-mcp tailorly-backup.timer
+  && sudo install -d -o 10001 -g 10001 /var/lib/tailorly/media \
+  && sudo tar -xzf /var/backups/tailorly/tailorly-<stamp>-media.tar.gz -C /var/lib/tailorly \
+  && sudo chown -R 10001:10001 /var/lib/tailorly/media \
+  && sudo docker compose start web mcp \
+  && sudo systemctl start tailorly-backup.timer
 ```
 
 Both files are checked before anything stops. If `pg_restore` fails after `dropdb`, the database is empty, the media is untouched and everything stays stopped. Fix the cause and rerun from `createdb`.
@@ -351,10 +380,10 @@ Both files are checked before anything stops. If `pg_restore` fails after `dropd
 Try a restore first on a scratch database:
 
 ```
-sudo -u postgres createdb -O tailorly tailorly_restore_check
-sudo -u tailorly pg_restore --no-owner --dbname=tailorly_restore_check <dump>
-sudo -u tailorly psql -d tailorly_restore_check -c "select count(*) from django_migrations"
-sudo -u postgres dropdb tailorly_restore_check
+sudo docker compose exec -T db createdb -U tailorly tailorly_restore_check
+sudo docker compose exec -T db pg_restore -U tailorly --no-owner -d tailorly_restore_check < <dump>
+sudo docker compose exec -T db psql -U tailorly -d tailorly_restore_check -c "select count(*) from django_migrations"
+sudo docker compose exec -T db dropdb -U tailorly tailorly_restore_check
 ```
 
 ---
